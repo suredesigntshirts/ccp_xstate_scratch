@@ -1,0 +1,17 @@
+{
+  "name": "@ccp-xstate/journal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The journal: one versioned row format, appended as JSONL, one writer per file. See docs/journal.md.",
+  "exports": {
+    ".": "./src/index.js",
+    "./schema/row.schema.json": "./schema/row.schema.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

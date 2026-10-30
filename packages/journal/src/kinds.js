@@ -1,0 +1,19 @@
+// The kinds a writer may append. A reader accepts any well-formed kind, so an older reader still reads rows of a
+// kind added later. docs/journal.md says what each kind records and how to add one.
+export const KINDS = Object.freeze([
+  'session.fingerprint',
+  'session.selfcheck',
+  'tool.call',
+  'agent.spawn',
+  'agent.finish',
+  'turn.usage',
+  'refusal',
+  'hook.run',
+  'person.message',
+  'person.tap',
+  'card.posted',
+  'brief.stored',
+  'result.stored',
+  'ci.result',
+  'page.refresh',
+]);
