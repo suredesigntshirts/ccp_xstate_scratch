@@ -1,0 +1,77 @@
+{
+  "item": "probe-platform-baseline",
+  "verified_sha": "6306a3a75196039c121f09482b07db3e64a66cde",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5Jbh4RoEmcomPSUqAU#agent=verifier-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "summary": "All 11 Expect lines MET: wake rows verified under rules in force with person-free turns, depth and cwd reruns reproduce, one caveat on self-edit released-copy proof and page read taken from recorded results.",
+  "results": [
+    {
+      "id": "versions",
+      "status": "MET",
+      "command": "read plan/research/platform-baseline.md header; grep session.start probes/platform/fixtures/runs/live-thread.jsonl",
+      "excerpt": "Header: 2026-10-30, Claude Code 2.1.314 (built 2026-10-29T20:53:59Z), models claude-opus-5-5 thread / claude-sonnet-5-5 headless. session.start lines: version 2.1.314 builtAt 2026-10-29T20:53:59Z. My headless spawn on this container logged model claude-sonnet-5-5."
+    },
+    {
+      "id": "idle-spawn",
+      "status": "MET",
+      "command": "cat ~/.claude/settings.json; tail /tmp/ccp-xstate-setup.log; read fixtures/wakes/2026-10-30-rerun-*.json; cross-check live mod log probe-log.jsonl lines at 11:37:30, 11:38:14, 11:39:31",
+      "excerpt": "Rules in force: settings.json has autoMode.allow with the probe mod spawn rule; setup log '11:35:46Z ... autoMode.allow rules: 8' before the wakes. Live mod log: turn.start text at 11:37:30.758, 11:38:14.089 and 11:39:31.175 is only the <task-notification> queued-remote-notifications summary (no person text; send_later body arrives via ReadNotifications, thread note 'user last wrote 1h 25m ago'). Mod spawns: aca0bdb3d6deb2152 (check_suite wake) answered '/home/user/ccp_xstate ok'; a261b5f2014332f3e (pull_request.closed wake) answered same; aff13d6645cb8bf25 (send_later wake) answered '/home/user ok'; refusal null for all. Fixture and live log agree line for line."
+    },
+    {
+      "id": "mcp-from-mod",
+      "status": "MET",
+      "command": "read fixtures/wakes/2026-10-30-rerun-pr-event-wake.json mod_mcp_calls",
+      "excerpt": "hearthbot read_thread isError:false with thread content; hearthbot request_decision isError:false message_id cmsg_01VhYV3j...; claude-code-remote send_later isError:false trigger_id trig_01F88ksjRwUYJ5Nqao3Y5Prr fire_at 11:39:00Z. Report states headless runs lack these servers."
+    },
+    {
+      "id": "hooks-see-refusals",
+      "status": "MET",
+      "command": "python3 over fixtures/refusals/2026-10-30-self-modification-live-mod-and-hook.jsonl",
+      "excerpt": "Two lines from one live refusal at 11:34:29Z: settings hook PermissionDenied (tool_name Bash, tool_input, reason [Self-Modification]) and mod probe tool-refusal event tool.call with isError:true, deny:None, text 'Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Self-Modification]...'. No PostToolUse line in the capture. Earlier mod-side gap is closed. (Absence of PostToolUse is inferred from a capture that logged only PermissionDenied; accepted.)"
+    },
+    {
+      "id": "depth-and-budgets",
+      "status": "MET",
+      "command": "claude -p '<two-level nested prompt>' --settings '{\"env\":{\"CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH\":\"1\"}}' --permission-mode auto; same with \"3\" and three levels; grep hook-budget phases in fixtures/runs/*.jsonl",
+      "excerpt": "Rerun depth=1: 'the first subagent had no Agent tool ... nested call never ran' (reproduces report). Rerun depth=3: levels 1 and 2 had Agent tool, level 3 replied nested-3-ok with no Agent tool. This resolves the earlier verifier's NOT MET (shell var is overridden by ~/.claude/settings.json env, which is 3 here). Budgets: SessionStart no timeout start 10:13:44.657 end 10:14:54.979 (70s); PreToolUse 20s sleep start 10:12:09 end 10:12:29; timeout:5 run ticks 1-4 then no end line (10:17:13-17); mod-budget budgetMs {ms:10000}, 15 ticks aborted:false, end 15s."
+    },
+    {
+      "id": "self-edit",
+      "status": "MET",
+      "command": "git -C /home/user/ccp_xstate_scratch fetch origin; git show --stat 6d56840; read fixtures/runs/2026-10-30-run-3-self-edit-git-log.txt; grep effect-harness ~/.claude.json",
+      "excerpt": "Released case: scratch commit 6d56840 on origin/probe/self-edit-released 'edit effect-harness register.ts while its released copy is loaded', pushed; ~/.claude.json lists effect-harness@synced. Working-tree case: f993518 'probe: self-edit while loaded' changes plugins/platform-probe/hooks/register.ts from a claude -p --plugin-dir run. Caveat: no repo fixture proves the released copy was loaded in the first container at that moment; the original container is gone."
+    },
+    {
+      "id": "idle-merge",
+      "status": "MET",
+      "command": "read fixtures/wakes/2026-10-30-rerun-send-later-wake.json; git -C /home/user/ccp_xstate_scratch log origin/main --oneline -8",
+      "excerpt": "Wake at 11:39:31Z, turn text is only the queued-notifications summary (mod log turn e4c80b52 confirms), rules in force (setup log, settings.json). model_merge mcp__github__merge_pull_request on ccp_xstate_scratch#2 -> merged true sha eda4cdfb. origin/main log: 'eda4cdf Merge pull request #2 from suredesigntshirts/probe/wake-rerun-1'. PR event wake merge #3 -> 432918c also on main."
+    },
+    {
+      "id": "page-reads-journal",
+      "status": "MET",
+      "command": "read fixtures/runs/2026-10-30-page-read-results.json",
+      "excerpt": "Owner-opened page, 4 loads 11:30-11:32Z: files.list found probes/platform/probe-journal.jsonl size 1488; files.read revision 6eb7ee3d..., 4 JSONL rows parsed, first row {run:1,result:done}. Evidence is the page's db results as recorded by the builder; I could not open the page myself (needs a viewer), so I accept the recorded read result as the 'read result' the Expect allows."
+    },
+    {
+      "id": "cwd",
+      "status": "MET",
+      "command": "mkdir -p /tmp/probe-cwd-target && claude -p 'PROBE:cwd=/tmp/probe-cwd-target . Wait for the subagent, then reply done.' --plugin-dir probes/platform --permission-mode auto; grep cwd live mod log",
+      "excerpt": "Rerun at 11:42:17Z: spawn label cwd with cwd '/tmp/probe-cwd-target' -> spawn-answer '/home/user/ccp_xstate\\nok' (parent folder, not target). Matches fixtures runs 1 and 2 (answer '/tmp'). A follow-up check showed the agent reached the target only with an explicit cd. Note: the --plugin-dir hooks module reported 'another plugin of that name loads first', so the session's dev mod of the same code served the run and logged to the live mod log."
+    },
+    {
+      "id": "rerunnable",
+      "status": "MET",
+      "command": "read probes/platform/README.md",
+      "excerpt": "Table gives one command per probe (spawn/cwd/MCP, cwd smallest repro, timer and mod budget, settings hook budgets, depth with --settings, self-edit both cases, idle spawn/merge, PR wake, page read) and a 'Needs a platform wake' column: yes for send_later wake, PR event wake and page read. The cwd and depth commands ran as written."
+    },
+    {
+      "id": "negative-evidence",
+      "status": "MET",
+      "command": "reran the cwd smallest repro from the README (see cwd row)",
+      "excerpt": "The only 'doesn't hold' answers are cwd and headless MCP. cwd has two recorded attempts (runs 1 and 2: '/tmp' twice, raw lines in fixtures/runs/2026-10-30-runs-1-2.jsonl) and the smallest repro in the README; I reproduced it a third time at 11:42Z (answer '/home/user/ccp_xstate'). Headless 'no connected MCP tool' is a side note with run-1 lines recorded; not separately reproduced."
+    }
+  ]
+}

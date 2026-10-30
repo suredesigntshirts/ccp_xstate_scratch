@@ -1,0 +1,23 @@
+commit f99351829879ee00fbef7b6ae9e5d0df5154b969
+Author: Claude <noreply@anthropic.com>
+Date:   Fri Oct 30 10:15:03 2026 +0000
+
+    probe: self-edit while loaded
+
+ plugins/platform-probe/hooks/register.ts | 1 +
+ 1 file changed, 1 insertion(+)
+
+commit 9683ffeba56fe92d3a8949ea751fa401b25f268e
+Author: probe <probe@example.com>
+Date:   Fri Oct 30 10:13:42 2026 +0000
+
+    init
+
+ plugins/platform-probe/.claude-plugin/plugin.json  |   1 +
+ plugins/platform-probe/.gitignore                  |   1 +
+ .../refusals/2026-10-30-exfil-scouting-outer.json  |  11 +++
+ plugins/platform-probe/hooks/hooks.json            |  17 ++++
+ plugins/platform-probe/hooks/register.ts           | 106 +++++++++++++++++++++
+ plugins/platform-probe/scripts/capture-hook.sh     |   6 ++
+ plugins/platform-probe/scripts/slow-hook.sh        |  10 ++
+ 7 files changed, 152 insertions(+)

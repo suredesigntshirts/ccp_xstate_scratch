@@ -1,0 +1,21 @@
+{
+  "item": "journal-schema",
+  "verified_sha": "9af49cef555027622aa0bb2efcd332130ccda3bd",
+  "verifier": { "session": "https://claude.ai/code/session_01KfkB5HB2DWmc15z3nAswfG#agent=verifier-journal-schema", "model": "claude-sonnet-5-5" },
+  "results": [
+    { "id": "schema-tests", "status": "MET", "command": "npm test -w packages/journal; then mutation, rerun, git checkout -- packages/journal/src",
+      "excerpt": "Unmutated: '# tests 24 # pass 24 # fail 0'. With the required-field check disabled: '# pass 19 # fail 5' (not ok 16 - a row missing source fails; not ok 17 - a row missing v fails; not ok 18, 20, 11). Reverted; full npm test: '# tests 41 # pass 41'.",
+      "mutation": "packages/journal/src/validate.js: changed `if (!Object.hasOwn(value, key)) errors.push(...)` to `if (false) errors.push(...)`, so no required field is enforced",
+      "red_test": "a row missing source fails; a row missing v fails" },
+    { "id": "one-writer", "status": "MET", "command": "node --test verify/journal-schema/journal.test.mjs (test 'one-writer'): two separate node processes (verify/journal-schema/writer.mjs) each append 100 rows with the library to one file in a mkdtemp folder at once",
+      "excerpt": "ok 1 - one-writer: file ends with newline, exactly 200 lines, every line JSON.parse-able, readFile returns 200 rows with bad=[], rows non-decreasing in `at`, and each writer's n values are 0..99 in order." },
+    { "id": "older-writer", "status": "MET", "command": "node --test verify/journal-schema/journal.test.mjs (test 'older-writer'): hand-wrote a row with release 0.2.0, then append() with release 0.1.0",
+      "excerpt": "ok 2 - append throws JournalError whose message contains both '0.1.0' and '0.2.0' (\"refused: this writer's release 0.1.0 is older than release 0.2.0, which already wrote to <path>\"); file bytes identical before and after; same release and 0.10.0 are accepted (numeric, not string, comparison). Upcast: ok 3 - a file with a v1 row read by a reader with version 2 and a v1->v2 upcaster returns v2 with payload.upcast true and the file bytes are unchanged; with no upcaster the row is reported in bad, not dropped; a v2 row read by the v1 reader is reported 'newer than this reader'. No v0 exists, so the builder's decision (reader at a future version plus an upcaster) is the only way to exercise the path; it tests the real upcast() and readFile() code, so it is a fair check." },
+    { "id": "no-scan-on-append", "status": "MET", "command": "npm test -w packages/journal; then mutation, rerun, git checkout -- packages/journal/src",
+      "excerpt": "Unmutated: all 24 pass. With a readdirSync(dirname(path)) added before openSync in append(): '# pass 23 # fail 1', 'not ok 9 - append opens exactly one file and lists no folder'. Reverted.",
+      "mutation": "packages/journal/src/index.js: added fs.readdirSync(dirname(path)) in append() before fs.openSync",
+      "red_test": "append opens exactly one file and lists no folder" },
+    { "id": "mount", "status": "MET", "command": "On /mnt/project-files/journal-verify/shared.jsonl (FUSE mount): two concurrent node processes (writer.mjs, A and B, 50 rows each, library append()) in one container, then a third separate node process polling readFile for up to 60s; test folder deleted afterwards",
+      "excerpt": "Both writers exited 0. Reader found on first poll (6 ms): rows=100, bad=[], per-writer counts {A:50,B:50}, each writer's n in order 0..49; wc -l = 100. Limit: all three processes ran in ONE container, not three separate sessions in separate containers, so cross-container visibility lag (the 60 s window) was not exercised; the mount accepts concurrent O_APPEND writes from two processes without tearing and a separate process reads both writers' rows." }
+  ]
+}

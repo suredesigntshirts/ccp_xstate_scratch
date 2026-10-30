@@ -1,0 +1,31 @@
+{
+  "item": "self-update-by-version",
+  "verified_sha": "278e45d9ff1769c1af40f90a3a099591f7538b00",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5JPJv6zwE7Yjrmanu9#agent=verifier-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "summary": "Re-verified from scratch at 278e45d (stale verdict at 488ce91 discarded). All three Expect lines hold. npm test at head: 91 pass, 0 fail (before I added 2 tests); plan/check.mjs: plan ok; pr-gate stubs and freeze both passed. release: proved on the real scratch repo with no Actions: release.mjs synced via PR #7, then PR #8 (README.md only) and PR #9 (plugins/harness/README.md), each followed by 'git fetch origin main && node scripts/release/release.mjs branch --push' and git ls-remote. Non-plugin merge and the sync merge made nothing; the plugin merge made release/harness-v0.1.2 at the merge sha, above tag 0.1.1; an immediate rerun made nothing. behind-notice: two mutations each turned a named test red. no-self-edit: traced all writes by reading and by strace; none is under the plugin root; I added tests for the release-branch path. Notes: (1) a merging thread's clone must have release.mjs current on disk (it runs the working-tree copy, so after a PR that changes release.mjs, fast-forward the clone before running it; my first run used a stale local copy that only knew tag and printed usage). (2) I did not copy release.yml to the scratch repo (workflow-file pushes may need extra scope and Actions is off); the scratch release.yml differs from head's and was not exercised; I read head's release.yml only. (3) Leftover scratch state: branches verify2/*, merged PRs #7-#9, release/harness-v0.1.2.",
+  "results": [
+    {
+      "id": "release",
+      "status": "MET",
+      "command": "In /home/user/ccp_xstate_scratch: copied scripts/release/release.mjs from ccp_xstate head, PR #7 merged (3352b45); fast-forwarded the clone; then for PR #8 (README.md, merge 87565a1) and PR #9 (plugins/harness/README.md, merge e46df88), each merged with mcp__github__merge_pull_request, ran 'git fetch origin main && node scripts/release/release.mjs branch --push' then 'git ls-remote origin'. Read release.mjs and .github/workflows/release.yml.",
+      "excerpt": "Before: tags harness-v0.1.0, harness-v0.1.1, branch release/probe-ref (ignored). After sync PR #7: 'no release: nothing under plugins/harness or packages/journal changed since harness-v0.1.1'. After non-plugin PR #8: same 'no release', no new release ref. After plugin PR #9: row result=released, version 0.1.2, changed [plugins/harness/README.md], 'released harness-v0.1.2 at e46df88ef466b8c7fe7034a831214d8cf7b6e417 as a branch'; ls-remote: e46df88ef466b8c7fe7034a831214d8cf7b6e417 refs/heads/main and refs/heads/release/harness-v0.1.2. Rerun: 'e46df88ef466 is already released as harness-v0.1.2'. Version only rises: newestTag takes the max across refs/tags/harness-v*, refs/heads/release/harness-v* and origin's release branches; nextVersion returns latest patch+1 or the manifest version only if higher; plan() throws 'refused' unless the version is above the newest; an already-released sha is skipped; the base is the newest release ref so a missed release is made by the next run. release.yml uses the same script (tag --push) under a non-cancelling concurrency group, and sees a branch release at the same sha as already released."
+    },
+    {
+      "id": "behind-notice",
+      "status": "MET",
+      "command": "node --test plugins/harness/test/notice-behind.test.mjs (6 pass at head); then mutated plugins/harness/scripts/notice-behind.mjs twice with sed, reran, and reverted with git checkout each time",
+      "excerpt": "Head: 6 pass, 0 fail. Mutation 1: 'not ok 1 - behind-notice: a session on an older release is told once, then not again within 30 minutes' (5 pass, 1 fail). Mutation 2: 'not ok 3 - behind-notice: nothing is said on the newest release, with no release, or when origin cannot be reached' (5 pass, 1 fail). Tree clean after revert.",
+      "mutation": "(1) replaced 'Date.now() - last < INTERVAL_MS' with 'false' so the 30-minute throttle never applies; (2) replaced 'byVersion(mine.version, latest.version) >= 0' with 'false' so the notice is also said on the newest release",
+      "red_test": "(1) behind-notice: a session on an older release is told once, then not again within 30 minutes; (2) behind-notice: nothing is said on the newest release, with no release, or when origin cannot be reached"
+    },
+    {
+      "id": "no-self-edit",
+      "status": "MET",
+      "command": "Read every write in release.mjs (git branch/tag/push only, no file writes), notice-behind.mjs (mkdir, write and rename of a timestamp under CCP_HARNESS_STATE or os.tmpdir()/ccp-harness) and infra/cloud-environment/setup.sh (clone ff-merge, ~/.claude/settings.json, mktemp work dir, install to ~/.claude/skills/ccp-harness skipped when /proc/$CLAUDE_PID/environ HOME equals HOME). Then node --test verify/self-update-by-version/no-self-edit.test.mjs (strace -f of the real scripts, write-like syscalls checked against the plugin root).",
+      "excerpt": "6 pass, 0 fail (4 kept, 2 new for the release-branch path). setup.sh beside a live Claude in the same HOME: 'plugin not replaced', clone fast-forwarded, zero write syscalls under the plugin root or its .old, byte/mtime snapshot unchanged; control run without Claude installs and the detector sees the writes (tag 9.0.0 and branch-only release 9.1.0 both picked up). notice-behind.mjs from the installed copy while behind: notice printed, no write under the plugin root, only its timestamp elsewhere. release.mjs tag and branch --push write only inside .git and push release/harness-v0.1.0 to origin; nothing under HOME/.claude."
+    }
+  ]
+}

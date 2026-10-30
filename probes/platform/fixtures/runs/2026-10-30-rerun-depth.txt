@@ -1,0 +1,48 @@
+== default env (CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=3) three levels run 1 2026-10-30T11:36:56Z
+The level-1 subagent is running in the background. I'll report the full chain when it finishes.
+
+The three-level chain worked. Levels 1 and 2 each had an Agent tool, and level 3 did not.
+
+| Level | Had an Agent tool? | What it did |
+|---|---|---|
+| 1 | Yes | Started level 2 in the foreground. It finished. |
+| 2 | Yes | Started level 3 in the foreground. It finished. |
+| 3 | No | Replied "nested-3-ok". |
+
+Level 3 listed its tools as Artifact, Bash, Edit, ListAgents, Read, ReportFindings, SendUserFile, ShowOnboardingRolePicker, Skill, ToolSearch, Write and SubagentHandback. It noted that ToolSearch could load deferred tools such as SendMessage, but none of those is an Agent tool. So depth 3 is where nesting stops in this environment.
+
+Level 1 also said level 3's reply reached it a second time as a message from another agent, a04448b24cbd225bb. It took no action on that duplicate.
+== default env (CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=3) three levels run 2 2026-10-30T11:37:26Z
+The chain ran three levels deep and level 3 replied `nested-3-ok`.
+
+| Level | Had Agent tool? | Result |
+|---|---|---|
+| 1 (subagent I started) | Yes | Started level 2 successfully. |
+| 2 | Yes | Started level 3 successfully. |
+| 3 | No | Replied `nested-3-ok`. |
+
+Level 3 listed its tools: Artifact, Bash, Edit, ListAgents, Read, ReportFindings, SendUserFile, ShowOnboardingRolePicker, Skill, ToolSearch, Write and SubagentHandback. SendMessage and the other deferred tools have to be loaded through ToolSearch first. None of them lets it spawn a subagent, so nesting stops at depth 3.
+
+Level 2 said level 3's report reached it twice, the second time as a message from agent a199277d48413c714. It treated the second copy as a duplicate and took no action.
+
+The reports above are as level 1 relayed them. I didn't check levels 2 and 3 independently.
+== depth=1 two levels 2026-10-30T11:37:56Z
+The nested spawn worked.
+
+- **First subagent:** It had an Agent tool.
+- **Nested subagent:** It replied "nested-ok" and said it also had an Agent tool. The reply was: "nested-ok. Agent tool: yes (an Agent tool is in my tool list)."
+- **Errors:** None. The nested call succeeded and the report came back normally.
+
+The memory note says this environment may be capped at spawn depth 1 (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`). That note was written at 10:10Z and may be stale. This run reached depth 2 without trouble, so the cap either isn't in force here or doesn't apply to this session. I didn't check the variable directly.
+== depth=1 via --settings env (overrides ~/.claude/settings.json env) 2026-10-30T11:38:29Z
+The nested call didn't happen. The first subagent had no Agent tool, so it couldn't start a second one.
+
+- **First subagent:** I started a `general-purpose` subagent and told it to launch a nested subagent that replies `nested-ok`. It did not try the nested call, because it had no Agent tool.
+- **Its tools:** Artifact, Bash, Edit, ListAgents, Read, ReportFindings, SendUserFile, ShowOnboardingRolePicker, Skill, ToolSearch, Write and SubagentHandback, plus deferred tools such as SendMessage.
+- **Nested reply:** none, so `nested-ok` never came back.
+
+This matches the depth-1 limit in the team memory (`CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1`). The memory note is from an earlier thread, and I didn't check the variable in this session. A subagent started from the top-level session can't start further subagents.
+
+I didn't send any reply to the subagent. Its message only reported the result and didn't ask for anything.
+== env check inside child
+depth=3

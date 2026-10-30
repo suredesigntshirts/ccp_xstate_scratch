@@ -1,0 +1,2 @@
+{"attributes":{"has_cwd":true,"has_init_script":true,"has_sources":true,"languages":0,"session_mode":"new"},"level":"INFO","message":"Initializing Anthropic environment","time":"2026-10-30T11:35:44.386488301Z","timestamp":"2026-10-30T11:35:44.386935001Z"}
+{"attributes":{"script_length":129},"level":"INFO","message":"Running initialization script","time":"2026-10-30T11:35:46.941524794Z","timestamp":"2026-10-30T11:35:46.941528646Z"}

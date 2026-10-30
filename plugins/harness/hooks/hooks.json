@@ -1,0 +1,27 @@
+{
+  "description": "SessionStart: in a project that installed the harness, journal a fingerprint row and a self-check row and say in one line whether the check passed. UserPromptSubmit: at most every 30 minutes, say when a newer release is out. Elsewhere, or with CCP_HARNESS_DISABLED=1, nothing.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/session-start.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/notice-behind.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

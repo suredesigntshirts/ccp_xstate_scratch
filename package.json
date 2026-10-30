@@ -1,7 +1,17 @@
 {
-  "name": "ccp-xstate-scratch",
+  "name": "ccp-xstate",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=22" },
-  "scripts": { "test": "node --test" }
+  "description": "The v2 harness, built on XState. See CLAUDE.md.",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\" \"scripts/**/*.test.mjs\" \"packages/**/*.test.{js,mjs}\" \"plugins/**/*.test.{js,mjs}\" \"verify/**/*.test.{js,mjs}\"",
+    "check": "node plan/check.mjs"
+  }
 }

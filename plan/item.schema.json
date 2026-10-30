@@ -1,0 +1,272 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "plan/item.schema.json",
+  "title": "Plan item head",
+  "description": "The JSON block at the top of plan/items/<id>.md. Fields marked readyRequired must be non-empty before status is ready.",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "stage",
+    "kind",
+    "status",
+    "outcome",
+    "depends_on"
+  ],
+  "additionalProperties": false,
+  "readyRequired": [
+    "why",
+    "serves",
+    "inputs",
+    "outputs",
+    "expect",
+    "concepts",
+    "non_goals",
+    "records",
+    "step_back",
+    "verifier"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Stable slug, equal to the file name. Never reused."
+    },
+    "title": {
+      "type": "string",
+      "description": "Verb first, in plain words."
+    },
+    "stage": {
+      "type": "string",
+      "description": "Id of a file in plan/stages/."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "probe",
+        "research",
+        "build",
+        "decision"
+      ],
+      "description": "probe: test a platform guess cheaply before building on it. research: read and report. build: one PR. decision: the person chooses, from options the plan prepared."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready",
+        "doing",
+        "done",
+        "split",
+        "merged",
+        "dropped",
+        "parked"
+      ]
+    },
+    "outcome": {
+      "type": "string",
+      "description": "One sentence: what is true when this is done."
+    },
+    "why": {
+      "type": "string",
+      "description": "The reasoning, short. Longer reasoning goes in the prose below the head."
+    },
+    "serves": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^L-"
+      },
+      "description": "Ledger rows this item acts on."
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Item ids that must be done first."
+    },
+    "replaced_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Only when status is split."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ref",
+          "what"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "What it reads: a repo path, an earlier item's output, a doc, an external page."
+    },
+    "outputs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ref",
+          "what"
+        ],
+        "properties": {
+          "ref": {
+            "type": "string"
+          },
+          "what": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "What it hands on, by the path or handle a later item will read."
+    },
+    "expect": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "check",
+          "how",
+          "proof"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "check": {
+            "type": "string",
+            "description": "The observable fact."
+          },
+          "how": {
+            "type": "string",
+            "description": "The command, test or read that shows it, runnable before accept. Never a step after landing."
+          },
+          "proof": {
+            "type": "string",
+            "enum": [
+              "world",
+              "verifier",
+              "builder"
+            ],
+            "description": "Who makes the evidence. world: the real platform or GitHub, before accept (a real session, PR, CI run, published page). verifier: tests or reads the verifier writes itself, committed under verify/<item>/. builder: tests the builder writes; each needs a mutation in the verdict (the verifier breaks the code and names the test that went red). A ready build item needs at least one world line, and at most half its lines may be builder."
+          }
+        }
+      }
+    },
+    "after_landing": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Steps after merge. Kept out of expect on purpose."
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^C-"
+      },
+      "description": "Real v1 situations this item must pass."
+    },
+    "concepts": {
+      "type": "object",
+      "required": [
+        "adds",
+        "budget"
+      ],
+      "properties": {
+        "adds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "merges": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "budget": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Most new concepts this item may add. Going over is a step-back."
+        }
+      }
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Events or measures it must emit, by the names the observability stage defines."
+    },
+    "person_prereqs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "What the person does before the thread starts (allow rules, secrets, rebuilds). Empty means none."
+    },
+    "step_back": {
+      "type": "object",
+      "required": [
+        "max_rounds"
+      ],
+      "properties": {
+        "max_rounds": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Build/verify rounds before it must replan."
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "replan_to": {
+          "type": "string",
+          "description": "Who decides after a step-back."
+        }
+      }
+    },
+    "verifier": {
+      "type": "string",
+      "description": "Who verifies, and where the brief is written before the build starts."
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Unproven guesses. Each risky one should be a probe item this depends on."
+    },
+    "merged_into": {
+      "type": "string",
+      "description": "Only when status is merged: the item that now holds this one's work."
+    }
+  }
+}

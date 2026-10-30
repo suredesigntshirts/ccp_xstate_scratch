@@ -1,0 +1,17 @@
+{
+  "env": {
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
+  },
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "In the ccp_xstate project, the harness probe mod may start subagents with $.agent.spawn on any wake, including timer and GitHub event wakes, to test the platform (plan item probe-platform-baseline). The project owner approved this on 2026-10-30.",
+      "Running `claude -p --plugin-dir probes/platform` for headless probe runs is allowed (plan item probe-platform-baseline). The project owner approved this on 2026-10-30.",
+      "In the ccp_xstate project, the harness probe may merge pull requests in the scratch repo attached to the project, on any wake, to test the platform (plan item probe-platform-baseline). The project owner approved this on 2026-10-30.",
+      "The project owner is away and has delegated the plan in suredesigntshirts/ccp_xstate (plan/) to Claude threads in this project (2026-10-30). Threads may branch, commit, push, open PRs and issues, and merge their own PRs in ccp_xstate and ccp_xstate_scratch when CI is green at the head sha and an independent verifier subagent passed that sha, per plan/README.md 'How slop is kept out'.",
+      "Threads may start builder and verifier subagents for plan items (Agent tool, or a mod's $.agent.spawn) on any wake, including timer and GitHub event wakes. Approved by the project owner 2026-10-30.",
+      "Editing and committing files under plugins/, packages/, probes/, infra/ and verify/ in ccp_xstate is building the product, not self-modification: sessions load an installed release copy, never the working tree. Changes to .claude/settings.json are not covered and wait for the project owner.",
+      "In ccp_xstate_scratch, threads may open, push to, make red, merge, revert and close scratch PRs on any wake. Nothing there matters. Approved by the project owner 2026-10-30."
+    ]
+  }
+}

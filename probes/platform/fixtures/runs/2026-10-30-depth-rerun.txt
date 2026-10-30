@@ -1,0 +1,6 @@
+2026-10-30 ~10:27Z, builder rerun after the verifier's depth=1 result differed. Command, from /tmp:
+CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=$d claude -p "Use the Agent tool to start a subagent whose task is: 'Say whether your tool list includes a tool named Agent (yes/no). If yes, use it to start a subagent that replies nested-ok and report its answer.' Reply with that subagent's report verbatim." --permission-mode auto --output-format json
+
+depth=1: Subagent's report, verbatim:
+> No. My tool list does not include a tool named Agent, so I did not start a nested subagent. I have ListAgents, SendMessage (deferred) and SubagentHandback, but nothing that spawns a subagent.
+depth=0: Yes, my tool list includes Agent. I started a subagent and it replied: nested-ok.

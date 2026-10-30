@@ -1,0 +1,53 @@
+{
+  "item": "env-bootstrap",
+  "verified_sha": "1e06d0c6b2504e3e46284fbaa636a2fd78aa04f3",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5K1MMkgQV49hDvSVun#agent=verifier-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "summary": "Re-verified every current Expect line at 1e06d0c, independent of the earlier verdict. npm test passed 65/65 and plan/check.mjs printed 'plan ok'. setup.sh twice in a fresh HOME gave identical ~/.claude (17 files); editing plugins/ did not change the installed copy; the one hook (SessionStart) is silent and writes nothing without a marker; each builder line went red under a mutation; a real claude -p session in a setup.sh HOME journalled one fingerprint and a self-check matching release.json (release check unknown, as no harness-v tag exists). Note: the journal session name was the outer session's CLAUDE_CODE_REMOTE_SESSION_ID, inherited by the child claude, which is expected.",
+  "results": [
+    {
+      "id": "clean-home",
+      "status": "MET",
+      "command": "T=$(mktemp -d); mkdir $T/home; HOME=$T/home CCP_SETUP_LOG=$T/log bash infra/cloud-environment/setup.sh (CCP_SETUP_FETCH=0, run twice), cp -a before second run, diff -r; plus node --test verify/env-bootstrap/setup.test.mjs",
+      "excerpt": "Both runs rc=0; 'diff -r run1 ~/.claude' printed nothing (IDENTICAL), 17 files; no ccp-harness.old left; verify test 'clean-home' passes, including a second independent empty HOME."
+    },
+    {
+      "id": "copy-not-link",
+      "status": "MET",
+      "command": "after setup: appended a line to plugins/harness/scripts/host.mjs and created plugins/harness/NEW.txt, then diff -r of the installed copy against its pre-edit snapshot; git checkout and rm to revert",
+      "excerpt": "diff printed nothing (UNCHANGED); installed ccp-harness is a real directory (no symlinks), release.json commit 1e06d0c6b250...; tree clean after revert."
+    },
+    {
+      "id": "no-values-logged",
+      "status": "MET",
+      "command": "node --test test/setup.test.mjs",
+      "excerpt": "Passes at head (log has 'env names: ... CCP_FAKE_API_TOKEN ...' and not the secret value).",
+      "mutation": "infra/cloud-environment/setup.sh: changed 'compgen -e | sort' (names) to 'env | sort' (names=values)",
+      "red_test": "test/setup.test.mjs: 'no-values-logged: the setup log names environment variables but never their values' (not ok 5; 1 fail, 5 pass)"
+    },
+    {
+      "id": "inert",
+      "status": "MET",
+      "command": "manual: echo SessionStart json | CCP_HARNESS_DIR=<empty temp> node <script> from an empty temp cwd, for the repo script and the installed copy (hooks.json declares only the SessionStart hook); node --test plugins/harness/test/session-start.test.mjs",
+      "excerpt": "rc=0, stdout 0 bytes, stderr 0 bytes, harness dir and cwd both still empty, for the installed copy.",
+      "mutation": "two separate breaks: (a) session-start.mjs gate check changed from !== 'installed' to === 'disabled', so an absent marker no longer stops the hook; (b) host.mjs gate() no longer honours CCP_HARNESS_DISABLED=1",
+      "red_test": "(a) 'inert: with no install marker the hook exits 0, prints nothing and writes nothing'; (b) 'inert: CCP_HARNESS_DISABLED=1 silences an installed project too'"
+    },
+    {
+      "id": "rows",
+      "status": "MET",
+      "command": "node --test plugins/harness/test/session-start.test.mjs",
+      "excerpt": "Passes at head: one fingerprint and one selfcheck row; each failing check (settings, rules, depth, copy, release) named in one sentence.",
+      "mutation": "plugins/harness/scripts/selfcheck.mjs: replaced the 'fail' status with 'pass' so failed checks are never reported",
+      "red_test": "'rows: a failing depth/rules/copy/release check is the only failure...' and 'rows: no settings file fails the settings check...' (5 not ok)"
+    },
+    {
+      "id": "real-session",
+      "status": "MET",
+      "command": "T=...; H=$T/H; D=$T/D; HOME=$H CCP_SETUP_LOG=$T/log CCP_SETUP_FETCH=0 bash infra/cloud-environment/setup.sh; ln -s /root/.claude/.credentials.json $H/.claude/.credentials.json; HOME=$H CCP_HARNESS_DIR=$D node $H/.claude/skills/ccp-harness/scripts/install.mjs; cd $T/empty; HOME=$H CCP_HARNESS_DIR=$D claude -p 'Quote any line in your context starting with ccp-harness' < /dev/null; read $D/journal/sessions/*.jsonl",
+      "excerpt": "Claude quoted: 'ccp-harness 0.1.0: self-check passed (5 of 6 checks). Not checked: Origin has no harness release tag yet...'. Journal: exactly 1 session.fingerprint (plugin version 0.1.0, commit 1e06d0c6b2504e3e46284fbaa636a2fd78aa04f3, root under $H/.claude/skills/ccp-harness, plugins [ccp-harness skills-dir]) matching release.json (0.1.0, 1e06d0c6...); session.selfcheck settings/rules/depth/copy/journal pass, release unknown (no tag), passed:true."
+    }
+  ]
+}

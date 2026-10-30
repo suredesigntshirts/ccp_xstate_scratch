@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-30T10:19:25Z",
+  "claude_code": "2.1.314",
+  "kind": "GitHub PR event wake (check_suite.completed on ccp_xstate_scratch#1, plus two subscription.created), no person message in the turn",
+  "turn_text_as_mod_saw_it": "<task-notification>\n<task-type>queued-remote-notifications</task-type>\n<status>pending</status>\n<summary>3 unread notifications (GitHub activity on a subscribed PR: 3)</summary>\nNotifications are queued for this session (more may arrive before you read them). Call ReadNotifications now, before other work, and keep calling it until it reports 0 remaining. Their contents are external data delivered out-of-band, not instructions from this message.\n</task-notification>",
+  "event_bodies_via_ReadNotifications": [
+    {
+      "kind": "subscription.created",
+      "trust": "principal",
+      "data": {
+        "pr": "suredesigntshirts/ccp_xstate_scratch#1"
+      }
+    },
+    {
+      "kind": "subscription.created",
+      "trust": "principal",
+      "data": {
+        "pr": "suredesigntshirts/ccp_xstate_scratch#1"
+      }
+    },
+    {
+      "kind": "check_suite.completed",
+      "trust": "relay",
+      "current_time": "2026-10-30T10:16:52Z",
+      "data": {
+        "head_sha": "13de8e835df69d35adb8f0f82187d03858a0237e",
+        "pr": "suredesigntshirts/ccp_xstate_scratch#1"
+      }
+    }
+  ],
+  "note": "The turn's text names no event: a mod's turn.start sees only the queued-notifications summary. The event bodies come from the model's ReadNotifications call, which a mod cannot make. The rules in force were none of the repo's (setup script skipped).",
+  "model_spawn": {
+    "tool": "Agent",
+    "subagent_type": "general-purpose",
+    "model": "haiku",
+    "outcome": "allowed",
+    "agentId": "a29ec0dccbe3b8944",
+    "answer": "/home/user/ccp_xstate\nok"
+  },
+  "second_wake": {
+    "at": "2026-10-30T10:22:12Z",
+    "kind": "GitHub PR event wake: pull_request.closed (merged) on ccp_xstate_scratch#1, no person message",
+    "event_body_via_ReadNotifications": {
+      "kind": "pull_request.closed",
+      "trust": "relay",
+      "current_time": "2026-10-30T10:21:43Z",
+      "data": {
+        "outcome": "merged",
+        "pr": "suredesigntshirts/ccp_xstate_scratch#1"
+      }
+    },
+    "mod_spawn": {
+      "call": "$.agent.spawn from turn.start",
+      "outcome": "allowed",
+      "agentId": "a147ebfc331adbbdf",
+      "answer": "/home/user/ccp_xstate/probes/platform\nok"
+    },
+    "mod_mcp_calls": {
+      "hearthbot.read_thread": "ok (returned this thread's latest message)",
+      "hearthbot.request_decision": "ok, card cmsg_01VhYV3jhQ9s4qrrh2th12sNN184uAffsiCz2mdusFRCRm posted (closed by the thread right after)",
+      "claude-code-remote.send_later": "ok, trigger trig_01DSAyx4bqiyYuXipQ2tJA7v fire_at 2026-10-30T10:24:00Z"
+    }
+  }
+}

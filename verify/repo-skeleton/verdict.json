@@ -1,0 +1,21 @@
+{
+  "item": "repo-skeleton",
+  "verified_sha": "64f4bbab04b3ec3451763a88b777c0681a446204",
+  "verifier": { "session": "https://claude.ai/code/session_01KfkB5H1Tk796yuTycxBYmT#agent=verifier-repo-skeleton", "model": "claude-sonnet-5-5" },
+  "results": [
+    { "id": "ci-runs", "status": "MET", "command": "Test PR https://github.com/suredesigntshirts/ccp_xstate/pull/5 (env-bootstrap depends_on no-such-item), then a revert commit 78741b9 on the same branch; read job logs via gh api actions/jobs/<id>/logs",
+      "excerpt": "broken: ci/test step 'plan check' failure, log: 'items/env-bootstrap.md: depends on unknown item no-such-item'; npm test step success. After revert 78741b9: ci/test completed success. npm test locally: '# pass 14 # fail 0'." },
+    { "id": "branch-rule", "status": "MET", "command": "read CLAUDE.md; node --test verify/repo-skeleton/claude-md.test.mjs",
+      "excerpt": "'Name a branch <kind>/<item-id> ... No claude/ prefix.' ok 3 - CLAUDE.md gives the branch convention and no claude/ prefix" },
+    { "id": "short-map", "status": "MET", "command": "wc -l CLAUDE.md; node --test verify/repo-skeleton/claude-md.test.mjs (extracts backticked paths, skips branch-name and <placeholder> examples, checks existsSync)",
+      "excerpt": "47 CLAUDE.md; ok 1 - CLAUDE.md is under 100 lines; ok 2 - every path it names in backticks exists" },
+    { "id": "verdict-gate", "status": "MET", "command": "Test PRs https://github.com/suredesigntshirts/ccp_xstate/pull/4 (no verdict), https://github.com/suredesigntshirts/ccp_xstate/pull/6 (verdict missing short-map), https://github.com/suredesigntshirts/ccp_xstate/pull/7 (complete verdict fixture); read verdict.yml job logs",
+      "excerpt": "#4: 'verdict gate failed (item repo-skeleton): no verify/repo-skeleton/verdict.json at the head sha'; #6: 'verdict has no result for Expect short-map'; #7: 'verdict gate passed (item repo-skeleton)', gates job success." },
+    { "id": "separate-session", "status": "MET", "command": "Test PR https://github.com/suredesigntshirts/ccp_xstate/pull/8: verdict commit with the builder's Claude-Session trailer; read verdict.yml job log",
+      "excerpt": "verdict gate failed (item repo-skeleton): the verdict commit carries the same Claude-Session as builder commit 64f4bba" },
+    { "id": "contract-frozen", "status": "MET", "command": "Test PR https://github.com/suredesigntshirts/ccp_xstate/pull/9: body 'Item: repo-skeleton', softens the short-map check text in plan/items/repo-skeleton.md; read verdict.yml job log",
+      "excerpt": "freeze gate failed (item repo-skeleton): changes the contract of repo-skeleton (its head or Verifier brief); only a PR labelled replan that touches nothing but plan/ may" },
+    { "id": "no-stubs", "status": "MET", "command": "Test PR https://github.com/suredesigntshirts/ccp_xstate/pull/10: packages/stubtest/index.js containing a TODO comment; read verdict.yml job log",
+      "excerpt": "stubs gate failed (item repo-skeleton): packages/stubtest/index.js:1 has TODO" }
+  ]
+}

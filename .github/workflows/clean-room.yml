@@ -1,0 +1,42 @@
+# The clean-room install test (plan item clean-room-install-test): an empty HOME and an empty project folder, the
+# setup script, the install, one session, and the self-check must pass. scripts/clean-room/run.mjs does the work;
+# docs/selfcheck.md says how to read a failure.
+# On a PR it installs the PR's own code (the merge commit); on a release, or run by hand, it installs the newest
+# release the way a container build does. The session is a headless claude -p when the ANTHROPIC_API_KEY secret is
+# set, else the plugin's SessionStart hooks run as Claude Code runs them, with no model.
+name: clean-room
+on:
+  pull_request:
+    paths:
+      - 'plugins/**'
+      - 'packages/journal/**'
+      - 'infra/**'
+      - 'scripts/clean-room/**'
+      - '.github/workflows/clean-room.yml'
+  push:
+    branches: ['release/harness-v*']
+    tags: ['harness-v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  clean-room:
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install Claude Code
+        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        run: npm install -g @anthropic-ai/claude-code
+      - name: clean room on the PR's code
+        if: ${{ github.event_name == 'pull_request' }}
+        run: node scripts/clean-room/run.mjs --ref HEAD
+      - name: clean room on the newest release
+        if: ${{ github.event_name != 'pull_request' }}
+        run: node scripts/clean-room/run.mjs

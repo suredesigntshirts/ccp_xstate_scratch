@@ -1,0 +1,10 @@
+{
+  "source": "ArtifactData list results on https://claude.ai/artifact/YUMK21WxirbJgGCE7ppaQj, read 2026-10-30T11:35Z by the probe thread",
+  "viewer": "the project owner opened the page (four loads, 11:30Z to 11:32Z)",
+  "results": [
+    {"at": "2026-10-30T11:30:34.017Z", "ok": true, "lines": ["list: {\"entries\":[{\"path\":\"probes/platform/probe-journal.jsonl\",\"isDirectory\":false,\"size\":1488,\"createdAt\":\"2026-10-30T10:18:06Z\"}]}", "read: size 1488, revision 6eb7ee3dac221d0dec7abd023cbaf2d7, 4 JSONL rows parsed", "first row: {\"run\":1,\"result\":\"done\",\"models\":[\"claude-sonnet-5-5\"]}"]},
+    {"at": "2026-10-30T11:31:29.717Z", "ok": true},
+    {"at": "2026-10-30T11:31:36.154Z", "ok": true},
+    {"at": "2026-10-30T11:32:12.191Z", "ok": true}
+  ]
+}

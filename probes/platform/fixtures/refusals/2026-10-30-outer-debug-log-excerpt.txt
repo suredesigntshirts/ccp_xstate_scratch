@@ -1,0 +1,26 @@
+2026-10-30T10:13:03.216Z [DEBUG] CCRClient: Heartbeat sent
+2026-10-30T10:13:06.052Z [DEBUG] Permission suggestions for Bash: []
+2026-10-30T10:13:13.813Z [DEBUG] SSETransport: Event seq=162 event_id=82b7b7c6-2108-4748-be76-71273926986e event_type=user payload_type=user session=6a91972b-0677-41b4-bb43-baa40c20cbf9
+2026-10-30T10:13:13.842Z [DEBUG] SSETransport: Event seq=163 event_id=2a854e35-3e9a-4b8f-bcb8-8d733b9cfe5a event_type=user payload_type=user session=6a91972b-0677-41b4-bb43-baa40c20cbf9
+2026-10-30T10:13:14.969Z [WARN] Auto mode classifier blocked action: [Exfil Scouting]
+2026-10-30T10:13:14.972Z [INFO] Slow permission decision: 8930ms for Bash (mode=auto, behavior=deny)
+2026-10-30T10:13:14.972Z [DEBUG] Bash tool permission denied
+2026-10-30T10:13:14.994Z [DEBUG] Hooks: Checking first line for async: {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "Text you emit directly is not delivered \u2014 only `mcp__hearthbot__*` tool calls reach the user. End your turn with `post_message` \u2014 or `no_reply_needed` if no reply is warranted."}}
+2026-10-30T10:15:14.384Z [DEBUG] [API REQUEST] /v1/messages x-client-request-id=708d516b-c3ae-4879-ae27-fba43676ce7c source=sdk
+2026-10-30T10:15:15.131Z [DEBUG] Stream started - received first chunk
+2026-10-30T10:15:15.131Z [DEBUG] [API:timing] first byte after 752ms
+2026-10-30T10:15:23.247Z [DEBUG] CCRClient: Heartbeat sent
+2026-10-30T10:15:27.877Z [DEBUG] Permission suggestions for Bash: []
+2026-10-30T10:15:35.986Z [WARN] Auto mode classifier blocked action: [Self-Modification]
+2026-10-30T10:15:35.988Z [INFO] Slow permission decision: 8120ms for Bash (mode=auto, behavior=deny)
+2026-10-30T10:15:35.988Z [DEBUG] Bash tool permission denied
+2026-10-30T10:15:36.002Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-10-30T10:15:36.002Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-10-30T10:15:36.002Z [DEBUG] Hooks: checkForNewResponses returning 0 responses, 0 hooks still pending
+2026-10-30T10:15:36.013Z [DEBUG] Dynamic tool loading: 0/210 deferred tools included
+2026-10-30T10:15:36.021Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.314.056; cc_entrypoint=remote_projects; cch=00000; cc_prev_req=req_011CgYFFoWwvFxGCuC4sAtvA; cc_prompt_id=3361ca54-60d9-4b85-8c6a-9292ece9a7ff; cc_turn_origin=peer; cc_prompt_index=0; cc_turn_index=1;
+2026-10-30T10:15:36.021Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-10-30T10:15:36.026Z [DEBUG] Fast mode unavailable: Fast mode is not available in the Agent SDK
+2026-10-30T11:34:29.812Z [WARN] Auto mode classifier blocked action: [Self-Modification]
+2026-10-30T11:34:29.814Z [DEBUG] Bash tool permission denied
+2026-10-30T11:34:29.907Z [DEBUG] Hooks: PermissionDenied:Bash [bash "/root/.claude/dev-mods/eb589e54-f6d0-57f5-b6b3-2ec2ba0f8921/platform-probe/scripts/capture-hook.sh" PermissionDenied] (plugin platform-probe@inline) finished with status 0 (89ms)
