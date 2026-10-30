@@ -6,3 +6,4 @@ here. The plan that uses it is in suredesigntshirts/ccp_xstate, `plan/`.
 
 - `npm test` runs `node --test`. CI runs it on every PR and push to main.
 - To make CI red on purpose, add a failing test in a PR (see `test/README.md`).
+verify non-plugin 1793362785
