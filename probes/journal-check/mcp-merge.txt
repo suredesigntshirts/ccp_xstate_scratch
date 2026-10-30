@@ -1,0 +1,1 @@
+A scratch PR merged with the GitHub MCP merge tool, to record the tool's response shape for obs-journal-vs-world.
