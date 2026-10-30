@@ -1,0 +1,32 @@
+# Makes a harness release on every push to main that changes what sessions run (plugins/harness, packages/journal):
+# an annotated tag harness-v<x.y.z>, higher than every earlier one. Threads can't push tags (the git proxy drops
+# them), so Actions does. scripts/release/release.mjs holds the rules; plan item self-update-by-version the reasons.
+name: release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: git fetch --force --tags origin
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: tag a release when the push changed the plugin
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          node scripts/release/release.mjs tag --push > row.json
+          echo '### release' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat row.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
