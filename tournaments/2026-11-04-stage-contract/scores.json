@@ -1,0 +1,340 @@
+{
+  "tournament": "2026-11-04-stage-contract",
+  "lanes": {
+    "A-control": {
+      "tournament": "2026-11-04-stage-contract",
+      "lane": "A-control",
+      "sha": "23c32900d1145853340ff746c941c598b326b2ac",
+      "runner": "a98b2c240d2abc3e16eb3a18a9b85017c7d156d2",
+      "measuredAt": "2026-11-04T11:19:39.005Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 27,
+        "pass": 27,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 530,
+          "quick-fix": 1341,
+          "research": 774,
+          "total": 2645
+        },
+        "stateKinds": {
+          "normal": 20,
+          "final": 6
+        },
+        "transitionKinds": {
+          "invoke.onDone": 48,
+          "invoke.onError": 29,
+          "invoke[]": 2,
+          "on": 24
+        },
+        "ops": {
+          "set": 97
+        },
+        "guardForms": {
+          "present": 33,
+          "in": 18,
+          "same": 8
+        },
+        "effects": {
+          "run": 23,
+          "stop": 23
+        },
+        "actors": {
+          "brief": 3,
+          "quick-fix": 4,
+          "ask": 6,
+          "build": 5,
+          "verify": 3,
+          "merge": 1,
+          "post": 1
+        },
+        "events": {
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 6,
+          "github.pull_request.closed": 6
+        },
+        "metaKeys": {
+          "guards": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 20
+        },
+        "stateKeys": {
+          "meta": 20,
+          "invoke": 19,
+          "type": 6,
+          "on": 5
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 4,
+          "ops": 1,
+          "guardForms": 3,
+          "effects": 2,
+          "actors": 7,
+          "events": 3,
+          "metaKeys": 6,
+          "stateKeys": 4
+        },
+        "interpreterFilesChanged": [],
+        "engineFilesChanged": [],
+        "promptInEngine": {
+          "bytes": 10787,
+          "literals": 76,
+          "byFile": {
+            "packages/engine/src/actors.js": 4100,
+            "packages/engine/src/effects/card.js": 102,
+            "packages/engine/src/effects/github.js": 36,
+            "packages/engine/src/effects/merge.js": 160,
+            "packages/engine/src/effects/post.js": 66,
+            "packages/engine/src/effects/relay.js": 90,
+            "packages/engine/src/effects/timer.js": 23,
+            "packages/engine/src/host.js": 289,
+            "packages/engine/src/index.js": 56,
+            "packages/engine/src/spec.js": 95,
+            "packages/engine/src/standin.js": 361,
+            "packages/engine/src/wake.js": 5409
+          }
+        }
+      }
+    },
+    "M-minimal": {
+      "tournament": "2026-11-04-stage-contract",
+      "lane": "M-minimal",
+      "sha": "1b9f0832e454c4247d36d39ce7b6b44aa046c71d",
+      "runner": "a98b2c240d2abc3e16eb3a18a9b85017c7d156d2",
+      "measuredAt": "2026-11-04T11:19:55.372Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 47,
+        "pass": 47,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 544,
+          "quick-fix": 1420,
+          "research": 870,
+          "total": 2834
+        },
+        "stateKinds": {
+          "normal": 20,
+          "final": 6
+        },
+        "transitionKinds": {
+          "invoke.onDone": 48,
+          "invoke.onError": 29,
+          "invoke[]": 2,
+          "on": 24
+        },
+        "ops": {
+          "set": 97
+        },
+        "guardForms": {
+          "present": 33,
+          "in": 18,
+          "same": 8
+        },
+        "effects": {
+          "run": 23,
+          "stop": 23
+        },
+        "actors": {
+          "brief": 3,
+          "quick-fix": 4,
+          "ask": 6,
+          "build": 1,
+          "verify": 3,
+          "merge": 1,
+          "researcher": 3,
+          "write": 1,
+          "post": 1
+        },
+        "events": {
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 6,
+          "github.pull_request.closed": 6
+        },
+        "metaKeys": {
+          "guards": 3,
+          "input": 3,
+          "events": 3,
+          "stages": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 20
+        },
+        "stateKeys": {
+          "meta": 20,
+          "invoke": 19,
+          "type": 6,
+          "on": 5
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 4,
+          "ops": 1,
+          "guardForms": 3,
+          "effects": 2,
+          "actors": 9,
+          "events": 3,
+          "metaKeys": 7,
+          "stateKeys": 4
+        },
+        "interpreterFilesChanged": [],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/index.js",
+          "packages/engine/src/stage.js"
+        ],
+        "promptInEngine": {
+          "bytes": 9021,
+          "literals": 63,
+          "byFile": {
+            "packages/engine/src/actors.js": 1455,
+            "packages/engine/src/effects/card.js": 102,
+            "packages/engine/src/effects/github.js": 36,
+            "packages/engine/src/effects/merge.js": 160,
+            "packages/engine/src/effects/post.js": 66,
+            "packages/engine/src/effects/relay.js": 90,
+            "packages/engine/src/effects/timer.js": 23,
+            "packages/engine/src/host.js": 289,
+            "packages/engine/src/index.js": 56,
+            "packages/engine/src/spec.js": 95,
+            "packages/engine/src/stage.js": 879,
+            "packages/engine/src/standin.js": 361,
+            "packages/engine/src/wake.js": 5409
+          }
+        }
+      }
+    },
+    "S-six-parts": {
+      "tournament": "2026-11-04-stage-contract",
+      "lane": "S-six-parts",
+      "sha": "b1830bd434ee23177bd09b641ce352816bd38305",
+      "runner": "a98b2c240d2abc3e16eb3a18a9b85017c7d156d2",
+      "measuredAt": "2026-11-04T11:19:46.296Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 43,
+        "pass": 43,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 543,
+          "quick-fix": 1429,
+          "research": 884,
+          "total": 2856
+        },
+        "stateKinds": {
+          "normal": 20,
+          "final": 6
+        },
+        "transitionKinds": {
+          "invoke.onDone": 48,
+          "invoke.onError": 29,
+          "invoke[]": 2,
+          "on": 24
+        },
+        "ops": {
+          "set": 97
+        },
+        "guardForms": {
+          "present": 33,
+          "in": 18,
+          "same": 8
+        },
+        "effects": {
+          "run": 23,
+          "stop": 23
+        },
+        "actors": {
+          "brief": 3,
+          "quick-fix": 4,
+          "ask": 6,
+          "build": 1,
+          "verify": 3,
+          "merge": 1,
+          "researcher": 3,
+          "write": 1,
+          "post": 1
+        },
+        "events": {
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 6,
+          "github.pull_request.closed": 6
+        },
+        "metaKeys": {
+          "guards": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 20
+        },
+        "stateKeys": {
+          "meta": 20,
+          "invoke": 19,
+          "type": 6,
+          "on": 5
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 4,
+          "ops": 1,
+          "guardForms": 3,
+          "effects": 2,
+          "actors": 9,
+          "events": 3,
+          "metaKeys": 6,
+          "stateKeys": 4
+        },
+        "interpreterFilesChanged": [],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/index.js",
+          "packages/engine/src/stages.js"
+        ],
+        "promptInEngine": {
+          "bytes": 8471,
+          "literals": 57,
+          "byFile": {
+            "packages/engine/src/actors.js": 1096,
+            "packages/engine/src/effects/card.js": 102,
+            "packages/engine/src/effects/github.js": 36,
+            "packages/engine/src/effects/merge.js": 160,
+            "packages/engine/src/effects/post.js": 66,
+            "packages/engine/src/effects/relay.js": 90,
+            "packages/engine/src/effects/timer.js": 23,
+            "packages/engine/src/host.js": 289,
+            "packages/engine/src/index.js": 56,
+            "packages/engine/src/spec.js": 95,
+            "packages/engine/src/stages.js": 688,
+            "packages/engine/src/standin.js": 361,
+            "packages/engine/src/wake.js": 5409
+          }
+        }
+      }
+    }
+  }
+}

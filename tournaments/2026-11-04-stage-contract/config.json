@@ -1,0 +1,114 @@
+{
+  "id": "2026-11-04-stage-contract",
+  "question": "Does a stage contract (every model stage declared in the workflow JSON with the same small set of parts, rendered by one engine function) make lane A simpler and fix the stage-by-stage prompt critique's findings at the root, without losing any behaviour?",
+  "pack": "pack.md",
+  "base": {
+    "repo": "suredesigntshirts/ccp_xstate_scratch",
+    "sha": "23c32900d1145853340ff746c941c598b326b2ac",
+    "snapshot": {
+      "repo": "suredesigntshirts/ccp_xstate_scratch",
+      "branch": "tourney/2026-11-03-context/A-minimalist",
+      "sha": "23c32900d1145853340ff746c941c598b326b2ac",
+      "note": "Lanes start from lane A of 2026-11-03-context as it stands (its round-2 build, merged with that tournament's base for CI). That tournament's folders and branches are not changed."
+    }
+  },
+  "runner": {
+    "sha": "a98b2c240d2abc3e16eb3a18a9b85017c7d156d2"
+  },
+  "lanes": [
+    {
+      "id": "A-control",
+      "alias": "A",
+      "stance": "Control: lane A unchanged. It is measured, not rebuilt.",
+      "skip": [
+        "design",
+        "build"
+      ],
+      "given": {
+        "design": {
+          "designFile": "/mnt/project-files/design-tournament/A-minimalist/design.md",
+          "round2": "/mnt/project-files/design-tournament/A-minimalist/round2.md"
+        },
+        "build": {
+          "workdir": "/home/user/sc/A-control",
+          "checks": [],
+          "deviations": [],
+          "honesty": "Unchanged base; it has no P1-P6 tests. The judge measures it as it is."
+        }
+      }
+    },
+    {
+      "id": "S-six-parts",
+      "alias": "S",
+      "stance": "Six parts, as proposed: every model stage declares role, task, inputs (each a field with a meaning and a trust level, instructions or data), limits, output and return, as six named parts in the workflow JSON. Keep all six; make the renderer the only place a prompt is assembled."
+    },
+    {
+      "id": "M-minimal",
+      "alias": "M",
+      "stance": "Minimal: meet every hard constraint and P1-P6 with the fewest new spec conventions. You may merge, derive or drop parts (for example derive role and output from the actor's declared output schema, as lane A already does, or make return wholly part of the renderer's frame) as long as the constraints still hold. Prefer deleting existing primitives and engine wording over adding."
+    }
+  ],
+  "stages": [
+    {
+      "id": "design",
+      "title": "Design",
+      "role": "designer",
+      "over": "each",
+      "brief": "Write your design to {{vars.out}}/{{lane.id}}/design.md. Be concrete enough to build without asking: the JSON shape of a model stage and of an input field, the renderer's fixed frame text word for word, the load-time check, the host's Expect-coverage check for verify, which engine code and wording are deleted, and how quick-fix, feature and research declare their stages. End with a table mapping each of the 14 ranked fixes in /mnt/project-files/stage-critique/report.md to fixed by construction, partly fixed or not fixed, and why. Do not edit any code."
+    },
+    {
+      "id": "build",
+      "title": "Build",
+      "role": "executor",
+      "over": "each",
+      "brief": "Your copy is {{vars.sc}}/{{lane.id}}: a git worktree already on branch tourney/2026-11-04-stage-contract/{{lane.id}} at the base (node_modules is a symlink; do not commit it). Build the design at {{vars.out}}/{{lane.id}}/design.md there. Commit in that worktree with clear messages (local commits only; never push, never touch other worktrees). Add the contract tests P1-P6 as packages/engine/test/tourney/P1.test.js ... P6.test.js. Run `node --test packages/engine/test/tourney/*.test.js` and report one check per scenario and contract test (ids Q1..Q9, F1, F2, R1, P1..P6) with the command and the deciding output. Also run `npm test` in the copy and report it as check id npm-test. Write {{vars.out}}/{{lane.id}}/build.md: what changed (files), the critique-fix table updated to what you actually built, with file:line evidence, and every deviation from the design."
+    },
+    {
+      "id": "judge",
+      "title": "Judge",
+      "role": "judge",
+      "over": "all",
+      "brief": "Lane checkouts: {{vars.sc}}/A-control, {{vars.sc}}/S-six-parts, {{vars.sc}}/M-minimal. For each lane, from {{vars.code}} run `node scripts/tournament/measure.mjs --tournament tournaments/2026-11-04-stage-contract --lane <id> --checkout {{vars.sc}}/<id> --out {{vars.out}}/<id>/measure.json`, and in each checkout rerun `node --test packages/engine/test/tourney/*.test.js`. Count weighted primitives for every lane, the control included, the same way, using the pack's kinds (state the list you counted). Read each P test and confirm it asserts what the pack says. Mark each of the 14 critique fixes per lane: fixed by construction, partly fixed or not fixed, with file:line evidence. Apply the scoring rule exactly; if no lane beats or ties the control on primitives with every scenario passing, say the answer is no. Also list new problems the contract caused. Write your full result to {{vars.out}}/result.md. Use lane ids A, S, M in the ranking."
+    },
+    {
+      "id": "refine",
+      "title": "Refine",
+      "role": "executor",
+      "over": "each",
+      "pick": {
+        "from": "judge",
+        "top": 2,
+        "exclude": [
+          "A-control"
+        ]
+      },
+      "brief": "REFINE ROUND. Your copy {{vars.sc}}/{{lane.id}} already holds your round-1 build (your report: {{prev.build}}); continue from it, do not recreate it. The judge scored round 1: {{stages.judge.scores}}. Goal: bring your weighted primitives down to the control's 22 or below, counted the way the judge counted, while keeping all 12 scenario tests and P1-P6 passing and every hard constraint in the pack (P2 must assert the pack's rule, not a widened allowlist). Remove or merge parts, attributes and conventions; derive what can be derived. You may graft any of these ideas from the judge only if your net count does not rise: {{stages.judge.bestIdeas}}. Fix the new problems the judge listed for your lane where it costs no primitive. Commit locally only. Rerun every test and report one check per id (Q1..Q9, F1, F2, R1, P1..P6, npm-test). Write {{vars.out}}/{{lane.id}}/round2.md: what you removed or grafted and why, your count before and after using the judge's list, and which critique fixes you kept, lost or gained, with file:line."
+    },
+    {
+      "id": "judge2",
+      "title": "Judge round 2",
+      "role": "judge",
+      "over": "all",
+      "brief": "Lane checkouts: {{vars.sc}}/A-control, {{vars.sc}}/S-six-parts, {{vars.sc}}/M-minimal. For each lane, from {{vars.code}} run `node scripts/tournament/measure.mjs --tournament tournaments/2026-11-04-stage-contract --lane <id> --checkout {{vars.sc}}/<id> --out {{vars.out}}/<id>/measure2.json`, and in each checkout rerun `node --test packages/engine/test/tourney/*.test.js`. Count weighted primitives for every lane, the control included, the same way, using the pack's kinds (state the list you counted). Read each P test and confirm it asserts what the pack says. Mark each of the 14 critique fixes per lane: fixed by construction, partly fixed or not fixed, with file:line evidence. Apply the scoring rule exactly; if no lane beats or ties the control on primitives with every scenario passing, say the answer is no. Also list new problems the contract caused. Round 1 result (yours to compare against): {{stages.judge.scores}}. Write your full result to {{vars.out}}/result2.md, including what changed per lane since round 1 and whether the answer to the question changed. Use lane ids A, S, M in the ranking."
+    }
+  ],
+  "scoring": {
+    "rule": "A lane counts as simpler only if all 12 scenario tests (Q1-Q9, F1, F2, R1) pass and its weighted primitives are equal to or lower than the control's, counted the same way. Among lanes that qualify, rank by contract tests P1-P6 passed, then by critique fixes made by construction, then by least prompt wording left in engine code (measure promptInEngine.bytes), then by smaller spec size. If no lane qualifies, the answer to the question is no: the contract adds weight. The control is ranked by the same rule for reference.",
+    "written": "pack.md, frozen 2026-11-04 before the run"
+  },
+  "suite": {
+    "command": [
+      "node",
+      "--test",
+      "--test-reporter=tap",
+      "packages/engine/test/tourney/*.test.js"
+    ],
+    "install": "npm ci"
+  },
+  "measure": "measure.mjs",
+  "vars": {
+    "out": "/mnt/project-files/stage-contract-tournament",
+    "sc": "/home/user/sc",
+    "code": "/home/user/ccp_xstate"
+  }
+}
