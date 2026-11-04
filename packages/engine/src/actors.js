@@ -458,7 +458,7 @@ function sentBack(root, run, agentId, tool, text, session) {
     kind: 'refusal',
     source: { system: 'hook', ref: `stop ${agentId}` },
     agent: agentId,
-    payload: { source: 'hook', rule: 'no-return', reason: 'sent back once to call the return tool', text, run: run.run, actor: run.actor, caller: agentId, tool, textHash: sha256(text), outcome: 'sent-back', hookSession: session }
+    payload: { source: 'hook', rule: 'sent-back', reason: 'sent back once to call the return tool', text, run: run.run, actor: run.actor, caller: agentId, tool, textHash: sha256(text), outcome: 'sent-back', hookSession: session }
   });
 }
 

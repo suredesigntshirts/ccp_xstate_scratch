@@ -94,7 +94,8 @@ test('SubagentStart binds the agent its Agent call started, journals agent.spawn
   spawn({ root, prompt: `ccp-run ${BRIEF_RUN}`, toolUseId: 't1' });
   assert.equal(bind({ root, agentId: 'other', toolUseId: 'nope' }), null);
   const b = bind({ root, agentId: 'ag1', toolUseId: 't1' });
-  assert.match(b.context, /Your worktree is .*it-1--0\.brief/);
+  // Lane M: the context is the prompt's Return section, naming the run; the worktree is in the prompt's Run part.
+  assert.match(b.context, /^# Return\n.*"run": "it-1:0\.brief"/);
   assert.equal(bind({ root, agentId: 'ag2', toolUseId: 't1' }), null, 'a run binds one agent');
   assert.equal(boundRun(root, 'ag1').run, BRIEF_RUN);
   const row = rows(root).find((r) => r.kind === 'agent.spawn');
@@ -121,7 +122,7 @@ test('an agent SubagentStart could not bind is bound from its meta.json at its f
   spawn({ root, prompt: `ccp-run ${BRIEF_RUN}`, toolUseId: 't1', session: 's1' });
   assert.equal(bindLate({ root, agentId: 'plain', metaToolUseId: 'not-a-run' }), null, 'an ordinary subagent is left alone');
   const late = bindLate({ root, agentId: 'ag1', metaToolUseId: 't1' });
-  assert.match(late.bound.context, /ccp-harness run it-1:0\.brief/);
+  assert.match(late.bound.context, /"run": "it-1:0\.brief"/);
   assert.equal(rows(root).find((r) => r.kind === 'agent.spawn').payload.via, 'meta');
 });
 
