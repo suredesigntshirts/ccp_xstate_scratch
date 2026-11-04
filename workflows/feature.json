@@ -1,0 +1,530 @@
+{
+  "id": "feature",
+  "description": "One goal, several PRs. Each slice is a quick-fix child item merging into the feature branch on the parent's grant; the feature itself reaches main as one more quick-fix child, verified against the whole goal, on one person tap.",
+  "initial": "planning",
+  "context": {
+    "issue": null,
+    "branch": null,
+    "why": null,
+    "plan": null,
+    "slices": null,
+    "final": null,
+    "decision": null,
+    "failure": null
+  },
+  "output": {
+    "issue": "context.issue",
+    "slices": "context.slices",
+    "final": "context.final"
+  },
+  "states": {
+    "planning": {
+      "meta": {
+        "needs": [
+          "hasIssue",
+          "hasBranch"
+        ]
+      },
+      "invoke": {
+        "id": "brief",
+        "src": "brief",
+        "input": {
+          "task": {
+            "value": "Split issue (a goal, with acceptance lines in expect) into exactly three slices that can each be built, verified and merged into branch on their own, as slices: each slice is { url, expect } with url the goal's url plus #s1, #s2 or #s3. Together the slices' expect lines must cover the goal's. Create branch from the default branch if it does not exist. If earlier (the slices of an earlier attempt) is given, leave the merged ones' work alone and plan around it."
+          },
+          "issue": "context.issue",
+          "branch": "context.branch",
+          "why": "context.why",
+          "earlier": "context.slices"
+        },
+        "onDone": {
+          "target": "slicing",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "plan": "event.output"
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "slicing": {
+      "meta": {
+        "needs": [
+          "hasPlan"
+        ]
+      },
+      "invoke": [
+        {
+          "id": "s1",
+          "src": "quick-fix",
+          "input": {
+            "issue": "context.plan.slices.0",
+            "base": "context.branch",
+            "grant": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            },
+            "decision": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            }
+          },
+          "onDone": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s1": "event.output"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s1": "event.output"
+                  }
+                }
+              ]
+            }
+          ],
+          "onError": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s1.error": "event.error"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s1.error": "event.error"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "src": "quick-fix",
+          "input": {
+            "issue": "context.plan.slices.1",
+            "base": "context.branch",
+            "grant": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            },
+            "decision": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            }
+          },
+          "onDone": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s2": "event.output"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s2": "event.output"
+                  }
+                }
+              ]
+            }
+          ],
+          "onError": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s2.error": "event.error"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s2.error": "event.error"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "s3",
+          "src": "quick-fix",
+          "input": {
+            "issue": "context.plan.slices.2",
+            "base": "context.branch",
+            "grant": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            },
+            "decision": {
+              "value": {
+                "choice": "approve",
+                "by": "feature"
+              }
+            }
+          },
+          "onDone": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s3": "event.output"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s3": "event.output"
+                  }
+                }
+              ]
+            }
+          ],
+          "onError": [
+            {
+              "target": "finishing",
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s3.error": "event.error"
+                  }
+                }
+              ]
+            },
+            {
+              "actions": [
+                {
+                  "type": "set",
+                  "params": {
+                    "slices.s3.error": "event.error"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "finishing": {
+      "meta": {
+        "needs": [
+          "allEnded"
+        ]
+      },
+      "invoke": {
+        "id": "final",
+        "src": "quick-fix",
+        "input": {
+          "issue": "context.issue",
+          "branch": "context.branch",
+          "why": "context.why"
+        },
+        "onDone": [
+          {
+            "target": "done",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "final": "event.output"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "final": "event.output"
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": {
+          "question": {
+            "value": "This feature stalled. Try again with a written five whys (the merged slices stay), or drop it?"
+          },
+          "choices": {
+            "value": [
+              "replan",
+              "drop"
+            ]
+          },
+          "slices": "context.slices",
+          "final": "context.final",
+          "failure": "context.failure"
+        },
+        "onDone": [
+          {
+            "target": "finishing",
+            "guard": "replan",
+            "description": "the slices ran: finish on the feature branch with the why",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "why": "event.output.why",
+                  "final": {
+                    "value": null
+                  },
+                  "failure": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "target": "planning",
+            "guard": "replan",
+            "description": "planning itself failed: plan again with the why",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "why": "event.output.why",
+                  "failure": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "target": "dropped",
+            "guard": "drop",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "decision": "event.output"
+                }
+              }
+            ]
+          }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "done": {
+      "type": "final",
+      "meta": {
+        "needs": [
+          "isMerged"
+        ]
+      }
+    },
+    "dropped": {
+      "type": "final"
+    }
+  },
+  "meta": {
+    "guards": {
+      "hasIssue": [
+        "context.issue.url",
+        "context.issue.expect"
+      ],
+      "hasBranch": [
+        "context.branch"
+      ],
+      "hasPlan": [
+        "context.plan.slices"
+      ],
+      "allEnded": [
+        "context.slices.s1",
+        "context.slices.s2",
+        "context.slices.s3"
+      ],
+      "replan": [
+        {
+          "path": "event.output.choice",
+          "in": [
+            "replan"
+          ]
+        },
+        "event.output.why"
+      ],
+      "drop": [
+        {
+          "path": "event.output.choice",
+          "in": [
+            "drop"
+          ]
+        }
+      ],
+      "isMerged": [
+        "context.final.merge.sha"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "issue",
+        "branch"
+      ],
+      "properties": {
+        "issue": {
+          "$ref": "#issue"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "events": {},
+    "actors": {
+      "brief": {
+        "type": "object",
+        "required": [
+          "slices"
+        ],
+        "properties": {
+          "slices": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "$ref": "#issue"
+            }
+          }
+        }
+      },
+      "quick-fix": {
+        "type": "object",
+        "required": [
+          "issue"
+        ],
+        "properties": {
+          "issue": {
+            "$ref": "#issue"
+          }
+        }
+      },
+      "ask": {
+        "type": "object",
+        "required": [
+          "choice",
+          "by"
+        ],
+        "properties": {
+          "choice": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "schemas": {
+      "issue": {
+        "type": "object",
+        "required": [
+          "url",
+          "expect"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expect": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

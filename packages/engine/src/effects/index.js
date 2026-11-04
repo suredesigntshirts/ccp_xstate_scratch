@@ -8,6 +8,9 @@ import { merge } from './merge.js';
 import { card } from './card.js';
 import { post } from './post.js';
 import { timer, cancel } from './timer.js';
+import { item } from './item.js';
+
+export { item, childResults, settle, openItems, pump } from './item.js';
 
 export { github, GitHubError } from './github.js';
 export { prRef } from './merge.js';
@@ -19,11 +22,13 @@ export { relay, recordCard, cardFile } from './relay.js';
  * the wake a timer needs. `actors` adds run handlers by actor name. A hearth with ready(effect) (relay.js) holds a
  * card or post until it says the thread side is done.
  */
-export function handlers({ github, hearth = null, clock = {}, actors = {} } = {}) {
+export function handlers({ github, hearth = null, clock = {}, actors = {}, host = null, workflows = [], load, handlersFor } = {}) {
   const byActor = {
     ...(github && { merge: merge({ github }) }),
     ...(hearth && { ask: card({ hearth }), post: post({ hearth }) }),
-    ...actors
+    ...actors,
+    // Design A, 4.2: a workflow name as an actor starts a child item.
+    ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {})
   };
   return {
     run: {

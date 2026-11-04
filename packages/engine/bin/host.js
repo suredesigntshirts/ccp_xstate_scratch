@@ -28,7 +28,7 @@
 // It is applied as the item's owner, like a tap the owner's hook reads, so the host runs what follows itself.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { loadWorkflow } from '../src/index.js';
+import { loadWorkflow, workflowOf } from '../src/index.js';
 import { restore, offer, pending } from '../src/host.js';
 import { inputsOfWake } from '../src/wake.js';
 import { github, handlers, recordCard, relay } from '../src/effects/index.js';
@@ -78,7 +78,7 @@ const fail = (message) => {
 
 if (!['start', 'wake', 'show', 'card', 'answer'].includes(command)) fail('the command is start, wake, show, card or answer');
 if (!opts.item || !opts.workflow) fail('--item and --workflow are required');
-const spec = loadWorkflow(opts.workflow);
+const spec = workflowOf(opts.root, opts.item) ?? loadWorkflow(opts.workflow, { root: opts.root });
 const release = opts.release ?? process.env.CCP_HARNESS_RELEASE ?? manifestRelease();
 
 let session = opts.session;
