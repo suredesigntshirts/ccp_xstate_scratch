@@ -6,7 +6,9 @@
 // (2) Build can say "could not": blocked { reason }, exactly one of it and pr. A blocked result becomes the stage's
 //     error, so quick-fix's building onError takes it to replanning, as it takes a stop without a return.
 // (3) A PR ref's url must be a GitHub PR url: a prose url fails the schema, not the web-quote check.
-// (4) Build has no notes field: nothing read it.
+// (4) Build's notes (trial 2, N1): an optional caveat for the person, written to context and shown on the merge
+//     cards (awaitingMerge, awaitingGates), never given to the verifier.
+// (4b) The PR-opening rule asks for a title and body that say how each expect line is met (trial 2, N2).
 // (5) The worktree rule claims only what confine() enforces.
 // (6) The brief and verify rules agree: a check stricter than its expect line goes under Advisory, never into PASS/FAIL.
 // (7) Covered lines must come in the expect lines' order.
@@ -21,8 +23,8 @@ import { join } from 'node:path';
 import { loadWorkflow } from '../../src/index.js';
 import { bind, confine, githubOf, loadRun, runDir, spawn } from '../../src/actors.js';
 import { check } from '../../src/schema.js';
-import { BLOCKED, WORKTREE_RULE, runLine, uncovered } from '../../src/stages.js';
-import { makeWorld, ISSUE, BRIEFS, builds, prUrl } from './world.js';
+import { BLOCKED, WORKTREE_RULE, readers, runLine, uncovered } from '../../src/stages.js';
+import { makeWorld, ISSUE, BRIEFS, builds, prUrl, suiteWake, verifies } from './world.js';
 import { WORKFLOWS, part, stageOf } from './contract.js';
 
 const QF = WORKFLOWS['quick-fix'];
@@ -65,7 +67,7 @@ test('S5 (1): the build prompt names the GitHub tools, the PR url shape and the 
     assert.equal(run.github, 'o/r');
     assert.equal(readRun(w, run.run, 'context.md'), `Run ${run.run}, worktree ${run.worktree} of https://github.com/o/r, branch ${run.branch}.`);
     const rules = part(readRun(w, run.run, 'brief.md'), 'Rules');
-    assert.ok(rules.includes('Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools.'));
+    assert.ok(rules.includes(`- ${build.rules[2]}`) && build.rules[2].startsWith('Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools,'));
   } finally {
     await w.close();
   }
@@ -136,9 +138,49 @@ test('S5 (3): a PR ref must be a GitHub PR url; a prose url fails the schema, ne
   }
 });
 
-test('S5 (4): build has no notes field, and no rule or meaning speaks of notes', () => {
-  assert.deepEqual(Object.keys(build.properties).sort(), ['blocked', 'pr']);
-  for (const actor of ['brief', 'build', 'verify']) assert.doesNotMatch(JSON.stringify(stageOf('quick-fix', actor)), /notes/);
+test('S5 (4): build notes go to context and the merge cards, never to the verifier', async () => {
+  // The contract: optional beside pr, and not an alternative.
+  assert.deepEqual(Object.keys(build.properties).sort(), ['blocked', 'notes', 'pr']);
+  assert.deepEqual(build.oneOf, [{ required: ['pr'] }, { required: ['blocked'] }]);
+  assert.match(build.properties.notes.description, /the verifier never sees it/);
+  // The wiring: the workflow loads (every reader of context.notes is fed), and only the two merge cards read it.
+  assert.ok(loadWorkflow('quick-fix', {}));
+  assert.deepEqual(readers(QF, 'notes').map((r) => [r.kind, r.actor, r.state]).sort(), [['effect', 'ask', 'awaitingGates'], ['effect', 'ask', 'awaitingMerge']]);
+  for (const st of ['verifying', 'reverifying']) assert.ok(!Object.values(QF.states[st].invoke.input).some((from) => String(from).startsWith('context.notes')), st);
+  assert.ok(!('notes' in verify.inputs));
+  const NOTE = 'NOTE-7: the PR body is a placeholder; set it by hand';
+  const w = await makeWorld();
+  try {
+    await w.start('n', 'quick-fix', { issue: ISSUE });
+    await w.agent('n', 'brief', () => BRIEFS); await w.drive('n');
+    const buildRun = w.openRun('n', 'build').id;
+    assert.ok((await w.agent('n', 'build', async (a) => ({ ...(await builds(w, 1, { green: false })(a)), notes: NOTE }))).accepted);
+    await w.drive('n');
+    assert.equal(w.host('n').snapshot.context.notes, NOTE);
+    const head = w.gh.state[1].head;
+    w.gh.green(head);
+    await w.drive('n', suiteWake(head, 1));
+    const v = loadRun(w.root, w.openRun('n', 'verify').id);
+    assert.ok(!JSON.stringify(v.input).includes('NOTE-7'), 'the verify input holds no notes');
+    for (const f of ['brief.md', 'context.md']) assert.ok(!readRun(w, v.run, f).includes('NOTE-7'), `verify ${f} holds no notes`);
+    assert.ok((await w.agent('n', 'verify', verifies(w, 'PASS'))).accepted);
+    await w.drive('n');
+    assert.equal(w.host('n').snapshot.value, 'awaitingMerge');
+    const card = w.plat.cards.at(-1);
+    assert.deepEqual(card.choices, ['approve', 'reject']);
+    assert.equal(card.inputs.notes, NOTE, 'the person sees the notes on the merge card');
+    assert.equal(card.inputs.pr.url, prUrl(1));
+    const rec = JSON.parse(readRun(w, buildRun, 'stage.json'));
+    const wrote = rec.wrote.find((x) => x.path === 'notes');
+    assert.equal(wrote.from, 'event.output.notes');
+    assert.ok(wrote.readBy.length && wrote.readBy.every((r) => r.kind === 'effect' && r.actor === 'ask'), 'the record says only cards read it');
+  } finally {
+    await w.close();
+  }
+});
+
+test('S5 (4b): the PR-opening rule asks for a title and body saying how each expect line is met', () => {
+  assert.equal(build.rules[2], "Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools, giving it a title and a body that say how each expect line is met. GitHub's answer gives its url, https://github.com/<owner>/<repo>/pull/<number>.");
 });
 
 test('S5 (5): the worktree rule claims only what confine() enforces', () => {

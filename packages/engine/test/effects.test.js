@@ -164,7 +164,10 @@ test('card: puts up a card keyed by the effect id and records its id and choices
   const { run } = handlers({ hearth });
   const effect = { id: 'it:3.ask', actor: 'ask', input: { question: 'Merge?', choices: ['approve', 'reject'] } };
   assert.deepEqual(await run.start(effect), { ref: 'cmsg_card1', choices: ['approve', 'reject'] });
-  assert.deepEqual(made, [{ key: 'it:3.ask', question: 'Merge?', choices: ['approve', 'reject'] }]);
+  assert.deepEqual(made, [{ key: 'it:3.ask', question: 'Merge?', choices: ['approve', 'reject'], inputs: {} }]);
+  // The ask's other inputs go on the card for the person (trial 2, N1: the builder's notes); a null one is left out.
+  await run.start({ ...effect, id: 'it:4.ask', input: { ...effect.input, pr: { url: 'u', at: 'a' }, notes: 'body is a placeholder', verdict: null } });
+  assert.deepEqual(made[1].inputs, { pr: { url: 'u', at: 'a' }, notes: 'body is a placeholder' });
   await assert.rejects(run.start({ ...effect, input: { question: 'Merge?', choices: ['one'] } }), /two choices/);
   assert.equal(await run.find(effect), undefined, 'no find on the client: the host journals unknown, never a second card');
 });

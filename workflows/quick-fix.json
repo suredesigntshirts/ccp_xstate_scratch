@@ -4,7 +4,7 @@
   "initial": "briefing",
   "context": {
     "issue": null, "why": null, "base": null, "branch": null, "grant": null, "decision": null,
-    "briefs": null, "pr": null, "verdict": null, "failure": null, "merge": null, "built": null, "rebuilt": null
+    "briefs": null, "pr": null, "notes": null, "verdict": null, "failure": null, "merge": null, "built": null, "rebuilt": null
   },
   "output": { "issue": "context.issue", "pr": "context.pr", "verdict": "context.verdict", "merge": "context.merge" },
   "states": {
@@ -26,8 +26,8 @@
         "id": "build", "src": "build",
         "input": { "issue": "context.issue", "task": "context.briefs.builder", "base": "context.base", "branch": "context.branch", "previous": "context.pr", "verdict": "context.verdict", "failure": "context.failure" },
         "onDone": [
-          { "target": "verifying", "description": "the host saw CI green on the claimed head at accept time", "actions": [{ "type": "set", "params": { "pr": "event.output.pr", "verdict": { "value": null }, "failure": { "value": null } } }, { "type": "set", "params": { "rebuilt": "context.built", "built": { "value": true } } }] },
-          { "target": "checking", "actions": [{ "type": "set", "params": { "pr": "event.output.pr", "verdict": { "value": null }, "failure": { "value": null } } }, { "type": "set", "params": { "rebuilt": "context.built", "built": { "value": true } } }] }
+          { "target": "verifying", "description": "the host saw CI green on the claimed head at accept time", "actions": [{ "type": "set", "params": { "pr": "event.output.pr", "notes": "event.output.notes", "verdict": { "value": null }, "failure": { "value": null } } }, { "type": "set", "params": { "rebuilt": "context.built", "built": { "value": true } } }] },
+          { "target": "checking", "actions": [{ "type": "set", "params": { "pr": "event.output.pr", "notes": "event.output.notes", "verdict": { "value": null }, "failure": { "value": null } } }, { "type": "set", "params": { "rebuilt": "context.built", "built": { "value": true } } }] }
         ],
         "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
       }
@@ -99,7 +99,7 @@
       "meta": { "needs": ["verifiedHead", "gatesTouched"] },
       "invoke": {
         "id": "ask", "src": "ask",
-        "input": { "question": { "value": "This PR changes CI configuration, so its green CI is the builder's own. Merge it at the verified commit, CI change included?" }, "choices": { "value": ["approve CI change", "reject"] }, "pr": "context.verdict.pr", "verdict": "context.verdict" },
+        "input": { "question": { "value": "This PR changes CI configuration, so its green CI is the builder's own. Merge it at the verified commit, CI change included?" }, "choices": { "value": ["approve CI change", "reject"] }, "pr": "context.verdict.pr", "verdict": "context.verdict", "notes": "context.notes" },
         "onDone": [
           { "target": "merging", "guard": "gatesApproved", "actions": [{ "type": "set", "params": { "decision": { "value": { "choice": "approve" } }, "decision.by": "event.output.by", "decision.gates": "context.verdict.pr.gates" } }] },
           { "target": "replanning", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
@@ -122,7 +122,7 @@
       "meta": { "needs": ["verifiedHead"] },
       "invoke": {
         "id": "ask", "src": "ask",
-        "input": { "question": { "value": "Merge this PR at the verified commit?" }, "choices": { "value": ["approve", "reject"] }, "pr": "context.verdict.pr", "verdict": "context.verdict" },
+        "input": { "question": { "value": "Merge this PR at the verified commit?" }, "choices": { "value": ["approve", "reject"] }, "pr": "context.verdict.pr", "verdict": "context.verdict", "notes": "context.notes" },
         "onDone": [
           { "target": "merging", "description": "approved (merging needs approved)", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
           { "target": "replanning", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
@@ -155,7 +155,7 @@
         "id": "ask", "src": "ask",
         "input": { "question": { "value": "This item stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "verdict": "context.verdict", "failure": "context.failure" },
         "onDone": [
-          { "target": "briefing", "guard": "replan", "actions": [{ "type": "set", "params": { "why": "event.output.why", "built": { "value": null }, "rebuilt": { "value": null }, "pr": { "value": null }, "verdict": { "value": null }, "failure": { "value": null }, "decision": "context.grant" } }] },
+          { "target": "briefing", "guard": "replan", "actions": [{ "type": "set", "params": { "why": "event.output.why", "built": { "value": null }, "rebuilt": { "value": null }, "pr": { "value": null }, "notes": { "value": null }, "verdict": { "value": null }, "failure": { "value": null }, "decision": "context.grant" } }] },
           { "target": "dropped", "guard": "drop", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
         ],
         "onError": "dropped"
@@ -227,7 +227,7 @@
         "rules": [
           "You are the builder. Your job is one pull request that meets every line of issue.expect, and it ends when that PR is pushed and returned. A separate verifier then tests each expect line at the commit you return.",
           "Open exactly one pull request, from branch (your worktree's branch when branch is null) against base (the default branch when base is null), on the repository your run line names (Run <run>, worktree <path> of <repository>, branch <branch>); when previous is set, push to that PR instead of opening one. Use no other branch name.",
-          "Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools. GitHub's answer gives its url, https://github.com/<owner>/<repo>/pull/<number>.",
+          "Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools, giving it a title and a body that say how each expect line is met. GitHub's answer gives its url, https://github.com/<owner>/<repo>/pull/<number>.",
           "Do not merge, push to base, or change files under .github/ unless an expect line asks for it; a PR that changes CI needs the person's approval before it can merge.",
           "Push before you return, and do not push again after: the commit you return is the one verified.",
           "Return as soon as the PR is pushed; you do not wait for CI, the harness watches it. If the tool refuses a reference, fix that reference and return again.",
@@ -245,7 +245,8 @@
         "type": "object", "oneOf": [{ "required": ["pr"] }, { "required": ["blocked"] }],
         "properties": {
           "pr": { "$ref": "#prRef", "description": "Your PR as { url, at }: url is its page, https://github.com/<owner>/<repo>/pull/<number>, and at the full 40-character sha of the head commit you pushed. Your worktree's HEAD must equal at when you return, and GitHub must show the PR at at. Never set key, gates, green or checkout: the host sets them from what it sees." },
-          "blocked": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1 } }, "description": "Instead of pr, only when you could not push or open the PR: { reason: what stopped you }. The item then stops for the person to replan; it is not retried." }
+          "blocked": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1 } }, "description": "Instead of pr, only when you could not push or open the PR: { reason: what stopped you }. The item then stops for the person to replan; it is not retried." },
+          "notes": { "type": "string", "minLength": 1, "description": "Optional, beside pr: a caveat the person should read before approving the merge, such as something you could not set on the PR. It goes on the merge card; the verifier never sees it. A reason you could not open the PR is blocked, not a note." }
         }
       },
       "verify": {

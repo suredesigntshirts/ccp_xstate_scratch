@@ -169,7 +169,9 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.deepEqual(brief.wrote.map((x) => [x.path, x.from]), [['briefs', 'event.output']]);
     const readsBriefs = brief.wrote[0].readBy.map((r) => `${r.state}:${r.actor}.${r.input}`).sort();
     assert.deepEqual(readsBriefs, ['building:build.task', 'reverifying:verify.task', 'verifying:verify.task']);
-    assert.deepEqual(build.wrote.map((x) => [x.path, x.from]), [['pr', 'event.output.pr']]);
+    // Build's onDone writes its pr and its notes (trial 2, N1); the notes are read by the merge cards and nothing else.
+    assert.deepEqual(build.wrote.map((x) => [x.path, x.from]), [['pr', 'event.output.pr'], ['notes', 'event.output.notes']]);
+    assert.deepEqual(build.wrote[1].readBy.map((r) => `${r.state}:${r.kind}:${r.actor}.${r.input}`).sort(), ['awaitingGates:effect:ask.notes', 'awaitingMerge:effect:ask.notes']);
     const readsPr = build.wrote[0].readBy.filter((r) => r.kind === 'stage').map((r) => `${r.state}:${r.actor}.${r.input}`).sort();
     assert.deepEqual(readsPr, ['building:build.previous', 'reverifying:verify.checkout', 'reverifying:verify.target', 'verifying:verify.checkout', 'verifying:verify.target']);
     const selfReads = build.wrote[0].readBy.filter((r) => r.self).map((r) => `${r.state}:${r.actor}.${r.input}`);

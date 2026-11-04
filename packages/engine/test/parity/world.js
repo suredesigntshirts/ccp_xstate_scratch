@@ -82,8 +82,8 @@ export function platform() {
     posts,
     wakes,
     hearth: {
-      card: async ({ key, question, choices }) => {
-        const made = { key, ref: `cmsg_card${++n}`, question, choices };
+      card: async ({ key, question, choices, inputs }) => {
+        const made = { key, ref: `cmsg_card${++n}`, question, choices, inputs };
         cards.push(made);
         return { ref: made.ref };
       },
