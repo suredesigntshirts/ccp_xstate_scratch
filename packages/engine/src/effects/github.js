@@ -82,8 +82,18 @@ export function github({ api = 'https://api.github.com', env = process.env } = {
   return {
     /** pull_request_read: the PR as GitHub has it now. */
     pull: (args) => call('GET', at(args)),
+    /** The PR's changed files (D-wildcard attest): GET /pulls/{n}/files. */
+    files: (args) => call('GET', `${at(args)}/files`),
     /** merge_pull_request: expectedHeadSha is REST's sha, so GitHub refuses the merge when the head moved. */
     merge: ({ expectedHeadSha, merge_method = 'merge', commit_title, commit_message, ...args }) =>
       call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message })
   };
+}
+
+/** GET a page as text (D-wildcard attest of a claimed source), through the proxy as send() reaches it. Throws unless 2xx. */
+export async function fetchText(href, { env = process.env } = {}) {
+  const url = new URL(href);
+  const res = await send(url, { method: 'GET', headers: { 'user-agent': 'ccp-engine-attest' }, body: null }, env);
+  if (res.status < 200 || res.status > 299) throw new Error(`GET ${href} answered ${res.status}`);
+  return res.body;
 }

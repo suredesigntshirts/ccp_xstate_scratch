@@ -1,10 +1,10 @@
 // Turns a machine spec (spec/*.machine.json) into an XState machine. The JSON is plain XState config plus
 // four small conventions, and this file is the whole interpreter for them:
 //
-// - Paths. A string like "context.pr.headSha" or "event.output" reads from { context, event };
+// - Paths. A string like "facts.pr.v.headSha" or "event.output" reads from { facts, event };
 //   { "value": x } is the literal x. Invoke input and the root output map names to paths.
-// - Context ops. Actions are { type: "set", params: { "<context path>": <path or value> } } and
-//   { type: "inc", params: "<context path>" }. Nothing else writes context.
+// - Record (D-wildcard). A workflow has no actions. Every transition taken on an event records it as a fact,
+//   context.facts[<name>] = { v | err, seen?, n }; `always` transitions record nothing. Nothing else writes context.
 // - Guards. meta.guards names lists of conditions that must all hold: a path that must be present,
 //   { path, is: literal }, { path, in: [literals] }, { path, same: otherPath } or { path, below: number }.
 // - Needs. A state's meta.needs names the guards that must hold to enter it. Every transition into the
@@ -16,7 +16,7 @@ import { check } from './schema.js';
 
 // ---- Paths
 
-/** The value at a dotted path, such as "context.pr.headSha", or undefined. */
+/** The value at a dotted path, such as "facts.pr.v.headSha", or undefined. */
 export const get = (root, path) => path.split('.').reduce((value, key) => value?.[key], root);
 
 // A source is a path to read, or { value } for a literal.
@@ -32,20 +32,26 @@ const setIn = (obj, [key, ...rest], value) => ({
   [key]: rest.length ? setIn(obj?.[key] ?? {}, rest, value) : value
 });
 
-// ---- Context ops
+// ---- Record: the one write path (D-wildcard). Every event a transition takes becomes the fact it names.
 
-const ops = {
-  set: (context, event, params) =>
-    Object.entries(params).reduce(
-      (next, [path, source]) => setIn(next, path.split('.'), resolve(source, { context, event })),
-      context
-    ),
-  inc: (context, _event, path) => setIn(context, path.split('.'), (get(context, path) ?? 0) + 1)
+const DONE = 'xstate.done.actor.';
+const ERROR = 'xstate.error.actor.';
+const AFTER = 'xstate.after.';
+
+/** The fact an event is recorded under: the invoke id for an actor's done/error, `after` for a timer, else its type. */
+export const factName = (type) =>
+  type.startsWith(DONE) ? type.slice(DONE.length) : type.startsWith(ERROR) ? type.slice(ERROR.length) : type.startsWith(AFTER) ? 'after' : type;
+
+/** The context with the event recorded as a fact: { v | err, seen?, n }. */
+export const record = (context, event) => {
+  const { type, output, error, seen, ...payload } = event;
+  const name = factName(type);
+  const prev = get(context.facts, name);
+  const fact = type.startsWith(DONE) ? { v: output } : type.startsWith(ERROR) ? { err: error } : type.startsWith(AFTER) ? { v: type } : { v: payload };
+  if (seen !== undefined) fact.seen = seen;
+  fact.n = (prev?.n ?? 0) + 1;
+  return { ...context, facts: setIn(context.facts, name.split('.'), fact) };
 };
-
-// The context as a transition's actions leave it.
-const applyActions = (context, event, actions) =>
-  actions.reduce((next, { type, params }) => ops[type](next, event, params), context);
 
 // ---- Guards
 
@@ -70,32 +76,36 @@ export const failing = (spec, names, scope) =>
 // A transition as XState takes it (a target, an object, or a list of either), as a list of objects.
 const asList = (transitions) => [transitions].flat().map((t) => (typeof t === 'string' ? { target: t } : t));
 
-// A transition whose guard is its own guard plus the needs of the state it enters, checked against the
-// context as its actions will leave it. A transition without a target stays, and keeps its state's needs.
-const bindTransition = (spec, siblings, state, transition) => {
+// A transition whose guard is its own guard, read on the facts before the record, plus the needs of the state it
+// enters, read on the facts after it. An eventful transition records its event; `always` records nothing.
+const bindTransition = (spec, siblings, state, transition, eventful) => {
+  if (transition.actions) throw new Error('a workflow writes nothing: actions are not allowed (record is implicit)');
   const target = transition.target ? siblings[transition.target] : state;
   if (!target) throw new Error(`no state ${transition.target} beside the transition to it`);
-  const names = [...(transition.guard ? [transition.guard] : []), ...(target.meta?.needs ?? [])];
-  if (!names.length) return transition;
-  const actions = transition.actions ?? [];
-  const guard = ({ context, event }) => {
-    const after = applyActions(context, event, actions);
-    return failing(spec, names, { context: after, event }).length === 0;
+  const needs = target.meta?.needs ?? [];
+  const own = transition.guard ? [transition.guard] : [];
+  const bound = { ...transition, ...(eventful ? { actions: [{ type: 'record' }] } : {}) };
+  if (!needs.length && !own.length) return bound;
+  bound.guard = ({ context, event }) => {
+    if (failing(spec, own, { facts: context.facts, event }).length) return false;
+    const after = eventful ? record(context, event) : context;
+    return failing(spec, needs, { facts: after.facts, event }).length === 0;
   };
-  return { ...transition, guard };
+  return bound;
 };
 
 // A state, and its child states, with every transition bound. Targets are sibling state names.
 const bindState = (spec, siblings, state) => {
-  const bind = (transitions) => asList(transitions).map((t) => bindTransition(spec, siblings, state, t));
+  const bind = (transitions, eventful = true) => asList(transitions).map((t) => bindTransition(spec, siblings, state, t, eventful));
   const bindAll = (byEvent) => Object.fromEntries(Object.entries(byEvent).map(([event, t]) => [event, bind(t)]));
 
   const bound = { ...state };
   if (state.on) bound.on = bindAll(state.on);
   if (state.after) bound.after = bindAll(state.after);
+  if (state.always) bound.always = bind(state.always, false);
   if (state.invoke) {
     const { input = {}, onDone, onError } = state.invoke;
-    bound.invoke = { ...state.invoke, input: (scope) => mapPaths(input, scope) };
+    bound.invoke = { ...state.invoke, input: ({ context, event }) => mapPaths(input, { facts: context.facts, event }) };
     if (onDone) bound.invoke.onDone = bind(onDone);
     if (onError) bound.invoke.onError = bind(onError);
   }
@@ -115,15 +125,12 @@ export const machineOf = (spec) => {
   const { output, ...config } = bindState(spec, {}, spec);
   return setup({
     actors,
-    actions: {
-      set: assign(({ context, event }, params) => ops.set(context, event, params)),
-      inc: assign(({ context, event }, params) => ops.inc(context, event, params))
-    },
+    actions: { record: assign(({ context, event }) => record(context, event)) },
     delays: spec.meta.delays ?? {}
   }).createMachine({
     ...config,
-    context: ({ input }) => ({ ...spec.context, ...input }),
-    ...(output ? { output: (scope) => mapPaths(output, scope) } : {})
+    context: ({ input }) => ({ facts: { input: { v: input, n: 1 } } }),
+    ...(output ? { output: ({ context }) => mapPaths(output, { facts: context.facts }) } : {})
   });
 };
 
@@ -135,7 +142,7 @@ export const startRefusal = (spec, input) => {
   if (problems) return problems;
   const [first] = initialTransition(machineOf(spec), input);
   const needs = Object.values(first.getMeta()).flatMap((meta) => meta.needs ?? []);
-  const unmet = failing(spec, needs, { context: first.context });
+  const unmet = failing(spec, needs, { facts: first.context.facts });
   return unmet.length ? `the initial state needs ${unmet.join(', ')}` : null;
 };
 

@@ -12,7 +12,8 @@
 //
 // Rows (docs/journal.md, "Engine rows"): every event offered to the item makes one engine.transition row, applied
 // or not, and every effect makes an engine.effect row when it starts and one when it ends.
-import { closeSync, mkdirSync, openSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { initialTransition, transition } from 'xstate';
 import { append, readFile } from '../../journal/src/index.js';
@@ -51,6 +52,9 @@ export function restore({ root, item, spec, session, release }) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
+  // pin (D-wildcard): an item replays on the spec it started with, stored as a blob at its start. A missing blob throws.
+  const first = rows.find((r) => r.kind === 'engine.transition' && r.payload.outcome === 'applied' && r.payload.seq === 0);
+  if (first?.payload.spec) spec = JSON.parse(readFileSync(join(root, 'blobs', first.payload.spec), 'utf8'));
   const host = {
     root, item, spec, session, release, file,
     machine: machineOf(spec),
@@ -120,6 +124,7 @@ export function applyEvent(host, { event, source, run = null, at = new Date().to
   if (seq === 0) host.owner = host.session;
   host.seen.add(sourceKey(source));
   const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, file: host.file });
+  if (seq === 0) row.payload.spec = pinSpec(host);
   return { outcome: 'applied', row, effects };
 }
 
@@ -252,6 +257,18 @@ export const pending = (host) => ({
 });
 
 // ---- Inside
+
+// pin (D-wildcard): store the spec the item starts on as blobs/<sha256>, and name it in the seq-0 row.
+function pinSpec(host) {
+  const text = JSON.stringify(host.spec);
+  const hash = createHash('sha256').update(text).digest('hex');
+  const path = join(host.root, 'blobs', hash);
+  if (!existsSync(path)) {
+    mkdirSync(join(host.root, 'blobs'), { recursive: true });
+    writeFileSync(path, text);
+  }
+  return hash;
+}
 
 const sourceKey = ({ system, ref }) => `${system} ${ref}`;
 

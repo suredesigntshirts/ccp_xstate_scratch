@@ -1,0 +1,79 @@
+{
+  "id": "feature",
+  "description": "One goal, several PRs. Slices are quick-fix child items run in order into a feature branch; the whole goal is then one more quick-fix child, from that branch into the default branch, verified against the goal and approved with one tap.",
+  "initial": "planning",
+  "output": { "branch": "facts.plan.v.branch", "slices": "facts.slices.v", "final": "facts.final.v", "attempt": "facts.attempt.v" },
+  "states": {
+    "planning": {
+      "invoke": { "id": "plan", "src": "brief", "input": { "input": "facts.input.v" }, "onDone": "slicing", "onError": "replanning" }
+    },
+    "slicing": {
+      "meta": { "needs": ["hasPlan"] },
+      "invoke": {
+        "id": "slices",
+        "src": "items",
+        "input": { "workflow": { "value": "quick-fix" }, "each": "facts.plan.v.slices", "as": { "value": "issue" }, "inOrder": { "value": true }, "base": "facts.plan.v.branch" },
+        "onDone": [{ "target": "finishing", "guard": "allDone" }, { "target": "replanning" }]
+      }
+    },
+    "finishing": {
+      "invoke": {
+        "id": "final",
+        "src": "items",
+        "input": { "workflow": { "value": "quick-fix" }, "each": "facts.input.v.goal", "as": { "value": "issue" }, "from": "facts.plan.v.branch" },
+        "onDone": [{ "target": "done", "guard": "allDone" }, { "target": "replanning" }]
+      }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "replan",
+        "src": "ask",
+        "input": { "question": { "value": "This feature stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "facts": "facts" },
+        "onDone": [
+          { "target": "replanned", "guard": "replan" },
+          { "target": "dropped", "guard": "drop" },
+          { "target": "replanning", "reenter": true }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "replanned": {
+      "invoke": {
+        "id": "attempt",
+        "src": "items",
+        "input": { "workflow": { "value": "feature" }, "each": "facts.input.v", "why": "facts.replan.v.why" },
+        "onDone": [{ "target": "done", "guard": "allDone" }, { "target": "dropped" }]
+      }
+    },
+    "done": { "type": "final" },
+    "dropped": { "type": "final" }
+  },
+  "meta": {
+    "guards": {
+      "hasPlan": ["facts.plan.v.branch", "facts.plan.v.slices"],
+      "allDone": [{ "path": "event.output.done", "same": "event.output.total" }],
+      "replan": [{ "path": "event.output.choice", "is": "replan" }, "event.output.why"],
+      "drop": [{ "path": "event.output.choice", "is": "drop" }]
+    },
+    "input": {
+      "type": "object",
+      "required": ["goal"],
+      "properties": { "goal": { "$ref": "#issue" }, "why": { "type": "string", "minLength": 1 } }
+    },
+    "events": {},
+    "actors": {
+      "brief": {
+        "type": "object",
+        "required": ["branch", "slices"],
+        "properties": { "branch": { "type": "string", "minLength": 1 }, "slices": { "type": "array", "minItems": 1, "items": { "$ref": "#issue" } } }
+      },
+      "ask": { "$ref": "#ask" },
+      "items": { "$ref": "#join" }
+    },
+    "schemas": {
+      "issue": { "type": "object", "required": ["url", "expect"], "properties": { "url": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } },
+      "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
+      "join": { "type": "object", "required": ["total", "done", "found", "items"], "properties": { "total": { "type": "integer" }, "done": { "type": "integer" }, "found": { "type": "array" }, "items": { "type": "array" } } }
+    }
+  }
+}
