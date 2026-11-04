@@ -1,0 +1,135 @@
+{
+  "id": "2026-11-03-context",
+  "question": "What passes between states, and what primitives and constraints make the work provably and honestly done, so that initial states can be rebuilt or redone, while staying simple and expressive enough for many workflows?",
+  "pack": "pack.md",
+  "base": {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "sha": "56334019273e6f1ff2ca5437a5f0172c4fb35022",
+    "snapshot": {
+      "repo": "suredesigntshirts/ccp_xstate_scratch",
+      "branch": "tourney/2026-11-03-context/base",
+      "sha": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "note": "A history-free snapshot of base.sha plus this record, because the ccp_xstate clone was shallow. Lane branches are cut from it."
+    }
+  },
+  "runner": {
+    "repo": "suredesigntshirts/ccp_xstate_scratch",
+    "sha": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+    "path": "tournaments/2026-11-03-context/runner.js",
+    "note": "This run predates scripts/tournament/: it ran on runner.js, a Workflow script with the prompts inline, kept in this folder. prompts/ and schemas/ here are those prompts and schemas lifted out unchanged, so the generic runner can rerun the tournament. One difference: the generic runner starts the control lane's build alongside the others; runner.js started it after the four design-and-build lanes."
+  },
+  "lanes": [
+    {
+      "id": "A-minimalist",
+      "alias": "A",
+      "stance": "Minimalist. Your design must express all three workflows with FEWER primitives than the baseline listed in the pack. Prefer deleting and generalising existing primitives over adding. Every primitive you keep must be used by at least two of the three workflows."
+    },
+    {
+      "id": "B-event-sourcing",
+      "alias": "B",
+      "stance": "Event sourcing and durable execution (Temporal, Elm Architecture, Mealy machines). Treat the journal as the source of truth and state as a fold; think in terms of commands, events, activities with idempotency keys, workflow versioning and signals."
+    },
+    {
+      "id": "C-provenance",
+      "alias": "C",
+      "stance": "Supply-chain provenance (SLSA, in-toto, Bazel/Nix derivations). Think in terms of content-addressed artifacts, action keys, attestations with subject digests produced by the platform rather than the worker, and layouts/policies checked at the end."
+    },
+    {
+      "id": "D-wildcard",
+      "alias": "D",
+      "stance": "Wildcard. Do NOT keep XState context as the place data lives unless you conclude, after seriously trying an alternative, that it is best. Consider a different decomposition entirely (for example: workflows as pure gate policies over a fact store, a tuple-space/blackboard, a dataflow graph, or a capability model). You may keep XState for control flow or replace parts of it, within the hard constraints."
+    },
+    {
+      "id": "E-control",
+      "alias": "E",
+      "stance": "Control: option A from the six-round context-design challenge, built as written.",
+      "skip": [
+        "design"
+      ],
+      "given": {
+        "design": {
+          "designFile": "/mnt/project-files/context-design/options.md"
+        }
+      },
+      "brief": {
+        "build": "Your design is option A in that file (the recommended one: fix quick-fix in place, flat chart, no interpreter change). It covers quick-fix fully. For feature and research, use the parts of option B that the file names (child items, fan-out, publish, intent/plan, meta.subject), counting each as a primitive. You may read /mnt/project-files/context-design/ for details; the other lanes may not."
+      }
+    }
+  ],
+  "stages": [
+    {
+      "id": "design",
+      "title": "Design",
+      "role": "designer",
+      "over": "each"
+    },
+    {
+      "id": "build",
+      "title": "Build",
+      "role": "executor",
+      "over": "each"
+    },
+    {
+      "id": "judge",
+      "title": "Judge",
+      "role": "judge",
+      "over": "all"
+    },
+    {
+      "id": "delete",
+      "title": "Delete",
+      "role": "executor",
+      "over": "each",
+      "pick": {
+        "from": "judge",
+        "top": 2,
+        "exclude": [
+          "E-control"
+        ],
+        "plus": [
+          "E-control"
+        ]
+      },
+      "brief": "DELETION ROUND. Your copy from round 1 is already at {{vars.scratch}}/tourney/{{lane.name}}: do NOT recreate it (skip the rm/cp step) and continue from it. Your previous report: {{prev.build}}.\nTask: remove at least one primitive from this design and show which scenarios still pass by rerunning every scenario test. You may also graft at most ONE idea from this list of the judge's best ideas from other lanes, but only if you remove at least one more primitive to make room: {{stages.judge.bestIdeas}}.\nWrite what you removed and grafted, and why, to {{vars.out}}/{{lane.id}}/round2.md, and copy updated files to {{vars.out}}/{{lane.id}}/build/. Report the full new state (all scenarios, all primitives), not only the change."
+    },
+    {
+      "id": "final",
+      "title": "Final",
+      "role": "final-judge",
+      "over": "all"
+    }
+  ],
+  "scoring": {
+    "rule": "Headline: scenarios passed (a runnable node --test file asserting the stated outcome) divided by weighted primitives, using the pack's kinds; an interpreter change (spec.js/host.js) counts per feature, double. Tie-breakers: person taps on Q1 and F1, then total spec lines of the three workflows. Expressiveness: one vocabulary across workflows, no workflow-specific host code.",
+    "written": "pack.md, frozen 2026-11-03 before the run"
+  },
+  "suite": {
+    "command": [
+      "node",
+      "--test",
+      "--test-reporter=tap",
+      "packages/engine/test/tourney/*.test.js"
+    ],
+    "install": "npm ci"
+  },
+  "measure": "measure.mjs",
+  "vars": {
+    "packFile": "/mnt/project-files/design-tournament/pack.md",
+    "out": "/mnt/project-files/design-tournament",
+    "code": "/home/user/ccp_xstate",
+    "scratch": "<the session scratchpad>"
+  },
+  "record": {
+    "issue": "https://github.com/suredesigntshirts/ccp_xstate_scratch/issues/36",
+    "prs": {
+      "A-minimalist": 37,
+      "B-event-sourcing": 38,
+      "C-provenance": 39,
+      "D-wildcard": 40,
+      "E-control": 41
+    },
+    "viewer": "https://claude.ai/artifact/CJtqBqa4vV6cKuVbB3uhfJ",
+    "winner": "A-minimalist",
+    "decision": "plan/decisions/2026-11-04-tournament-layout.md"
+  }
+}

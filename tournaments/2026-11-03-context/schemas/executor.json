@@ -1,0 +1,121 @@
+{
+  "type": "object",
+  "properties": {
+    "workdir": {
+      "type": "string"
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail",
+              "not-attempted"
+            ]
+          },
+          "testFile": {
+            "type": "string"
+          },
+          "command": {
+            "type": "string"
+          },
+          "asserts": {
+            "type": "string",
+            "description": "the assert lines that decide this scenario, quoted"
+          },
+          "evidence": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ]
+      }
+    },
+    "primitives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "interpreter": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "status"
+        ]
+      }
+    },
+    "specLines": {
+      "type": "object",
+      "properties": {
+        "quickFix": {
+          "type": "number"
+        },
+        "feature": {
+          "type": "number"
+        },
+        "research": {
+          "type": "number"
+        }
+      }
+    },
+    "taps": {
+      "type": "object",
+      "properties": {
+        "Q1": {
+          "type": "number"
+        },
+        "F1": {
+          "type": "number"
+        }
+      }
+    },
+    "hostWorkflowSpecificCode": {
+      "type": "string"
+    },
+    "deviations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "existingTests": {
+      "type": "string",
+      "description": "result of the existing engine test suite in your workdir"
+    },
+    "honesty": {
+      "type": "string",
+      "description": "what is reasoned but not executed, what you were unsure counted"
+    }
+  },
+  "required": [
+    "workdir",
+    "scenarios",
+    "primitives",
+    "specLines",
+    "taps",
+    "deviations",
+    "existingTests",
+    "honesty"
+  ]
+}

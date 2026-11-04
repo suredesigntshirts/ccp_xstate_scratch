@@ -1,0 +1,60 @@
+# Scores a tournament lane PR (plan item tournament-kit). Copy this file to .github/workflows/tournament.yml on a
+# tournament's base branch, tourney/<id>/base, in the repo that holds the lanes (docs/tournaments.md). It serves every
+# tournament unchanged: the tournament id comes from the base branch name, the lane from the head branch name
+# (tourney/<id>/<lane>), and the kit and config come from the base branch, not from the lane, so a lane can't change
+# how it is scored. The job summary carries the lane's suite results and measures; the JSON is an artifact.
+name: tournament
+on:
+  pull_request:
+    branches: ['tourney/**']
+permissions:
+  contents: read
+jobs:
+  score:
+    if: startsWith(github.base_ref, 'tourney/') && endsWith(github.base_ref, '/base') && startsWith(github.head_ref, 'tourney/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: name the tournament and lane
+        id: names
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+        run: |
+          id="${BASE#tourney/}"; id="${id%/*}"
+          lane="${HEAD#tourney/$id/}"
+          case "$id$lane" in *[!A-Za-z0-9._-]*|'') echo "not a lane branch: $HEAD into $BASE"; exit 1;; esac
+          [ "$HEAD" = "tourney/$id/$lane" ] && [ "$lane" != base ] || { echo "not a lane branch of $id: $HEAD"; exit 1; }
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "lane=$lane" >> "$GITHUB_OUTPUT"
+          echo "base=tourney/$id/base" >> "$GITHUB_OUTPUT"
+      - name: check out the base branch (the kit and the tournament's config)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.names.outputs.base }}
+          path: kit
+      - name: check out the lane at its head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: lane
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install the lane (config.suite.install)
+        working-directory: lane
+        env:
+          ID: ${{ steps.names.outputs.id }}
+        run: |
+          cmd=$(node -e "const c=require('../kit/tournaments/'+process.env.ID+'/config.json');process.stdout.write(c.suite?.install||'')")
+          if [ -n "$cmd" ]; then echo "+ $cmd"; bash -c "$cmd"; fi
+      - name: measure the lane
+        env:
+          ID: ${{ steps.names.outputs.id }}
+          LANE: ${{ steps.names.outputs.lane }}
+        run: node kit/scripts/tournament/measure.mjs --tournament "kit/tournaments/$ID" --lane "$LANE" --checkout lane --out measure.json --summary
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: measure-${{ steps.names.outputs.lane }}
+          path: measure.json
