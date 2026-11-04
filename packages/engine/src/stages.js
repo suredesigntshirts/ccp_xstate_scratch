@@ -9,8 +9,8 @@
 //
 // This file is the only place a prompt is assembled (sections, render), the chart walk that says which invoke reads
 // which context path, which set action writes it and which states follow which (chart, readers), what a context path
-// can hold on entering a state (shapes), the load-time check that refuses a workflow whose stages, coverage or wiring
-// are broken (checkStages), and the accept-time check that a field marked covers covers every line it names
+// can hold on entering a state (shapes), where the chart decides on a value a stage chose (decisions), the load-time
+// check that refuses a workflow whose stages, coverage or wiring are broken (checkStages), and the accept-time check that a field marked covers covers every line it names
 // (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
 
 export const PARTS = Object.freeze(['rules', 'inputs']);
@@ -108,7 +108,8 @@ export const overlap = (a, b) => a === b || a.startsWith(`${b}.`) || b.startsWit
  *   set's JSON pointer, the state whose transition holds it, the state the transition enters (after; the same state
  *   for a transition without a target), the outside event it answers, and the invoke whose result it takes (src);
  * - transitions [{ at, state, after, guard, event?, src? }];
- * - reach(key): the states (dotted paths) the item can be in after entering state key, key included.
+ * - reach(key): the states (dotted paths) the item can be in after entering state key, key included;
+ * - live: the states the item can be in at all, reach(initial).
  * Targets are sibling state names, as spec.js binds them.
  */
 export function chart(spec) {
@@ -166,7 +167,9 @@ export function chart(spec) {
     }
     return cache.get(key);
   };
-  return { invokes, writes, transitions, nodes, reach };
+  // The states the item can be in at all: a write on a transition out of any other state never runs.
+  const live = spec.initial != null && nodes.has(String(spec.initial)) ? reach(String(spec.initial)) : new Set(nodes.keys());
+  return { invokes, writes, transitions, nodes, reach, live };
 }
 
 /**
@@ -255,7 +258,7 @@ export function shapes(spec, path, state, wiring = chart(spec), seen = new Set()
     return s === undefined ? [] : [s];
   };
   for (const w of wiring.writes) {
-    if (!overlap(w.path, path) || !wiring.reach(w.after).has(state)) continue;
+    if (!overlap(w.path, path) || !wiring.live.has(w.state) || !wiring.reach(w.after).has(state)) continue;
     if (w.path.startsWith(`${path}.`)) {
       if (source(w, []).length) out.push(OPEN); // a part written: the path holds an object with that part
     } else {
@@ -267,45 +270,177 @@ export function shapes(spec, path, state, wiring = chart(spec), seen = new Set()
 
 // ---- The load check
 
-const PASS = /^pass$/i;
 /** Whether a shape may hold text: a text literal, an open value, or a schema that is not only some other type. */
 const mayBeText = (s) => (s.value !== undefined ? typeof s.value === 'string' : s.open || !(s.type ? [s.type].flat().every((t) => t !== 'string') : isObject(s.properties) || isObject(s.items)));
-const listsPass = (s) => isObject(s) && [...(Array.isArray(s.enum) ? s.enum : []), ...('const' in s ? [s.const] : [])].some((v) => typeof v === 'string' && PASS.test(v));
+/** The verdict words the host checks against covered lines at accept (uncovered), in any case. */
+const WORD = /^(pass|fail)$/i;
+const words = (s) => [...(Array.isArray(s?.enum) ? s.enum : []), ...(isObject(s) && 'const' in s ? [s.const] : [])];
+/** A field the accept check holds to the covered lines: every value it can take is the word PASS or FAIL. */
+const isWord = (s) => words(s).length > 0 && words(s).every((v) => typeof v === 'string' && WORD.test(v));
 
 /**
- * Why a stage's output must declare covers ({ field, perLine }), or null. covers is the host's promise that a per-line
- * verdict names every line it was given, once; so the rule keys on structure, not on how the overall verdict is
- * spelled, copied or routed: an output field that is a list of entries with a line (the shape of #line) holds
- * results line by line and must say which lines. A field whose schema lists the word PASS ($refs resolved, any case)
- * is an overall verdict, and needs a field that covers the lines too.
+ * Whether a shape may hold lines: a list whose entries are, or hold, text, at any depth ($refs resolved). An open value
+ * may hold anything, so it may hold lines too. Expect lines are such a list; so is a list of { line, result } entries,
+ * so a stage that judges another stage's per-line results is given lines as well.
  */
-function needsCovers(spec, src) {
-  const st = spec.meta.actors[src];
-  const defs = spec.meta?.schemas ?? {};
-  const covered = Object.values(st.properties).some((p) => p?.covers != null);
-  for (const [name, p] of Object.entries(st.properties)) {
-    const item = deref(nodeAt(st, defs, [name, '0']), defs);
-    if (p?.covers == null && isObject(item?.properties?.line)) return { field: name, perLine: true };
+function mayHoldLines(s, defs, depth = 0) {
+  if (depth > 8) return false;
+  if (s.value !== undefined) {
+    const holds = (v) => typeof v === 'string' || (Array.isArray(v) ? v.some(holds) : isObject(v) && Object.values(v).some(holds));
+    const has = (v) => (Array.isArray(v) ? v.some(holds) : isObject(v) && Object.values(v).some(has));
+    return has(s.value);
   }
-  if (covered) return null;
-  for (const name of Object.keys(st.properties)) if (listsPass(nodeAt(st, defs, [name]))) return { field: name, perLine: false };
-  return null;
+  const hasText = (n, d) => {
+    n = deref(n, defs);
+    if (!isObject(n) || n.open || d > 8) return true;
+    return mayBeText(n) || (isObject(n.properties) && Object.values(n.properties).some((x) => hasText(x, d + 1))) || (isObject(n.items) && hasText(n.items, d + 1));
+  };
+  s = deref(s, defs);
+  if (!isObject(s) || s.open) return true;
+  if (isObject(s.items)) return hasText(s.items, depth + 1);
+  if (isObject(s.properties)) return Object.values(s.properties).some((x) => mayHoldLines(x, defs, depth + 1));
+  return !(s.type || 'enum' in s || 'const' in s);
 }
 
 /**
- * The spec, or a throw naming the first breach. `workflows` lists the workflow names an invoke may start as a child
- * item; without it, an invoke that is no stage and no effect is not checked. Checks, in order:
+ * Whether the stage chooses the value at segs of its output, or the host fixes it: a top-level field named like one of
+ * its inputs must repeat that input (accept refuses it otherwise), and a ref { url, at } is checked against what the
+ * host sees, its stamped fields set by the host.
+ */
+function chosen(st, defs, segs) {
+  if (segs.length && Object.hasOwn(st.inputs, segs[0])) return false;
+  if (hostSet(st, defs, segs)) return false;
+  let s = st;
+  for (const seg of [...segs, null]) {
+    s = deref(s, defs);
+    if (!isObject(s)) return true;
+    if (isObject(s.properties) && s.properties.url && s.properties.at) return false;
+    if (seg === null) return true;
+    s = s.properties?.[seg] ?? (/^\d+$/.test(seg) ? s.items : undefined);
+  }
+  return true;
+}
+
+/** Whether segs pass a field the host stamps on a ref { url, at }: the host sets it, present or not, never the stage. */
+function hostSet(st, defs, segs) {
+  let s = st;
+  for (const seg of segs) {
+    s = deref(s, defs);
+    if (!isObject(s)) return false;
+    if (isObject(s.properties) && s.properties.url && s.properties.at && STAMPED.includes(seg)) return true;
+    s = s.properties?.[seg] ?? (/^\d+$/.test(seg) ? s.items : undefined);
+  }
+  return false;
+}
+
+/**
+ * Whether the schema promises a present value at segs (present as guards test it: not null, not '', not []): every
+ * step a required property or an index below minItems, and every node on the way one that cannot be absent.
+ */
+function promised(st, defs, segs) {
+  const sure = (n) => {
+    n = deref(n, defs);
+    if (!isObject(n)) return false;
+    const fixed = words(n);
+    if (fixed.length) return fixed.every((v) => v != null && v !== '' && !(Array.isArray(v) && !v.length));
+    if (!n.type) return false;
+    return [n.type].flat().every((t) => ['object', 'number', 'integer', 'boolean'].includes(t) || (t === 'string' && n.minLength >= 1) || (t === 'array' && n.minItems >= 1));
+  };
+  let s = st;
+  for (const seg of segs) {
+    s = deref(s, defs);
+    if (!isObject(s)) return false;
+    if (isObject(s.properties) && Object.hasOwn(s.properties, seg)) {
+      if (!(s.required ?? []).includes(seg)) return false;
+      s = s.properties[seg];
+    } else if (isObject(s.items) && /^\d+$/.test(seg) && Number(seg) < (s.minItems ?? 0)) s = s.items;
+    else return false;
+    if (!sure(s)) return false;
+  }
+  return true;
+}
+
+/**
+ * The places the chart decides on a value a stage's output chose: [{ guard, at, segs }], segs the output path the
+ * condition reads. A condition reads the output through its own onDone's event.output, or through a context path an
+ * onDone set wrote from event.output, or a copy of one (followed to a fixpoint). A presence test decides unless the
+ * schema promises the value (promised); any other test decides unless the host fixes the value (chosen).
+ * Guards are taken with the needs of the state each transition enters, as spec.js binds them.
+ */
+export function decisions(spec, src, wiring = chart(spec)) {
+  const st = spec.meta.actors[src];
+  const defs = spec.meta?.schemas ?? {};
+  const output = (from) => (from === 'event.output' ? [] : from.startsWith('event.output.') ? from.slice(13).split('.') : null);
+  // Context paths that hold a part of the output: [{ path, segs }].
+  const held = [];
+  for (const w of wiring.writes) {
+    const segs = w.src === src && typeof w.from === 'string' ? output(w.from) : null;
+    if (segs) held.push({ path: w.path, segs });
+  }
+  const known = new Set(held.map((h) => `${h.path}=${h.segs.join('.')}`));
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const w of wiring.writes) {
+      if (typeof w.from !== 'string' || !w.from.startsWith('context.')) continue;
+      const from = w.from.slice(8);
+      for (const h of [...held]) {
+        let next = null;
+        if (from === h.path || from.startsWith(`${h.path}.`)) next = { path: w.path, segs: [...h.segs, ...(from === h.path ? [] : from.slice(h.path.length + 1).split('.'))] };
+        else if (h.path.startsWith(`${from}.`)) next = { path: `${w.path}.${h.path.slice(from.length + 1)}`, segs: h.segs };
+        const key = next && `${next.path}=${next.segs.join('.')}`;
+        if (next && !known.has(key)) { known.add(key); held.push(next); grew = true; }
+      }
+    }
+  }
+  const reads = (path, t) => {
+    if (typeof path !== 'string') return [];
+    const out = path.startsWith('event.') ? (t.src === src ? output(path) : null) : null;
+    if (out) return [{ segs: out, whole: false }];
+    if (!path.startsWith('context.')) return [];
+    const p = path.slice(8);
+    return held.flatMap((h) => (p === h.path || p.startsWith(`${h.path}.`) ? [{ segs: [...h.segs, ...(p === h.path ? [] : p.slice(h.path.length + 1).split('.'))], whole: false }]
+      : h.path.startsWith(`${p}.`) ? [{ segs: h.segs, whole: true }] : []));
+  };
+  const found = new Map();
+  for (const t of wiring.transitions) {
+    const names = [...(t.guard ? [t.guard] : []), ...(wiring.nodes.get(t.after)?.meta?.needs ?? [])];
+    for (const name of names) {
+      (spec.meta?.guards?.[name] ?? []).forEach((c, i) => {
+        const presence = typeof c === 'string';
+        for (const path of presence ? [c] : [c?.path, c?.same]) {
+          for (const r of reads(path, t)) {
+            // Whether a value is there is the stage's choice unless the schema promises it; what it is, unless the
+            // host fixes it.
+            if (presence ? r.whole || hostSet(st, defs, r.segs) || promised(st, defs, r.segs) : !chosen(st, defs, r.segs)) continue;
+            const at = `/meta/guards/${esc(name)}/${i}`;
+            found.set(`${at}|${r.segs.join('.')}`, { guard: name, at, segs: r.segs });
+          }
+        }
+      });
+    }
+  }
+  return [...found.values()];
+}
+
+/**
+ * The spec, or a throw naming the first breach. `workflows` names the workflows an invoke may start as a child item:
+ * a list of names, or { name: its meta.input schema }; without it, an invoke that is no stage and no effect is not
+ * checked. Checks, in order:
  * - every stage has its parts: rules (non-empty text), inputs (each with a meaning, `task` among them) and an output
  *   schema;
  * - covers: a field marked covers is a list of { line, result } entries, and its covers path names a list in the
- *   input the stage is given (through its wiring); a stage whose output holds results line by line, or can say
- *   PASS, declares covers (needsCovers);
+ *   input the stage is given (through its wiring);
+ * - coverage: a stage whose input may hold lines (mayHoldLines) and whose output the chart decides on (decisions)
+ *   declares covers, and the chart decides only on the covered field or a PASS/FAIL word field, which accept holds to
+ *   the covered lines (uncovered);
  * - every invoke names a stage, a host effect or a workflow (a workflow pinned before the contract is refused here);
  * - every stage invoke gives exactly its declared inputs, and every invoke input (stage, effect or workflow) is a
  *   literal or a context path that something feeds when the invoke's state is entered (shapes); a literal task is
- *   non-empty text, and a wired task may hold text there (mayBeText).
+ *   non-empty text, and a wired task may hold text there (mayBeText); a child workflow's invoke gives every input
+ *   its item input requires.
  */
 export function checkStages(spec, { workflows = null } = {}) {
+  const children = Array.isArray(workflows) ? Object.fromEntries(workflows.map((n) => [n, null])) : workflows;
   const actors = spec.meta?.actors ?? {};
   const defs = spec.meta?.schemas ?? {};
   const bad = (src, what) => { throw new Error(`${spec.id}: stage ${src} ${what}`); };
@@ -325,7 +460,7 @@ export function checkStages(spec, { workflows = null } = {}) {
       if (Object.keys(inv.input).sort().join() !== Object.keys(st.inputs).sort().join()) bad(inv.src, `invoke ${inv.id} inputs differ`);
       continue;
     }
-    if (EFFECTS.includes(inv.src) || !workflows || workflows.includes(inv.src)) continue;
+    if (EFFECTS.includes(inv.src) || !children || Object.hasOwn(children, inv.src)) continue;
     const lacks = PARTS.filter((p) => !(isObject(st) && p in st)).join(' and ');
     throw new Error(`${spec.id}: actor ${inv.src}, invoked at ${inv.at}, is not a stage (it lacks ${lacks}), a host effect (${EFFECTS.join(', ')}) or a workflow. A workflow pinned before the stage contract cannot run: finish its items on the engine that started them, or migrate it`);
   }
@@ -346,9 +481,26 @@ export function checkStages(spec, { workflows = null } = {}) {
         if (!list) bad(src, `output ${name} covers ${p.covers}, which is not a list in the input invoke ${inv.id} gives (at ${inv.at})`);
       }
     }
-    // A verdict the host cannot check line by line is a verdict nobody checks: coverage cannot be left out.
-    const needs = needsCovers(spec, src);
-    if (needs) bad(src, needs.perLine ? `output ${needs.field} holds results line by line, but declares no covers` : `output ${needs.field} can say PASS, but no output field declares covers`);
+    // A stage given lines whose output the chart decides on must say which lines its verdict covers, and the chart
+    // may decide only on what the host holds to those lines: the covered entries, or a PASS/FAIL word.
+    const decided = decisions(spec, src, wiring);
+    if (!decided.length) continue;
+    let given = null;
+    for (const inv of mine) {
+      for (const [name, from] of Object.entries(inv.input)) {
+        const got = isLiteral(from) ? [from] : typeof from === 'string' && from.startsWith('context.') ? shapes(spec, from.slice(8), inv.state.join('.'), wiring) : [];
+        if (!given && got.some((s) => mayHoldLines(s, defs))) given = name;
+      }
+    }
+    if (!given) continue;
+    const covering = Object.keys(st.properties).filter((k) => st.properties[k]?.covers != null);
+    for (const d of decided) {
+      const field = d.segs.join('.') || '(the whole output)';
+      if (!covering.length) bad(src, `output ${field} decides guard ${d.guard} (at ${d.at}) while input ${given} may hold lines, but no output field declares covers`);
+      if (!covering.includes(d.segs[0]) && !(d.segs.length === 1 && isWord(nodeAt(st, defs, d.segs)))) {
+        bad(src, `output ${field} decides guard ${d.guard} (at ${d.at}), but the host holds only ${covering.join(', ')} and PASS/FAIL word fields to the covered lines: decide on those`);
+      }
+    }
   }
   for (const inv of wiring.invokes) {
     const st = actors[inv.src];
@@ -356,6 +508,8 @@ export function checkStages(spec, { workflows = null } = {}) {
     const who = stage ? `stage ${inv.src}` : `${EFFECTS.includes(inv.src) ? 'effect' : 'workflow'} ${inv.src}`;
     const fail = (what) => { throw new Error(`${spec.id}: ${who} ${what}`); };
     const state = inv.state.join('.');
+    const required = !stage && Array.isArray(children?.[inv.src]?.required) ? children[inv.src].required : [];
+    for (const name of required) if (!Object.hasOwn(inv.input, name)) fail(`invoke ${inv.id} (at ${inv.at}) lacks input ${name}, which ${inv.src}'s item input requires`);
     for (const [name, from] of Object.entries(inv.input)) {
       if (isLiteral(from)) {
         if (stage && name === TASK && !text(from.value)) fail('task is empty');

@@ -77,6 +77,11 @@ test('P2: the frame is only headings, the data rule, the worktree limit and the 
   for (const f of frame) assert.ok(words(f) < 5, `${f} is under five words`);
   assert.ok(words(DATA_RULE) >= 5 && words(WORKTREE_RULE) >= 5 && words(returnLine('r')) >= 5);
   const src = readFileSync(new URL('../../src/stages.js', import.meta.url), 'utf8');
+  // The calls the scan leaves out are refusals and nothing else: in stages.js, bad and fail are defined once each, as
+  // helpers that only throw, and every new Error there is thrown.
+  assert.deepEqual([...src.matchAll(/\b(?:const|let|var|function)\s+(bad|fail)\b/g)].map((m) => m[1]), ['bad', 'fail']);
+  assert.equal([...src.matchAll(/const (?:bad|fail) = \([^)]*\) => \{ throw new Error\(`[^`]*`\); \};/g)].length, 2);
+  assert.equal((src.match(/new Error\(/g) ?? []).length, (src.match(/throw new Error\(/g) ?? []).length);
   const prose = literals(src).filter((s) => words(s) >= 5);
   assert.equal(prose.length, 3, `five-plus-word literals in stages.js: ${JSON.stringify(prose)}`);
   assert.equal(prose[0], DATA_RULE);

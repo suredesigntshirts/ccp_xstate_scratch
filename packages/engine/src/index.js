@@ -16,15 +16,24 @@ export { tripwiresOf } from './tripwire.js';
 const REPO_WORKFLOWS = new URL('../../../workflows/', import.meta.url).pathname;
 const PINNED = /^(.+)@([0-9a-f]{64})$/;
 
-// The workflow names an invoke may start as a child item: the files in the workflow folder. The load check refuses an
-// invoke of anything else that is no stage and no host effect, such as an agent of a workflow pinned before the stage
+// The workflows an invoke may start as a child item: the files in the workflow folder, each with its meta.input
+// schema, so the load check can hold a child invoke to the inputs the child requires. The load check refuses an invoke
+// of anything else that is no stage and no host effect, such as an agent of a workflow pinned before the stage
 // contract.
 const workflowNames = (dir) => {
+  let names;
   try {
-    return readdirSync(dir).filter((n) => n.endsWith('.json')).map((n) => n.slice(0, -5));
+    names = readdirSync(dir).filter((n) => n.endsWith('.json')).map((n) => n.slice(0, -5));
   } catch {
-    return [];
+    return {};
   }
+  return Object.fromEntries(names.map((n) => {
+    try {
+      return [n, JSON.parse(readFileSync(join(dir, `${n}.json`), 'utf8')).meta?.input ?? null];
+    } catch {
+      return [n, null];
+    }
+  }));
 };
 
 /**

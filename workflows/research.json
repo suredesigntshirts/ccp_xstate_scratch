@@ -123,7 +123,7 @@
       "draftsLeft": [{ "path": "context.redrafted", "in": [null] }],
       "hasDraft": ["context.draft.text", "context.draft.sources"],
       "failed": [{ "path": "context.verdict.result", "in": ["FAIL"] }],
-      "passed": [{ "path": "context.verdict.result", "in": ["PASS"] }, "context.verdict.sources"],
+      "passed": [{ "path": "context.verdict.result", "in": ["PASS"] }],
       "approved": [{ "path": "context.decision.choice", "in": ["approve"] }],
       "replan": [{ "path": "event.output.choice", "in": ["replan"] }, "event.output.why"],
       "drop": [{ "path": "event.output.choice", "in": ["drop"] }],
