@@ -12,7 +12,11 @@
 // item's input ({ kind: 'initial', field }), a literal in the workflow ({ kind: 'literal', at }), an outside event
 // ({ kind: 'event', event, source, field }), a copy of another path ({ kind: 'copy', from, of }), the host for a field
 // it stamps on a ref a run returned ({ kind: 'host', stamped, run, actor, field }), or the context default
-// ({ kind: 'default', at }). Later writes to parts of the path are listed as amended. A run whose state was left before
+// ({ kind: 'default', at }). Later writes to parts of the path are listed as amended; when the base is a null default,
+// the value is made of those parts alone, and the producer is { kind: 'parts', default, parts: [{ path, ...writer }] }.
+// readBy lists the invokes that could read a written path next (any invoke reading it that the item can reach from
+// the state the write entered), not the one that will: a later write may replace the value first, as replanning
+// nulls verdict before awaitingMerge can be reached again. A run whose state was left before
 // it returned (its stop) ends with ended.stopped and no output. Every write is in the
 // journal: the host puts each applied transition's writes in its engine.transition row (host.js writesOf), so the
 // record is derived from the journal and the workflow JSON alone. Nothing here imports XState.
@@ -42,6 +46,11 @@ export function producerOf(log, path, spec) {
     producer = { kind: 'none' };
   }
   const amended = log.slice(base + 1).filter((e) => e.path.startsWith(`${path}.`));
+  // A null default built up wholly from part-writes (research's answers, one per researcher): its producers are the
+  // part-writers, each with the part it wrote.
+  if (producer.kind === 'default' && path.split('.').reduce((v, k) => v?.[k], spec?.context) == null && amended.length) {
+    producer = { kind: 'parts', default: producer.at, parts: amended.map((e) => ({ path: e.path, ...e.by })) };
+  }
   return amended.length ? { producer, amended } : { producer };
 }
 

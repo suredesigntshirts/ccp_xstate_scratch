@@ -341,10 +341,14 @@ where a source is a `frame` constant, a `workflow` JSON pointer, or an `input` w
 `name`, `meaning`, `meaningAt`, `value`, `from` (the context path or literal it was wired from), `wiredAt` and
 `producer`, plus `amended` when later writes changed parts of it). A producer is `{ kind: 'stage', run, actor, field }`
 (or `workflow`/`effect` for a child item or host effect), `initial` (the item's input), `literal` (with its pointer),
-`event`, `copy`, `host` (a field the host stamped on a ref the run returned, such as `pr.checkout`) or `default`,
-each with the transition and set action that wrote it. Added when the item takes the run's result or error: `ended`,
+`event`, `copy`, `host` (a field the host stamped on a ref the run returned, such as `pr.checkout`), `default`, or
+`parts` (a null default built wholly from part-writes, such as research's `answers`: `parts` lists each part-writer),
+each with the transition and set action that wrote it. Every write is a set action on a transition (the load check
+refuses actions on entry, exit, always or the root, `packages/engine/src/form.js`), so the journal's `writes` hold
+every write and the producers are exact. Added when the item takes the run's result or error: `ended`,
 `output` (or `error`) and `wrote`, each path written from it with `into` (the state the transition entered) and
-`readBy`, the invokes in the chart that read that path and that the item can reach from `into`. A run whose state was
+`readBy`, the invokes in the chart that read that path and that the item can reach from `into`: the ones that could
+read it next, not the one that will (a later write may replace the value first, as replanning nulls `verdict`). A run whose state was
 left before it returned (the transition stopped it) gets `ended` with `stopped: true`, no output and an empty `wrote`.
 
 | When | Kind | `payload` |

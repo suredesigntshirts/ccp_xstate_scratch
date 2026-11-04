@@ -10,8 +10,10 @@
 // This file is the only place a prompt is assembled (sections, render), the chart walk that says which invoke reads
 // which context path, which set action writes it and which states follow which (chart, readers), what a context path
 // can hold on entering a state (shapes), where the chart decides on a value a stage chose (decisions), the load-time
-// check that refuses a workflow whose stages, coverage or wiring are broken (checkStages), and the accept-time check
+// check that refuses a workflow whose form (form.js), stages, coverage or wiring are broken (checkStages), and the accept-time check
 // that a field marked covers covers every line it names (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
+
+import { checkForm } from './form.js';
 
 export const PARTS = Object.freeze(['rules', 'inputs']);
 /** The input that fills the Task part. Every stage declares it; it is never shown under Inputs. */
@@ -277,6 +279,20 @@ const WORD = /^(pass|fail)$/i;
 const words = (s) => [...(Array.isArray(s?.enum) ? s.enum : []), ...(isObject(s) && 'const' in s ? [s.const] : [])];
 /** A field the accept check holds to the covered lines: every value it can take is the word PASS or FAIL. */
 const isWord = (s) => words(s).length > 0 && words(s).every((v) => typeof v === 'string' && WORD.test(v));
+/**
+ * The first output field, at any depth ($refs resolved), that may say the word PASS or FAIL (any case): the output
+ * declares a PASS/FAIL result there. Its path as a list of names (`0` for a list's entries), or null.
+ */
+function verdictAt(s, defs, path = [], depth = 0) {
+  s = deref(s, defs);
+  if (!isObject(s) || depth > 8) return null;
+  if (path.length && words(s).some((v) => typeof v === 'string' && WORD.test(v))) return path;
+  for (const [k, x] of Object.entries(isObject(s.properties) ? s.properties : {})) {
+    const found = verdictAt(x, defs, [...path, k], depth + 1);
+    if (found) return found;
+  }
+  return isObject(s.items) ? verdictAt(s.items, defs, [...path, '0'], depth + 1) : null;
+}
 
 /**
  * Whether a shape may hold lines: a list whose entries are, or hold, text, at any depth ($refs resolved). An open value
@@ -430,9 +446,10 @@ export function decisions(spec, src, wiring = chart(spec)) {
  *   schema;
  * - covers: a field marked covers is a list of { line, result } entries, and its covers path names a list in the
  *   input the stage is given (through its wiring);
- * - coverage: a stage whose input may hold lines (mayHoldLines) and whose output the chart decides on (decisions)
- *   declares covers, and the chart decides only on the covered field or a PASS/FAIL word field, which accept holds to
- *   the covered lines (uncovered);
+ * - form: every key is one the harness reads, and every action is a set on a transition the chart walks (form.js);
+ * - coverage: a stage whose input may hold lines (mayHoldLines) and whose output may say PASS or FAIL (verdictAt) or
+ *   is decided on by the chart (decisions) declares covers, and the chart decides only on the covered field or a
+ *   PASS/FAIL word field, which accept holds to the covered lines (uncovered);
  * - every invoke names a stage, a host effect or a workflow (a workflow pinned before the contract is refused here);
  * - every stage invoke gives exactly its declared inputs, and every invoke input (stage, effect or workflow) is a
  *   literal or a context path that something feeds when the invoke's state is entered (shapes); a literal task is
@@ -444,6 +461,7 @@ export function checkStages(spec, { workflows = null } = {}) {
   const actors = spec.meta?.actors ?? {};
   const defs = spec.meta?.schemas ?? {};
   const bad = (src, what) => { throw new Error(`${spec.id}: stage ${src} ${what}`); };
+  checkForm(spec);
   const wiring = chart(spec);
   for (const src of stagesOf(spec)) {
     const st = actors[src];
@@ -481,10 +499,12 @@ export function checkStages(spec, { workflows = null } = {}) {
         if (!list) bad(src, `output ${name} covers ${p.covers}, which is not a list in the input invoke ${inv.id} gives (at ${inv.at})`);
       }
     }
-    // A stage given lines whose output the chart decides on must say which lines its verdict covers, and the chart
-    // may decide only on what the host holds to those lines: the covered entries, or a PASS/FAIL word.
+    // A stage given lines whose output may say PASS or FAIL, or that the chart decides on, must say which lines its
+    // verdict covers, and the chart may decide only on what the host holds to those lines: the covered entries, or a
+    // PASS/FAIL word. The word catches a verdict a person or a parent reads; decisions catch one spelled any other way.
     const decided = decisions(spec, src, wiring);
-    if (!decided.length) continue;
+    const verdict = verdictAt(st, defs);
+    if (!decided.length && !verdict) continue;
     let given = null;
     for (const inv of mine) {
       for (const [name, from] of Object.entries(inv.input)) {
@@ -494,6 +514,7 @@ export function checkStages(spec, { workflows = null } = {}) {
     }
     if (!given) continue;
     const covering = Object.keys(st.properties).filter((k) => st.properties[k]?.covers != null);
+    if (!covering.length && !decided.length) bad(src, `output ${verdict.join('.')} may say PASS or FAIL while input ${given} may hold lines, but no output field declares covers`);
     for (const d of decided) {
       const field = d.segs.join('.') || '(the whole output)';
       if (!covering.length) bad(src, `output ${field} decides guard ${d.guard} (at ${d.at}) while input ${given} may hold lines, but no output field declares covers`);
@@ -512,7 +533,7 @@ export function checkStages(spec, { workflows = null } = {}) {
     for (const name of required) if (!Object.hasOwn(inv.input, name)) fail(`invoke ${inv.id} (at ${inv.at}) lacks input ${name}, which ${inv.src}'s item input requires`);
     for (const [name, from] of Object.entries(inv.input)) {
       if (isLiteral(from)) {
-        if (stage && name === TASK && !text(from.value)) fail('task is empty');
+        if (stage && name === TASK && !text(from.value)) fail(typeof from.value === 'string' ? 'task is empty' : `task is not text: ${JSON.stringify(from.value)}`);
         continue;
       }
       if (typeof from !== 'string' || !from.startsWith('context.')) fail(`input ${name} reads ${JSON.stringify(from)}: an input is a context path or a literal`);

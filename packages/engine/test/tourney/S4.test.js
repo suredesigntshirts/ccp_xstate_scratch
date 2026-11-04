@@ -218,3 +218,16 @@ test('S4: a FAIL loop, a head move and a replan: every producer is the run that 
     await w.close();
   }
 });
+
+test('S4: a null default built wholly from part-writes names the part-writers as its producer (research answers)', async () => {
+  const { producerOf } = await import('../../src/trace.js');
+  const spec = { context: { answers: null, briefs: {} } };
+  const q = (n) => ({ kind: 'stage', run: `r:1.q${n}`, actor: 'researcher', field: null });
+  const log = [{ path: 'answers.q1', by: q(1) }, { path: 'answers.q2', by: q(2) }];
+  const { producer, amended } = producerOf(log, 'answers', spec);
+  assert.deepEqual(producer, { kind: 'parts', default: '/context/answers', parts: [{ path: 'answers.q1', ...q(1) }, { path: 'answers.q2', ...q(2) }] });
+  assert.equal(amended.length, 2, 'the parts stay listed as amended too');
+  // A part read on its own keeps its own writer, and a whole a stage wrote keeps that stage.
+  assert.deepEqual(producerOf(log, 'answers.q2', spec).producer, q(2));
+  assert.equal(producerOf([{ path: 'answers', by: q(3) }, ...log], 'answers', spec).producer.run, 'r:1.q3');
+});

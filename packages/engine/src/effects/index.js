@@ -11,10 +11,16 @@ import { timer, cancel } from './timer.js';
 import { item } from './item.js';
 import { EFFECTS } from '../stages.js';
 
-// The actor names these handlers serve. The load check (stages.js EFFECTS) lets a workflow invoke exactly these besides
-// stages and workflows, so the two lists must agree: a handler added here and not there fails at import, loudly.
-const SERVES = ['merge', 'ask', 'post'];
-if (SERVES.join() !== EFFECTS.join()) throw new Error(`effects/index.js serves ${SERVES.join(', ')}, but stages.js EFFECTS lists ${EFFECTS.join(', ')}`);
+// The handler of each host effect, by actor name. stages.js EFFECTS is the one list of these names (the load check lets
+// a workflow invoke exactly these besides stages and workflows); this table is keyed by it, and a name without a
+// handler fails at import, loudly. Each maker takes handlers()' options and returns null when a client it needs is
+// missing.
+const MAKERS = {
+  merge: ({ github }) => (github ? merge({ github }) : null),
+  ask: ({ hearth }) => (hearth ? card({ hearth }) : null),
+  post: ({ hearth }) => (hearth ? post({ hearth }) : null)
+};
+for (const name of EFFECTS) if (!MAKERS[name]) throw new Error(`stages.js EFFECTS lists ${name}, but effects/index.js has no handler for it`);
 
 export { item, childResults, settle, openItems, pump } from './item.js';
 
@@ -30,8 +36,7 @@ export { relay, recordCard, cardFile } from './relay.js';
  */
 export function handlers({ github, hearth = null, clock = {}, actors = {}, host = null, workflows = [], load, handlersFor } = {}) {
   const byActor = {
-    ...(github && { merge: merge({ github }) }),
-    ...(hearth && { ask: card({ hearth }), post: post({ hearth }) }),
+    ...Object.fromEntries(EFFECTS.map((name) => [name, MAKERS[name]({ github, hearth })]).filter(([, h]) => h)),
     // Design A, 4.2: a workflow name as an actor starts a child item.
     ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {}),
     // Model stages last (stage contract, lane S round 2): a stage named like a workflow is still its own agent, never a

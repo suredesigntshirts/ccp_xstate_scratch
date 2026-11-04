@@ -1,8 +1,10 @@
 // Stage-contract cleanup, items C, D and E: the load check refuses, loudly and by name,
 // (C) a workflow pinned before the stage contract, whose agents are plain schemas that no handler would take;
-// (D) a stage given lines (an input that may hold a list of text) whose output the chart decides on (a guard tests a
-//     value the stage chose, through its onDone or a context path written from it, copies followed) but that declares
-//     no covers, however the verdict is spelled, typed, nested, copied or routed; a chart that decides on any field of
+// (D) a stage given lines (an input that may hold a list of text) whose output may say PASS or FAIL, or whose output
+//     the chart decides on (a guard tests a value the stage chose, through its onDone or a context path written from
+//     it, copies followed), but that declares no covers, however the verdict is spelled, typed, nested, copied or
+//     routed, or whether it is routed at all; an action anywhere but on a transition the chart walks (entry, exit,
+//     always, the root, onSnapshot, or any action but set), which the chart, the checks and the record would miss; a chart that decides on any field of
 //     a covering stage other than the covered list or a PASS/FAIL word field; and a covers that names no list of
 //     lines, or sits on a field that is no list of { line, result };
 // (E) an invoke input (stage, effect or child workflow) wired to a context path that nothing feeds when the invoke's
@@ -205,6 +207,49 @@ test('S3 (D): no spelling, shape, copy or routing of the verdict switches covera
   assert.equal(uncovered({ properties: { lines: { covers: 'issue.url' } } }, { issue: { url: 'u' } }, { lines: [] }), 'issue.url is not a list');
 });
 
+test('S3 (D): a stage given lines whose output may say PASS or FAIL declares covers, though no guard reads the word', () => {
+  // Round 5, the verifier's case: verify's verdict is only shown to a person (the ask card), never routed on.
+  const unrouted = (s) => {
+    delete s.meta.actors.verify.properties.lines.covers;
+    s.meta.guards.verifiedHead = s.meta.guards.verifiedHead.filter((c) => c?.path !== 'context.verdict.result');
+    s.meta.guards.failed = [{ path: 'context.verdict.pr.url', in: ['never'] }];
+  };
+  assert.throws(changed('quick-fix', unrouted), /stage verify output result may say PASS or FAIL while input issue may hold lines, but no output field declares covers$/);
+  // The word anywhere in the output, in any case, through a $ref.
+  assert.throws(changed('quick-fix', (s) => { unrouted(s); s.meta.schemas.w = { enum: ['ok', 'Fail'] }; s.meta.actors.verify.properties.result = { type: 'object', properties: { overall: { $ref: '#w' } }, description: 'x' }; }),
+    /stage verify output result\.overall may say PASS or FAIL while input issue may hold lines/);
+  // A per-line list without covers says PASS or FAIL in its entries.
+  assert.throws(changed('quick-fix', (s) => { unrouted(s); delete s.meta.actors.verify.properties.result; s.meta.actors.verify.required = s.meta.actors.verify.required.filter((r) => r !== 'result'); }),
+    /stage verify output lines\.0\.result may say PASS or FAIL/);
+  // With covers kept, the unrouted verdict loads: accept holds it to the lines.
+  assert.doesNotThrow(changed('quick-fix', (s) => { unrouted(s); s.meta.actors.verify.properties.lines.covers = 'issue.expect'; }));
+});
+
+test('S3 (D, E, F): an action anywhere but on a transition the chart walks is refused at load, naming the key and its pointer', () => {
+  const where = /\(at (\/[^)]*)\)\. The harness runs a set action only on a transition/;
+  const cases = [
+    // The verifier's round-4 case: the verdict copied by an entry action and routed on, covers removed.
+    [(s) => {
+      delete s.meta.actors.verify.properties.lines.covers;
+      s.states.judging = { entry: [{ type: 'set', params: { v2: 'context.verdict' } }], on: {} };
+    }, 'state judging has entry', '/states/judging/entry'],
+    [(s) => { s.states.building.entry = [{ type: 'set', params: { failure: { value: 'x' } } }]; }, 'state building has entry', '/states/building/entry'],
+    [(s) => { s.states.building.exit = { type: 'set', params: { failure: { value: 'x' } } }; }, 'state building has exit', '/states/building/exit'],
+    [(s) => { s.states.building.always = [{ target: 'verifying' }]; }, 'state building has always', '/states/building/always'],
+    [(s) => { s.entry = [{ type: 'set', params: { why: { value: 'x' } } }]; }, 'the workflow has entry', '/entry'],
+    [(s) => { s.on = { poke: { actions: [{ type: 'set', params: { why: 'event.why' } }] } }; }, 'the workflow has on', '/on'],
+    [(s) => { s.states.verifying.invoke.onSnapshot = { actions: [{ type: 'set', params: { why: { value: 'x' } } }] }; }, 'invoke has onSnapshot', '/states/verifying/invoke/onSnapshot'],
+    // A hand-written wrote marker would forge the record; it is not a set, so it is refused.
+    [(s) => { s.states.verifying.invoke.onDone[0].actions = [s.states.verifying.invoke.onDone[0].actions].flat().concat({ type: 'wrote', params: { at: '/x', writes: {} } }); }, 'is not { type: "set", params }', null],
+    [(s) => { s.states.building.initial = { target: 'x' }; }, "state building's initial is not a state name", '/states/building/initial']
+  ];
+  for (const [change, what, at] of cases) {
+    const load = changed('quick-fix', change);
+    assert.throws(load, (e) => e.message.includes(what) && where.test(e.message) && (at == null || e.message.match(where)[1] === at), what);
+  }
+  for (const name of Object.keys(WORKFLOWS)) assert.doesNotThrow(() => loadWorkflow(name), name);
+});
+
 test('S3 (E): a stage input read from a context path nothing writes is refused at load', () => {
   const cases = [
     // A typo in the wiring: briefs.builer is never written.
@@ -240,6 +285,8 @@ test('S3 (E): a stage input read from a context path nothing writes is refused a
 test('S3 (E): a task wired from a context path that holds no text there is refused at load', () => {
   assert.throws(changed('quick-fix', (s) => { s.states.building.invoke.input.task = 'context.briefs'; }), /stage build task reads context\.briefs, which holds no text before building$/);
   assert.throws(changed('quick-fix', (s) => { s.states.building.invoke.input.task = 'context.issue.expect'; }), /stage build task reads context\.issue\.expect, which holds no text before building$/);
+  // A literal task that is not text says so (round 5 advisory), not that it is empty.
+  assert.throws(changed('quick-fix', (s) => { s.states.briefing.invoke.input.task = { value: 42 }; }), /stage brief task is not text: 42$/);
   assert.doesNotThrow(changed('quick-fix', () => {}));
 });
 
