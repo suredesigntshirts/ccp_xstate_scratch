@@ -1,8 +1,10 @@
 // The engine: a workflow file loaded into XState. Ported from ccp_machine PR #110 (packages/orchestrator).
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFile } from '../../journal/src/index.js';
+import { stageProblems } from './stage.js';
+import { EFFECTS } from './effects/index.js';
 
 export { machineOf, failing, get, mapPaths, startRefusal, hashOf, replay } from './spec.js';
 export { check } from './schema.js';
@@ -10,9 +12,25 @@ export { restore, applyEvent, persist, runEffects, offer, pending, itemFile, ses
 export { wakesIn, inputsOfWake, dueTimers } from './wake.js';
 export { actors, accept, deliver, resultsOf, waiting } from './actors.js';
 export { tripwiresOf } from './tripwire.js';
+export { render, returnPart, stageProblems } from './stage.js';
 
 const REPO_WORKFLOWS = new URL('../../../workflows/', import.meta.url).pathname;
 const PINNED = /^(.+)@([0-9a-f]{64})$/;
+
+// The stage contract (tournament 2026-11-04, lane M): a workflow whose model stages miss a part refuses to load. The
+// folder is read only to know which invoke srcs start a child item, as the item handler does when it starts one; a
+// stage that shares a workflow's name is still the stage (effects/index.js handlers), so a new workflow file never
+// changes how a pinned workflow loads or runs.
+function checked(name, text, dir) {
+  const spec = JSON.parse(text);
+  let workflows = [];
+  try {
+    workflows = readdirSync(dir ?? REPO_WORKFLOWS).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -5));
+  } catch {}
+  const problems = stageProblems(spec, { effects: EFFECTS, workflows });
+  if (problems.length) throw new Error(`workflow ${name} refuses to load: ${problems.join('; ')}`);
+  return spec;
+}
 
 /**
  * A workflow by name (design A, 4.3: the pin). `name@<sha256>` reads the pinned bytes from <root>/blobs and checks
@@ -26,10 +44,11 @@ export const loadWorkflow = (name, { root = null, dir = null } = {}) => {
     const bytes = readFileSync(join(root, 'blobs', pinned[2]));
     const hash = createHash('sha256').update(bytes).digest('hex');
     if (hash !== pinned[2]) throw new Error(`blob ${pinned[2]} hashes to ${hash}`);
-    return { ...JSON.parse(bytes.toString('utf8')), id: name };
+    return { ...checked(name, bytes.toString('utf8'), dir), id: name };
   }
   const bytes = readFileSync(join(dir ?? REPO_WORKFLOWS, `${name}.json`));
   const hash = createHash('sha256').update(bytes).digest('hex');
+  const spec = checked(name, bytes.toString('utf8'), dir);
   if (root) {
     const path = join(root, 'blobs', hash);
     if (!existsSync(path)) {
@@ -37,7 +56,7 @@ export const loadWorkflow = (name, { root = null, dir = null } = {}) => {
       writeFileSync(path, bytes);
     }
   }
-  return { ...JSON.parse(bytes.toString('utf8')), id: `${name}@${hash}` };
+  return { ...spec, id: `${name}@${hash}` };
 };
 
 /** The pinned workflow an item started on (its seq-0 row's payload.workflow), or null when it has not started. */

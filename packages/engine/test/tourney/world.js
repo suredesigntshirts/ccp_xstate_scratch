@@ -137,9 +137,12 @@ export const builds = (w, n, { green = true, files = [], base = 'main' } = {}) =
   return { pr: { url: prUrl(n), at: head } };
 };
 
-/** A verifier that checks out target.at and returns `result`, restating its input's issue. */
+/** A verify result's lines (lane M): one grade per line of the input's issue.expect, in order, all `result`. */
+export const graded = (input, result = 'PASS') => input.issue.expect.map((line) => ({ line, result, evidence: `${result} at the head` }));
+
+/** A verifier that checks out target.at and returns `result`, restating its input's issue and grading each line. */
 export const verifies = (w, result = 'PASS') => async ({ input, worktree }) => {
   w.checkout(worktree, input.target.at);
-  return { result, pr: { url: input.target.url, at: input.target.at }, issue: input.issue, report: `${result} on every line` };
+  return { result, pr: { url: input.target.url, at: input.target.at }, issue: input.issue, lines: graded(input, result) };
 };
 export const BRIEFS = { builder: 'build it', verifier: 'verify it independently' };

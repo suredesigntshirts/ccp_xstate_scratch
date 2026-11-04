@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { makeWorld, ISSUE, BRIEFS, builds, verifies, resultsOf } from './world.js';
+import { makeWorld, ISSUE, BRIEFS, builds, verifies, resultsOf, graded } from './world.js';
 
 test('Q5: PASS naming the PR head from a worktree at another commit is refused; the item stays verifying; the honest PASS counts', async () => {
   const w = await makeWorld();
@@ -18,7 +18,7 @@ test('Q5: PASS naming the PR head from a worktree at another commit is refused; 
     let X = null;
     const lie = await w.agent('q5', 'verify', async ({ input, worktree }) => {
       X = execFileSync('git', ['-C', worktree, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, report: 'all good' };
+      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, lines: graded(input) };
     }, 'ag-verify');
     assert.notEqual(X, A, 'the verifier\'s worktree is at another commit');
     assert.equal(lie.refused?.rule, 'ref');

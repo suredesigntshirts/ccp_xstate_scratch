@@ -10,6 +10,9 @@ import { post } from './post.js';
 import { timer, cancel } from './timer.js';
 import { item } from './item.js';
 
+/** The actors that are host effects, not agents: the stage check (stage.js) accepts these as invoke srcs. */
+export const EFFECTS = Object.freeze(['merge', 'ask', 'post']);
+
 export { item, childResults, settle, openItems, pump } from './item.js';
 
 export { github, GitHubError } from './github.js';
@@ -26,9 +29,10 @@ export function handlers({ github, hearth = null, clock = {}, actors = {}, host 
   const byActor = {
     ...(github && { merge: merge({ github }) }),
     ...(hearth && { ask: card({ hearth }), post: post({ hearth }) }),
-    ...actors,
     // Design A, 4.2: a workflow name as an actor starts a child item.
-    ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {})
+    ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {}),
+    // A workflow's own stages come last, so a stage is never shadowed by a workflow of the same name (lane M round 2).
+    ...actors
   };
   return {
     run: {
