@@ -22,7 +22,7 @@ import { esc } from './stages.js';
 // ---- Paths
 
 /** The value at a dotted path, such as "context.pr.headSha", or undefined. */
-export const get = (root, path) => path.split('.').reduce((value, key) => value?.[key], root);
+export const get = (root, path) => path.split('.').reduce((value, key) => (value != null && Object.hasOwn(Object(value), key) ? value[key] : undefined), root);
 
 // A source is a path to read, or { value } for a literal.
 const resolve = (source, scope) => (typeof source === 'string' ? get(scope, source) : source?.value);

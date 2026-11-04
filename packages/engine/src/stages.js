@@ -191,7 +191,7 @@ export const readers = (spec, path, after = null) => {
 
 // ---- Shapes: what a schema says is at a path
 
-const at = (value, path) => String(path).split('.').reduce((v, k) => v?.[k], value);
+const at = (value, path) => String(path).split('.').reduce((v, k) => (v != null && Object.hasOwn(Object(v), k) ? v[k] : undefined), value);
 const isLiteral = (from) => isObject(from) && 'value' in from;
 /** A value the workflow does not describe further: it may hold anything. */
 const OPEN = Object.freeze({ open: true });

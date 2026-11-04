@@ -48,7 +48,7 @@ export function producerOf(log, path, spec) {
   const amended = log.slice(base + 1).filter((e) => e.path.startsWith(`${path}.`));
   // A null default built up wholly from part-writes (research's answers, one per researcher): its producers are the
   // part-writers, each with the part it wrote.
-  if (producer.kind === 'default' && path.split('.').reduce((v, k) => v?.[k], spec?.context) == null && amended.length) {
+  if (producer.kind === 'default' && path.split('.').reduce((v, k) => (v != null && Object.hasOwn(Object(v), k) ? v[k] : undefined), spec?.context) == null && amended.length) {
     producer = { kind: 'parts', default: producer.at, parts: amended.map((e) => ({ path: e.path, ...e.by })) };
   }
   return amended.length ? { producer, amended } : { producer };

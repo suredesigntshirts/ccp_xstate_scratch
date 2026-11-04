@@ -295,3 +295,9 @@ test('S3 (E): the repo workflows are fully wired: item input, a set action or a 
   // pr.checkout is fed through pr, which build's onDone writes; the host stamps checkout on that ref.
   assert.equal(WORKFLOWS['quick-fix'].states.verifying.invoke.input.checkout, 'context.pr.checkout');
 });
+
+test('S3 (E): a context path naming an Object.prototype member is not fed by it', () => {
+  // Cleanup round 5 verifier: `at` stepped through inherited members, so these loaded and fed a function at run time.
+  assert.throws(changed('quick-fix', (s) => { s.states.building.invoke.input.previous = 'context.constructor'; }), /constructor/);
+  assert.throws(changed('quick-fix', (s) => { s.states.building.invoke.input.previous = 'context.toString'; }), /toString/);
+});
