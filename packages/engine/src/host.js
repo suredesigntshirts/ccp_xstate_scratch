@@ -12,7 +12,8 @@
 //
 // Rows (docs/journal.md, "Engine rows"): every event offered to the item makes one engine.transition row, applied
 // or not, and every effect makes an engine.effect row when it starts and one when it ends.
-import { closeSync, mkdirSync, openSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { initialTransition, transition } from 'xstate';
 import { append, readFile } from '../../journal/src/index.js';
@@ -29,6 +30,24 @@ const TERMINAL = ['done', 'refused', 'failed', 'unknown'];
 export const itemFile = (root, item) => join(root, 'items', `${item}.jsonl`);
 /** A session's own journal file, where it records what it was refused for an item it does not own. */
 export const sessionFile = (root, session) => join(root, 'sessions', `${session}.jsonl`);
+
+// N2 (design B): the workflow an item runs is pinned at its first event: the spec JSON stored once under
+// blobs/<sha256>, and the seq-0 row names that hash. restore() builds the machine from the blob, never the file.
+export const specHash = (spec) => createHash('sha256').update(JSON.stringify(spec)).digest('hex');
+export function pinSpec(root, spec) {
+  const hash = specHash(spec);
+  const path = join(root, 'blobs', hash);
+  if (!existsSync(path)) {
+    mkdirSync(join(root, 'blobs'), { recursive: true });
+    writeFileSync(path, JSON.stringify(spec));
+  }
+  return hash;
+}
+function pinnedSpec(root, hash) {
+  const spec = JSON.parse(readFileSync(join(root, 'blobs', hash), 'utf8'));
+  if (specHash(spec) !== hash) throw new Error(`blobs/${hash} does not hash to itself`);
+  return spec;
+}
 
 /** Thrown when another session made the item's file between this host's restore and its first write. */
 export class OwnedError extends Error {
@@ -53,7 +72,7 @@ export function restore({ root, item, spec, session, release }) {
   }
   const host = {
     root, item, spec, session, release, file,
-    machine: machineOf(spec),
+    machine: null,
     owner: null,
     snapshot: null,
     seq: 0,
@@ -64,6 +83,12 @@ export function restore({ root, item, spec, session, release }) {
   };
 
   const transitions = rows.filter((r) => r.kind === 'engine.transition');
+  const first = transitions.find((r) => r.payload.outcome === 'applied' && r.payload.seq === 0);
+  if (first?.payload.spec) {
+    host.offered = spec;
+    host.spec = pinnedSpec(root, first.payload.spec);
+  }
+  host.machine = machineOf(host.spec);
   for (const row of transitions) host.seen.add(sourceKey(row.source));
   const applied = transitions.filter((r) => r.payload.outcome === 'applied').sort((a, b) => a.payload.seq - b.payload.seq);
   for (const row of applied) {
@@ -115,11 +140,12 @@ export function applyEvent(host, { event, source, run = null, at = new Date().to
 
   const seq = host.seq;
   const from = host.snapshot?.value ?? null;
+  const pin = seq === 0 ? pinSpec(host.root, host.spec) : null;
   const { hash, effects } = step(host, event, run, at);
   for (const effect of effects) host.effects.set(effect.id, { effect, phase: null, outcome: null });
   if (seq === 0) host.owner = host.session;
   host.seen.add(sourceKey(source));
-  const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, file: host.file });
+  const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, file: host.file, pin });
   return { outcome: 'applied', row, effects };
 }
 
@@ -345,7 +371,7 @@ function effectsOf(host, { type, params }, seq, at) {
   return [];
 }
 
-function transitionRow(host, { outcome, reason = null, event, source, run, at, seq, from = null, hash = null, file }) {
+function transitionRow(host, { outcome, reason = null, event, source, run, at, seq, from = null, hash = null, file, pin = null }) {
   const applied = outcome === 'applied';
   return {
     file,
@@ -363,6 +389,7 @@ function transitionRow(host, { outcome, reason = null, event, source, run, at, s
       outcome,
       reason,
       workflow: host.spec.id,
+      ...(pin ? { spec: pin } : {}),
       event,
       run,
       from: from === null ? null : JSON.stringify(from),

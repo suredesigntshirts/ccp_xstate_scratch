@@ -94,10 +94,22 @@ const bindState = (spec, siblings, state) => {
   if (state.on) bound.on = bindAll(state.on);
   if (state.after) bound.after = bindAll(state.after);
   if (state.invoke) {
-    const { input = {}, onDone, onError } = state.invoke;
-    bound.invoke = { ...state.invoke, input: (scope) => mapPaths(input, scope) };
-    if (onDone) bound.invoke.onDone = bind(onDone);
-    if (onError) bound.invoke.onError = bind(onError);
+    // N1 (design B): a state's invoke may be a list; each entry is bound like a single invoke. Ids must be unique.
+    const bindInvoke = (invoke) => {
+      const { input = {}, onDone, onError } = invoke;
+      const one = { ...invoke, input: (scope) => mapPaths(input, scope) };
+      if (onDone) one.onDone = bind(onDone);
+      if (onError) one.onError = bind(onError);
+      return one;
+    };
+    if (Array.isArray(state.invoke)) {
+      const ids = state.invoke.map((i) => i.id);
+      const dup = ids.find((id, n) => ids.indexOf(id) !== n);
+      if (dup !== undefined) throw new Error(`invoke id ${dup} is used twice in one state`);
+      bound.invoke = state.invoke.map(bindInvoke);
+    } else {
+      bound.invoke = bindInvoke(state.invoke);
+    }
   }
   if (state.states) {
     const children = Object.entries(state.states).map(([name, child]) => [name, bindState(spec, state.states, child)]);

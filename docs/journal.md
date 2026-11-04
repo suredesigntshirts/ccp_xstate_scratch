@@ -69,6 +69,7 @@ after a newer one.
 | `post.sent` | The session posted a message to the person in a thread | `hearth`, the message id |
 | `brief.stored` | A brief handed to a session or subagent was stored | the store, the brief's path or id |
 | `result.stored` | A session's or subagent's result was stored | the store, the result's path or id |
+| `source.seen` | A page the host fetched itself to check a quote an agent cited (design B, N3), stored as a blob | `web`, the URL |
 | `ci.result` | A CI run finished on a sha | `github`, the run id |
 | `page.refresh` | A page was published or refreshed | `artifact`, the page url |
 | `wake` | Something started a turn: a hearth wake, a subagent's report, a task notification or a typed prompt | `claude-code`, the prompt id |

@@ -9,7 +9,7 @@ import { card } from './card.js';
 import { post } from './post.js';
 import { timer, cancel } from './timer.js';
 
-export { github, GitHubError } from './github.js';
+export { github, web, GitHubError } from './github.js';
 export { prRef } from './merge.js';
 export { relay, recordCard, cardFile } from './relay.js';
 

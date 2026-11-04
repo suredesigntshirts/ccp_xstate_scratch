@@ -15,6 +15,7 @@ export const KINDS = Object.freeze([
   'post.sent',
   'brief.stored',
   'result.stored',
+  'source.seen',
   'ci.result',
   'page.refresh',
   'wake',
