@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lane": { "type": "string" },
+          "verifiedPasses": { "type": "number" },
+          "score": { "type": "number" },
+          "rejectedPasses": { "type": "array", "items": { "type": "string" } },
+          "notes": { "type": "string" }
+        },
+        "required": ["lane", "score", "notes"]
+      }
+    },
+    "ranking": { "type": "array", "items": { "type": "string" } },
+    "bestIdeas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "lane": { "type": "string" }, "idea": { "type": "string" } },
+        "required": ["lane", "idea"]
+      }
+    }
+  },
+  "required": ["scores", "ranking", "bestIdeas"]
+}
