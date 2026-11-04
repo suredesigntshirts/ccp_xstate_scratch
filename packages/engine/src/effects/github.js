@@ -84,6 +84,20 @@ export function github({ api = 'https://api.github.com', env = process.env } = {
     pull: (args) => call('GET', at(args)),
     /** merge_pull_request: expectedHeadSha is REST's sha, so GitHub refuses the merge when the head moved. */
     merge: ({ expectedHeadSha, merge_method = 'merge', commit_title, commit_message, ...args }) =>
-      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message })
+      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message }),
+    /** N3 (design B): the files changed between base and head, as GitHub's compare lists them. */
+    compare: ({ owner, repo, base, head }) => call('GET', `/repos/${owner}/${repo}/compare/${encodeURIComponent(base)}...${encodeURIComponent(head)}`)
+  };
+}
+
+/** N3 (design B): a page as the host fetches it itself, through the same proxy tunnel: get(url) -> body text. */
+export function web({ env = process.env } = {}) {
+  return {
+    get: async (href) => {
+      const url = new URL(href);
+      const res = await send(url, { method: 'GET', headers: { 'user-agent': 'ccp-engine-effects' }, body: null }, env);
+      if (res.status < 200 || res.status > 299) throw new Error(`${href} answered ${res.status}`);
+      return res.body;
+    }
   };
 }

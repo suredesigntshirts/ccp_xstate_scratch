@@ -1,0 +1,168 @@
+{
+  "id": "research",
+  "description": "A question to a verified, published report, no PR. Three researchers run at once; the join is the needs of the state after them, so an error counts as an answer and nothing hangs. Every source a result cites was fetched and matched by the host at accept.",
+  "initial": "planning",
+  "context": {
+    "question": null,
+    "plan": null,
+    "answers": { "q0": null, "q1": null, "q2": null },
+    "report": null,
+    "verdict": null,
+    "decision": null,
+    "post": null,
+    "failure": null,
+    "drafts": 0
+  },
+  "output": { "question": "context.question", "report": "context.report", "verdict": "context.verdict", "post": "context.post" },
+  "states": {
+    "planning": {
+      "meta": { "needs": ["hasQuestion"] },
+      "invoke": {
+        "id": "brief",
+        "src": "brief",
+        "input": { "question": "context.question" },
+        "onDone": { "target": "researching", "actions": [{ "type": "set", "params": { "plan": "event.output" } }] },
+        "onError": { "target": "failed", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
+      }
+    },
+    "researching": {
+      "meta": { "needs": ["hasPlan"] },
+      "invoke": [
+        {
+          "id": "q0",
+          "src": "research",
+          "input": { "question": "context.plan.q0", "about": "context.question.text" },
+          "onDone": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q0": "event.output" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q0": "event.output" } }] }
+          ],
+          "onError": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q0": { "value": { "kind": "actor" } }, "answers.q0.error": "event.error" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q0": { "value": { "kind": "actor" } }, "answers.q0.error": "event.error" } }] }
+          ]
+        },
+        {
+          "id": "q1",
+          "src": "research",
+          "input": { "question": "context.plan.q1", "about": "context.question.text" },
+          "onDone": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q1": "event.output" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q1": "event.output" } }] }
+          ],
+          "onError": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q1": { "value": { "kind": "actor" } }, "answers.q1.error": "event.error" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q1": { "value": { "kind": "actor" } }, "answers.q1.error": "event.error" } }] }
+          ]
+        },
+        {
+          "id": "q2",
+          "src": "research",
+          "input": { "question": "context.plan.q2", "about": "context.question.text" },
+          "onDone": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q2": "event.output" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q2": "event.output" } }] }
+          ],
+          "onError": [
+            { "target": "synthesizing", "guard": "allSettled", "actions": [{ "type": "set", "params": { "answers.q2": { "value": { "kind": "actor" } }, "answers.q2.error": "event.error" } }] },
+            { "actions": [{ "type": "set", "params": { "answers.q2": { "value": { "kind": "actor" } }, "answers.q2.error": "event.error" } }] }
+          ]
+        }
+      ],
+      "after": { "researchTimeout": { "target": "synthesizing", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "timeout", "error": "not every researcher answered within researchTimeout" } } } }] } }
+    },
+    "synthesizing": {
+      "meta": { "needs": ["hasPlan", "draftsLeft"] },
+      "invoke": {
+        "id": "synthesize",
+        "src": "synthesize",
+        "input": { "question": "context.question", "answers": "context.answers", "verdict": "context.verdict" },
+        "onDone": { "target": "verifying", "actions": [{ "type": "set", "params": { "report": "event.output", "verdict": { "value": null } } }, { "type": "inc", "params": "drafts" }] },
+        "onError": { "target": "failed", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
+      }
+    },
+    "verifying": {
+      "meta": { "needs": ["hasReport"] },
+      "invoke": {
+        "id": "verify",
+        "src": "verify",
+        "input": { "question": "context.question.text", "expect": "context.question.expect", "brief": "context.plan.verifier", "report": "context.report" },
+        "onDone": [
+          { "target": "awaitingApproval", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "synthesizing", "guard": "failed", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "failed", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] }
+        ],
+        "onError": { "target": "failed", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
+      }
+    },
+    "awaitingApproval": {
+      "meta": { "needs": ["verified"] },
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": { "question": { "value": "Publish this verified report?" }, "choices": { "value": ["publish", "reject"] }, "report": "context.report", "verdict": "context.verdict" },
+        "onDone": [
+          { "target": "publishing", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
+          { "target": "failed", "actions": [{ "type": "set", "params": { "decision": "event.output", "failure": { "value": { "kind": "rejected" } } } }] }
+        ],
+        "onError": { "target": "failed", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
+      }
+    },
+    "publishing": {
+      "meta": { "needs": ["verified", "approved"] },
+      "invoke": {
+        "id": "post",
+        "src": "post",
+        "input": { "text": "context.report.report" },
+        "onDone": { "target": "published", "actions": [{ "type": "set", "params": { "post": "event.output" } }] },
+        "onError": { "target": "failed", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "post" } }, "failure.error": "event.error" } }] }
+      }
+    },
+    "published": { "type": "final", "meta": { "needs": ["isPosted"] } },
+    "failed": { "type": "final" }
+  },
+  "meta": {
+    "guards": {
+      "hasQuestion": ["context.question.text", "context.question.expect"],
+      "hasPlan": ["context.plan.q0", "context.plan.q1", "context.plan.q2", "context.plan.verifier"],
+      "allSettled": ["context.answers.q0", "context.answers.q1", "context.answers.q2"],
+      "draftsLeft": [{ "path": "context.drafts", "in": [0, 1] }],
+      "hasReport": ["context.report.report", "context.report.sources"],
+      "failed": [{ "path": "context.verdict.result", "in": ["FAIL"] }],
+      "verified": [{ "path": "context.verdict.result", "in": ["PASS"] }],
+      "approved": [{ "path": "context.decision.choice", "in": ["publish"] }],
+      "isPosted": ["context.post.ref"]
+    },
+    "delays": { "researchTimeout": 3600000 },
+    "input": {
+      "type": "object",
+      "required": ["question"],
+      "properties": {
+        "question": {
+          "type": "object",
+          "required": ["text", "expect"],
+          "properties": { "text": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } }
+        }
+      }
+    },
+    "events": {},
+    "actors": {
+      "brief": {
+        "type": "object",
+        "required": ["q0", "q1", "q2", "verifier"],
+        "properties": { "q0": { "type": "string", "minLength": 1 }, "q1": { "type": "string", "minLength": 1 }, "q2": { "type": "string", "minLength": 1 }, "verifier": { "type": "string", "minLength": 1 } }
+      },
+      "research": { "type": "object", "required": ["answer", "sources"], "properties": { "answer": { "type": "string", "minLength": 1 }, "sources": { "$ref": "#sources" } } },
+      "synthesize": { "type": "object", "required": ["report", "sources"], "properties": { "report": { "type": "string", "minLength": 1 }, "sources": { "$ref": "#sources" } } },
+      "verify": { "type": "object", "required": ["result", "report"], "properties": { "result": { "enum": ["PASS", "FAIL"] }, "report": { "type": "string", "minLength": 1 } } },
+      "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
+      "post": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string", "minLength": 1 } } }
+    },
+    "schemas": {
+      "sources": {
+        "type": "array",
+        "minItems": 1,
+        "items": { "type": "object", "required": ["url", "quote"], "properties": { "url": { "type": "string", "minLength": 1 }, "quote": { "type": "string", "minLength": 1 } } }
+      }
+    }
+  }
+}

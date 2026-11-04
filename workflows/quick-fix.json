@@ -1,17 +1,20 @@
 {
   "id": "quick-fix",
-  "description": "One work item, issue to merged commit. The machine starts every piece of work as an invoked actor; context holds the handles each state hands the next; a state's meta.needs are the preconditions of entering it.",
+  "description": "Issue to one PR merged at the verified, CI-green head. Context is a fold of journalled events; every fact a gate reads was either written by the host or checked by the host at accept.",
   "initial": "briefing",
   "context": {
     "issue": null,
+    "guarded": [".github/", "scripts/gates/"],
     "why": null,
     "briefs": null,
     "pr": null,
     "verdict": null,
+    "ci": null,
     "failure": null,
     "decision": null,
     "merge": null,
-    "builds": 0
+    "builds": 0,
+    "attempt": 1
   },
   "output": { "issue": "context.issue", "pr": "context.pr", "verdict": "context.verdict", "merge": "context.merge" },
   "states": {
@@ -20,9 +23,9 @@
       "invoke": {
         "id": "brief",
         "src": "brief",
-        "input": { "issue": "context.issue", "why": "context.why" },
+        "input": { "issue": "context.issue", "why": "context.why", "attempt": "context.attempt" },
         "onDone": { "target": "building", "actions": [{ "type": "set", "params": { "briefs": "event.output" } }] },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
       }
     },
     "building": {
@@ -30,69 +33,99 @@
       "invoke": {
         "id": "build",
         "src": "build",
-        "input": { "issue": "context.issue", "brief": "context.briefs.builder", "verdict": "context.verdict", "failure": "context.failure" },
-        "onDone": {
-          "target": "verifying",
-          "actions": [{ "type": "set", "params": { "pr": "event.output.pr" } }, { "type": "inc", "params": "builds" }]
-        },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "input": { "issue": "context.issue", "brief": "context.briefs.builder", "verdict": "context.verdict", "failure": "context.failure", "attempt": "context.attempt" },
+        "onDone": { "target": "verifying", "actions": [{ "type": "set", "params": { "pr": "event.output.pr", "verdict": { "value": null }, "ci": { "value": null } } }, { "type": "inc", "params": "builds" }] },
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
       },
-      "after": { "buildTimeout": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": "the build outlived buildTimeout" } } }] } },
-      "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] }
-      }
+      "after": { "buildTimeout": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "timeout", "error": "the build outlived buildTimeout" } } } }] } }
     },
     "verifying": {
       "meta": { "needs": ["hasBriefs", "hasPr"] },
       "invoke": {
         "id": "verify",
         "src": "verify",
-        "input": { "issue": "context.issue", "brief": "context.briefs.verifier", "pr": "context.pr" },
+        "input": { "expect": "context.issue.expect", "issue": "context.issue.url", "brief": "context.briefs.verifier", "url": "context.pr.url", "branch": "context.pr.branch", "headSha": "context.pr.headSha", "guarded": "context.guarded" },
         "onDone": [
-          { "target": "awaitingMerge", "description": "PASS at the PR head (awaitingMerge needs verifiedHead)", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
-          { "target": "building", "guard": "failed", "description": "FAIL with a build left (building needs buildsLeft)", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
-          { "target": "replanning", "description": "anything else: FAIL with no builds left, or a verdict on an old head", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] }
+          { "target": "awaitingMerge", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "awaitingCiApproval", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "waitingCi", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "building", "guard": "failed", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "replanning", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] }
         ],
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
       },
       "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] },
-        "pr.pushed": { "target": "verifying", "reenter": true, "actions": [{ "type": "set", "params": { "pr.headSha": "event.headSha" } }] },
+        "github.pull_request.synchronize": { "target": "verifying", "reenter": true, "guard": "pushedOnHead", "actions": [{ "type": "set", "params": { "pr.from": "context.pr.headSha", "pr.headSha": "event.after", "ci": { "value": null } } }] },
+        "github.check_suite.completed": { "guard": "greenOnHead", "actions": [{ "type": "set", "params": { "ci": { "value": null }, "ci.sha": "event.head_sha" } }] },
         "github.check_run.completed": [
-        { "target": "building", "guard": "redOnHead", "description": "a check went red on the PR's head, with a build left: build again with the check as the failure", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
-        { "target": "replanning", "guard": "redOnHead", "description": "a check went red with no build left", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
-      ]
+          { "target": "building", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
+          { "target": "replanning", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
+        ]
       }
     },
-    "awaitingMerge": {
+    "waitingCi": {
       "meta": { "needs": ["verifiedHead"] },
+      "on": {
+        "github.pull_request.synchronize": { "target": "verifying", "guard": "pushedOnHead", "actions": [{ "type": "set", "params": { "pr.from": "context.pr.headSha", "pr.headSha": "event.after", "ci": { "value": null } } }] },
+        "github.check_suite.completed": [
+          { "target": "awaitingMerge", "guard": "greenOnHead", "actions": [{ "type": "set", "params": { "ci": { "value": null }, "ci.sha": "event.head_sha" } }] },
+          { "target": "awaitingCiApproval", "guard": "greenOnHead", "actions": [{ "type": "set", "params": { "ci": { "value": null }, "ci.sha": "event.head_sha" } }] }
+        ],
+        "github.check_run.completed": [
+          { "target": "building", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
+          { "target": "replanning", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
+        ]
+      },
+      "after": { "ciTimeout": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "timeout", "error": "CI did not finish within ciTimeout" } } } }] } }
+    },
+    "awaitingMerge": {
+      "meta": { "needs": ["verifiedHead", "ciGreen", "ciUnchanged"] },
       "invoke": {
         "id": "ask",
         "src": "ask",
-        "input": { "question": { "value": "Merge this PR at the verified commit?" }, "choices": { "value": ["approve", "reject"] }, "pr": "context.pr", "verdict": "context.verdict" },
+        "input": { "question": { "value": "Merge this PR at the verified, CI-green commit?" }, "choices": { "value": ["approve", "reject"] }, "pr": "context.pr", "verdict": "context.verdict" },
         "onDone": [
-          { "target": "merging", "description": "approved (merging needs approved)", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
-          { "target": "replanning", "description": "rejected", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+          { "target": "merging", "actions": [{ "type": "set", "params": { "decision": "event.output", "decision.sha": "context.verdict.sha", "decision.ciChanged": { "value": false } } }] },
+          { "target": "replanning", "actions": [{ "type": "set", "params": { "decision": "event.output", "failure": { "value": { "kind": "rejected" } } } }] }
         ],
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
       },
       "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] },
-        "pr.pushed": { "target": "verifying", "actions": [{ "type": "set", "params": { "pr.headSha": "event.headSha" } }] },
+        "github.pull_request.synchronize": { "target": "verifying", "guard": "pushedOnHead", "actions": [{ "type": "set", "params": { "pr.from": "context.pr.headSha", "pr.headSha": "event.after", "ci": { "value": null } } }] },
         "github.check_run.completed": [
-        { "target": "building", "guard": "redOnHead", "description": "a check went red on the PR's head, with a build left: build again with the check as the failure", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
-        { "target": "replanning", "guard": "redOnHead", "description": "a check went red with no build left", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
-      ]
+          { "target": "building", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
+          { "target": "replanning", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
+        ]
+      }
+    },
+    "awaitingCiApproval": {
+      "meta": { "needs": ["verifiedHead", "ciGreen", "ciChanged"] },
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": { "question": { "value": "This PR changes CI config (.github/ or scripts/gates/), so its green CI is not evidence. Merge it, CI change included, at the verified commit?" }, "choices": { "value": ["approve CI change", "reject"] }, "pr": "context.pr", "verdict": "context.verdict" },
+        "onDone": [
+          { "target": "merging", "actions": [{ "type": "set", "params": { "decision": "event.output", "decision.sha": "context.verdict.sha", "decision.ciChanged": { "value": true } } }] },
+          { "target": "replanning", "actions": [{ "type": "set", "params": { "decision": "event.output", "failure": { "value": { "kind": "rejected" } } } }] }
+        ],
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "actor" } }, "failure.error": "event.error" } }] }
+      },
+      "on": {
+        "github.pull_request.synchronize": { "target": "verifying", "guard": "pushedOnHead", "actions": [{ "type": "set", "params": { "pr.from": "context.pr.headSha", "pr.headSha": "event.after", "ci": { "value": null } } }] },
+        "github.check_run.completed": [
+          { "target": "building", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
+          { "target": "replanning", "guard": "redOnHead", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "check" } }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
+        ]
       }
     },
     "merging": {
-      "meta": { "needs": ["verifiedHead", "approved"] },
+      "meta": { "needs": ["verifiedHead", "ciGreen", "approved"] },
       "invoke": {
         "id": "merge",
         "src": "merge",
         "input": { "pr": "context.pr", "sha": "context.verdict.sha" },
         "onDone": { "target": "done", "actions": [{ "type": "set", "params": { "merge": "event.output" } }] },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "merge" } }, "failure.error": "event.error" } }] }
       }
     },
     "replanning": {
@@ -101,13 +134,9 @@
         "src": "ask",
         "input": { "question": { "value": "This item stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "verdict": "context.verdict", "failure": "context.failure" },
         "onDone": [
-          {
-            "target": "briefing",
-            "guard": "replan",
-            "actions": [{ "type": "set", "params": { "why": "event.output.why", "builds": { "value": 0 }, "verdict": { "value": null }, "failure": { "value": null } } }]
-          },
+          { "target": "briefing", "guard": "replan", "actions": [{ "type": "set", "params": { "why": "event.output.why", "builds": { "value": 0 }, "pr": { "value": null }, "verdict": { "value": null }, "ci": { "value": null }, "failure": { "value": null }, "decision": { "value": null } } }, { "type": "inc", "params": "attempt" }] },
           { "target": "dropped", "guard": "drop", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
-          { "target": "replanning", "reenter": true, "description": "replan without a written why: ask again, no build starts", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+          { "target": "replanning", "reenter": true, "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
         ],
         "onError": "dropped"
       }
@@ -119,18 +148,22 @@
     "guards": {
       "hasIssue": ["context.issue.url", "context.issue.expect"],
       "hasBriefs": ["context.briefs.builder", "context.briefs.verifier"],
-      "buildsLeft": [{ "path": "context.builds", "below": 2 }],
-      "hasPr": ["context.pr.branch", "context.pr.headSha"],
-      "failed": [{ "path": "context.verdict.result", "is": "FAIL" }],
-      "verifiedHead": [{ "path": "context.verdict.result", "is": "PASS" }, { "path": "context.verdict.sha", "same": "context.pr.headSha" }],
-      "approved": [{ "path": "context.decision.choice", "is": "approve" }],
-      "replan": [{ "path": "event.output.choice", "is": "replan" }, "event.output.why"],
-      "drop": [{ "path": "event.output.choice", "is": "drop" }],
+      "buildsLeft": [{ "path": "context.builds", "in": [0, 1] }],
+      "hasPr": ["context.pr.url", "context.pr.headSha"],
+      "failed": [{ "path": "context.verdict.result", "in": ["FAIL"] }],
+      "verifiedHead": [{ "path": "context.verdict.result", "in": ["PASS"] }, { "path": "context.verdict.sha", "same": "context.pr.headSha" }],
+      "ciGreen": [{ "path": "context.ci.sha", "same": "context.verdict.sha" }],
+      "ciUnchanged": [{ "path": "context.verdict.ciChanged", "in": [false] }],
+      "ciChanged": [{ "path": "context.verdict.ciChanged", "in": [true] }],
+      "approved": [{ "path": "context.decision.choice", "in": ["approve", "approve CI change"] }, { "path": "context.decision.sha", "same": "context.verdict.sha" }, { "path": "context.decision.ciChanged", "same": "context.verdict.ciChanged" }],
+      "replan": [{ "path": "event.output.choice", "in": ["replan"] }, "event.output.why"],
+      "drop": [{ "path": "event.output.choice", "in": ["drop"] }],
       "isMerged": ["context.merge.sha"],
-      "tripwireOnPr": [{ "path": "event.url", "same": "context.pr.url" }],
+      "pushedOnHead": [{ "path": "event.before", "same": "context.pr.from" }],
+      "greenOnHead": [{ "path": "event.head_sha", "same": "context.pr.headSha" }],
       "redOnHead": [{ "path": "event.conclusion", "in": ["failure", "timed_out"] }, { "path": "event.head_sha", "same": "context.pr.headSha" }]
     },
-    "delays": { "buildTimeout": 3600000 },
+    "delays": { "buildTimeout": 3600000, "ciTimeout": 3600000 },
     "input": {
       "type": "object",
       "required": ["issue"],
@@ -143,12 +176,8 @@
       }
     },
     "events": {
-      "tripwire": {
-        "type": "object",
-        "required": ["url", "rounds", "limit"],
-        "properties": { "url": { "type": "string", "minLength": 1 }, "rounds": { "type": "integer" }, "limit": { "type": "integer" } }
-      },
-      "pr.pushed": { "type": "object", "required": ["headSha"], "properties": { "headSha": { "$ref": "#sha" } } },
+      "github.pull_request.synchronize": { "type": "object", "required": ["before", "after"], "properties": { "before": { "$ref": "#sha" }, "after": { "$ref": "#sha" } } },
+      "github.check_suite.completed": { "type": "object", "required": ["head_sha"], "properties": { "head_sha": { "$ref": "#sha" } } },
       "github.check_run.completed": {
         "type": "object",
         "required": ["check", "conclusion", "head_sha"],
@@ -156,34 +185,23 @@
       }
     },
     "actors": {
-      "brief": {
-        "type": "object",
-        "required": ["builder", "verifier"],
-        "properties": { "builder": { "type": "string", "minLength": 1 }, "verifier": { "type": "string", "minLength": 1 } }
-      },
-      "build": {
-        "type": "object",
-        "required": ["pr"],
-        "properties": {
-          "pr": {
-            "type": "object",
-            "required": ["branch", "headSha", "url"],
-            "properties": { "branch": { "type": "string", "minLength": 1 }, "headSha": { "$ref": "#sha" }, "url": { "type": "string", "minLength": 1 } }
-          }
-        }
-      },
+      "brief": { "type": "object", "required": ["builder", "verifier"], "properties": { "builder": { "type": "string", "minLength": 1 }, "verifier": { "type": "string", "minLength": 1 } } },
+      "build": { "type": "object", "required": ["pr"], "properties": { "pr": { "$ref": "#pr" } } },
       "verify": {
         "type": "object",
-        "required": ["result", "sha", "report"],
-        "properties": { "result": { "enum": ["PASS", "FAIL"] }, "sha": { "$ref": "#sha" }, "report": { "type": "string", "minLength": 1 } }
+        "required": ["result", "sha", "ciChanged", "report"],
+        "properties": { "result": { "enum": ["PASS", "FAIL"] }, "sha": { "$ref": "#sha" }, "ciChanged": { "type": "boolean" }, "report": { "type": "string", "minLength": 1 } }
       },
-      "ask": {
-        "type": "object",
-        "required": ["choice", "by"],
-        "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } }
-      },
+      "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
       "merge": { "type": "object", "required": ["sha"], "properties": { "sha": { "$ref": "#sha" } } }
     },
-    "schemas": { "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" } }
+    "schemas": {
+      "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+      "pr": {
+        "type": "object",
+        "required": ["branch", "headSha", "url"],
+        "properties": { "branch": { "type": "string", "minLength": 1 }, "headSha": { "$ref": "#sha" }, "url": { "type": "string", "minLength": 1 } }
+      }
+    }
   }
 }
