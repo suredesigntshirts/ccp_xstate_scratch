@@ -1,0 +1,983 @@
+{
+  "id": "research",
+  "description": "Lane E: a question to a verified, published report. Sub-questions fan out as child items and join on a counter that a child's done and its failure both advance; the host checks every cited source itself; the report is published only after the person approves it.",
+  "initial": "planning",
+  "context": {
+    "issue": null,
+    "why": null,
+    "plan": null,
+    "fanout": {
+      "count": 0,
+      "finished": 0,
+      "failed": 0
+    },
+    "replans": 0,
+    "report": null,
+    "sources": null,
+    "checked": null,
+    "verdict": null,
+    "approval": null,
+    "failure": null,
+    "published": null
+  },
+  "output": {
+    "issue": "context.issue",
+    "report": "context.report",
+    "published": "context.published"
+  },
+  "states": {
+    "planning": {
+      "meta": {
+        "needs": [
+          "hasIssue",
+          "replansLeft"
+        ]
+      },
+      "invoke": {
+        "id": "plan",
+        "src": "plan",
+        "input": {
+          "issue": "context.issue",
+          "why": "context.why",
+          "failure": "context.failure"
+        },
+        "onDone": {
+          "target": "researching",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "plan": "event.output.questions",
+                "fanout.count": "event.observed.counts.questions",
+                "fanout.finished": {
+                  "value": 0
+                },
+                "fanout.failed": {
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "researching": {
+      "meta": {
+        "needs": [
+          "hasPlan"
+        ]
+      },
+      "invoke": {
+        "id": "fanout",
+        "src": "start",
+        "input": {
+          "workflow": {
+            "value": "research-question"
+          },
+          "list": "context.plan"
+        }
+      },
+      "on": {
+        "child.ended": [
+          {
+            "target": "synthesizing",
+            "guard": "okJoined",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              }
+            ]
+          },
+          {
+            "target": "planning",
+            "guard": "okJoined",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "children"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": {
+                    "value": "a sub-question failed"
+                  }
+                }
+              },
+              {
+                "type": "inc",
+                "params": "replans"
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "okJoined",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "children"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": {
+                    "value": "a sub-question failed"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "guard": "childOk",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              }
+            ]
+          },
+          {
+            "target": "planning",
+            "guard": "failJoined",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              },
+              {
+                "type": "inc",
+                "params": "fanout.failed"
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "children"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": {
+                    "value": "a sub-question failed"
+                  }
+                }
+              },
+              {
+                "type": "inc",
+                "params": "replans"
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "failJoined",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              },
+              {
+                "type": "inc",
+                "params": "fanout.failed"
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "children"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": {
+                    "value": "a sub-question failed"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "guard": "childFailed",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "fanout.finished"
+              },
+              {
+                "type": "inc",
+                "params": "fanout.failed"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "synthesizing": {
+      "meta": {
+        "needs": [
+          "noneFailed"
+        ]
+      },
+      "invoke": {
+        "id": "synthesize",
+        "src": "synthesize",
+        "input": {
+          "issue": "context.issue",
+          "plan": "context.plan"
+        },
+        "onDone": {
+          "target": "checking",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "report.hash": "event.observed.blobs.report",
+                "sources": "event.output.sources",
+                "checked": {
+                  "value": null
+                },
+                "verdict": {
+                  "value": null
+                },
+                "approval": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "checking": {
+      "meta": {
+        "needs": [
+          "hasReport"
+        ]
+      },
+      "invoke": {
+        "id": "sources",
+        "src": "checkSources",
+        "input": {
+          "urls": "context.sources",
+          "report": "context.report.hash"
+        },
+        "onDone": [
+          {
+            "target": "judging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "checked": "event.output"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "checked": "event.output"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "sources"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.output.failed"
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "judging": {
+      "meta": {
+        "needs": [
+          "hasReport",
+          "sourcesChecked"
+        ]
+      },
+      "invoke": {
+        "id": "verify",
+        "src": "verify",
+        "input": {
+          "issue": "context.issue",
+          "subject": "context.report.hash",
+          "sources": "context.sources"
+        },
+        "onDone": [
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.subject": "event.observed.subject",
+                  "verdict.report": "event.observed.blobs.report"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.subject": "event.observed.subject",
+                  "verdict.report": "event.observed.blobs.report"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "verdict"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.blobs.report"
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "asking": {
+      "meta": {
+        "needs": [
+          "verifiedReport",
+          "sourcesChecked"
+        ]
+      },
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": {
+          "question": {
+            "value": "Publish this verified report?"
+          },
+          "choices": {
+            "value": [
+              "approve",
+              "reject"
+            ]
+          },
+          "report": "context.report",
+          "verdict": "context.verdict"
+        },
+        "onDone": [
+          {
+            "target": "publishing",
+            "guard": "approve",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.subject": "context.report.hash"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.subject": "context.report.hash"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "rejected"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "publishing": {
+      "meta": {
+        "needs": [
+          "verifiedReport",
+          "sourcesChecked",
+          "approved"
+        ]
+      },
+      "invoke": {
+        "id": "publish",
+        "src": "publish",
+        "input": {
+          "report": "context.report.hash"
+        },
+        "onDone": {
+          "target": "done",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "published.url": "event.output.url"
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": {
+          "question": {
+            "value": "This research stalled. Replan it with a written five whys, or drop it?"
+          },
+          "choices": {
+            "value": [
+              "replan",
+              "drop"
+            ]
+          },
+          "failure": "context.failure"
+        },
+        "onDone": [
+          {
+            "target": "planning",
+            "guard": "replan",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "why": "event.output.why",
+                  "replans": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "target": "dropped",
+            "guard": "drop"
+          },
+          {
+            "target": "replanning",
+            "reenter": true
+          }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "done": {
+      "type": "final",
+      "meta": {
+        "needs": [
+          "isPublished"
+        ]
+      }
+    },
+    "dropped": {
+      "type": "final"
+    }
+  },
+  "meta": {
+    "guards": {
+      "replan": [
+        {
+          "path": "event.output.choice",
+          "is": "replan"
+        },
+        "event.output.why"
+      ],
+      "drop": [
+        {
+          "path": "event.output.choice",
+          "is": "drop"
+        }
+      ],
+      "replansLeft": [
+        {
+          "path": "context.replans",
+          "below": 2
+        }
+      ],
+      "hasIssue": [
+        "context.issue.url",
+        "context.issue.expect"
+      ],
+      "hasPlan": [
+        "context.plan"
+      ],
+      "okJoined": [
+        {
+          "path": "event.observed.state",
+          "is": "done"
+        },
+        {
+          "path": "context.fanout.finished",
+          "same": "context.fanout.count"
+        }
+      ],
+      "failJoined": [
+        {
+          "path": "event.observed.state",
+          "is": "failed"
+        },
+        {
+          "path": "context.fanout.finished",
+          "same": "context.fanout.count"
+        }
+      ],
+      "childOk": [
+        {
+          "path": "event.observed.state",
+          "is": "done"
+        }
+      ],
+      "childFailed": [
+        {
+          "path": "event.observed.state",
+          "is": "failed"
+        }
+      ],
+      "noneFailed": [
+        {
+          "path": "context.fanout.failed",
+          "below": 1
+        }
+      ],
+      "hasReport": [
+        "context.report.hash",
+        "context.sources"
+      ],
+      "sourcesChecked": [
+        {
+          "path": "context.checked.ok",
+          "is": true
+        },
+        {
+          "path": "context.checked.report",
+          "same": "context.report.hash"
+        }
+      ],
+      "verifiedReport": [
+        {
+          "path": "context.verdict.result",
+          "is": "PASS"
+        },
+        {
+          "path": "context.verdict.subject",
+          "same": "context.report.hash"
+        }
+      ],
+      "approve": [
+        {
+          "path": "event.output.choice",
+          "is": "approve"
+        }
+      ],
+      "approved": [
+        {
+          "path": "context.approval.choice",
+          "is": "approve"
+        },
+        {
+          "path": "context.approval.subject",
+          "same": "context.report.hash"
+        }
+      ],
+      "isPublished": [
+        "context.published.url"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "issue"
+      ],
+      "properties": {
+        "issue": {
+          "type": "object",
+          "required": [
+            "url",
+            "expect"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expect": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "child.ended": {
+        "type": "object",
+        "required": [
+          "observed"
+        ],
+        "properties": {
+          "observed": {
+            "type": "object",
+            "required": [
+              "child",
+              "state"
+            ],
+            "properties": {
+              "child": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "actors": {
+      "plan": {
+        "type": "object",
+        "required": [
+          "questions"
+        ],
+        "properties": {
+          "questions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "question"
+              ],
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "start": {
+        "type": "object"
+      },
+      "synthesize": {
+        "type": "object",
+        "required": [
+          "report",
+          "sources"
+        ],
+        "properties": {
+          "report": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "checkSources": {
+        "type": "object",
+        "required": [
+          "ok",
+          "report"
+        ],
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        }
+      },
+      "verify": {
+        "type": "object",
+        "required": [
+          "result",
+          "report"
+        ],
+        "properties": {
+          "result": {
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          },
+          "report": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "ask": {
+        "type": "object",
+        "required": [
+          "choice",
+          "by"
+        ],
+        "properties": {
+          "choice": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      },
+      "publish": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

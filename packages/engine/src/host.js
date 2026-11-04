@@ -12,7 +12,8 @@
 //
 // Rows (docs/journal.md, "Engine rows"): every event offered to the item makes one engine.transition row, applied
 // or not, and every effect makes an engine.effect row when it starts and one when it ends.
-import { closeSync, mkdirSync, openSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { initialTransition, transition } from 'xstate';
 import { append, readFile } from '../../journal/src/index.js';
@@ -51,6 +52,11 @@ export function restore({ root, item, spec, session, release }) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
+  // Tourney lane E (option A, fix-workflow-pinned): an item that started records its workflow as a blob on its first
+  // row, and is restored, replayed and stepped by that blob, whatever workflow file the caller now has.
+  const first = rows.find((r) => r.kind === 'engine.transition' && r.payload?.outcome === 'applied' && r.payload.seq === 0);
+  const pinned = first?.payload?.pin?.workflow;
+  if (pinned) spec = JSON.parse(readFileSync(blobFile(root, pinned), 'utf8'));
   const host = {
     root, item, spec, session, release, file,
     machine: machineOf(spec),
@@ -120,6 +126,7 @@ export function applyEvent(host, { event, source, run = null, at = new Date().to
   if (seq === 0) host.owner = host.session;
   host.seen.add(sourceKey(source));
   const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, file: host.file });
+  if (seq === 0) row.payload.pin = { workflow: pinSpec(host.root, host.spec) };
   return { outcome: 'applied', row, effects };
 }
 
@@ -252,6 +259,19 @@ export const pending = (host) => ({
 });
 
 // ---- Inside
+
+// The pinned workflow: the spec as a write-once content-addressed blob, `blob:<sha256>`.
+const blobFile = (root, handle) => join(root, 'blobs', String(handle).replace(/^blob:/, ''));
+function pinSpec(root, spec) {
+  const text = JSON.stringify(spec);
+  const handle = `blob:${createHash('sha256').update(text).digest('hex')}`;
+  const path = blobFile(root, handle);
+  if (!existsSync(path)) {
+    mkdirSync(join(path, '..'), { recursive: true });
+    writeFileSync(path, text);
+  }
+  return handle;
+}
 
 const sourceKey = ({ system, ref }) => `${system} ${ref}`;
 

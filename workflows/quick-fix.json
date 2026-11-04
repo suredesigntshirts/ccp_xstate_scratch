@@ -1,189 +1,1832 @@
 {
   "id": "quick-fix",
-  "description": "One work item, issue to merged commit. The machine starts every piece of work as an invoked actor; context holds the handles each state hands the next; a state's meta.needs are the preconditions of entering it.",
+  "description": "Lane E (option A): one work item, issue to merged commit, as a flat chart. Context holds handles; every field a guard reads about the head, CI or the verifier's commit is written from event.observed (the host), and ordered candidate targets fall through on meta.needs.",
   "initial": "briefing",
   "context": {
     "issue": null,
     "why": null,
+    "approver": null,
+    "branch": null,
+    "base": null,
+    "attempt": 1,
     "briefs": null,
     "pr": null,
     "verdict": null,
+    "ci": null,
+    "approval": null,
     "failure": null,
-    "decision": null,
     "merge": null,
     "builds": 0
   },
-  "output": { "issue": "context.issue", "pr": "context.pr", "verdict": "context.verdict", "merge": "context.merge" },
+  "output": {
+    "issue": "context.issue",
+    "pr": "context.pr",
+    "verdict": "context.verdict",
+    "merge": "context.merge"
+  },
   "states": {
     "briefing": {
-      "meta": { "needs": ["hasIssue"] },
+      "meta": {
+        "needs": [
+          "hasIssue"
+        ]
+      },
       "invoke": {
         "id": "brief",
         "src": "brief",
-        "input": { "issue": "context.issue", "why": "context.why" },
-        "onDone": { "target": "building", "actions": [{ "type": "set", "params": { "briefs": "event.output" } }] },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "input": {
+          "issue": "context.issue",
+          "why": "context.why"
+        },
+        "onDone": [
+          {
+            "target": "judging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "briefs.builder": "event.observed.blobs.builder",
+                  "briefs.verifier": "event.observed.blobs.verifier"
+                }
+              }
+            ]
+          },
+          {
+            "target": "building",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "briefs.builder": "event.observed.blobs.builder",
+                  "briefs.verifier": "event.observed.blobs.verifier"
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
       }
     },
     "building": {
-      "meta": { "needs": ["hasBriefs", "buildsLeft"] },
+      "meta": {
+        "needs": [
+          "hasBriefs",
+          "buildsLeft"
+        ]
+      },
       "invoke": {
         "id": "build",
         "src": "build",
-        "input": { "issue": "context.issue", "brief": "context.briefs.builder", "verdict": "context.verdict", "failure": "context.failure" },
-        "onDone": {
-          "target": "verifying",
-          "actions": [{ "type": "set", "params": { "pr": "event.output.pr" } }, { "type": "inc", "params": "builds" }]
+        "input": {
+          "issue": "context.issue",
+          "brief": "context.briefs.builder",
+          "verdict": "context.verdict",
+          "failure": "context.failure",
+          "attempt": "context.attempt",
+          "branch": "context.branch",
+          "base": "context.base"
         },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onDone": {
+          "target": "judging",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "pr": "event.output.pr",
+                "verdict": {
+                  "value": null
+                },
+                "ci": {
+                  "value": null
+                },
+                "approval": {
+                  "value": null
+                }
+              }
+            },
+            {
+              "type": "inc",
+              "params": "builds"
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
       },
-      "after": { "buildTimeout": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": "the build outlived buildTimeout" } } }] } },
+      "after": {
+        "buildTimeout": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "timeout"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": {
+                  "value": "the build outlived buildTimeout"
+                }
+              }
+            }
+          ]
+        }
+      },
       "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] }
+        "tripwire": {
+          "target": "replanning",
+          "guard": "tripwireOnPr",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "tripwire"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": "event.url",
+                "failure.detail": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        }
       }
     },
-    "verifying": {
-      "meta": { "needs": ["hasBriefs", "hasPr"] },
+    "judging": {
+      "meta": {
+        "needs": [
+          "hasBriefs",
+          "hasPr"
+        ]
+      },
       "invoke": {
         "id": "verify",
         "src": "verify",
-        "input": { "issue": "context.issue", "brief": "context.briefs.verifier", "pr": "context.pr" },
+        "input": {
+          "issue": "context.issue",
+          "brief": "context.briefs.verifier",
+          "pr": "context.pr",
+          "subject": "context.pr.headSha"
+        },
         "onDone": [
-          { "target": "awaitingMerge", "description": "PASS at the PR head (awaitingMerge needs verifiedHead)", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
-          { "target": "building", "guard": "failed", "description": "FAIL with a build left (building needs buildsLeft)", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
-          { "target": "replanning", "description": "anything else: FAIL with no builds left, or a verdict on an old head", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] }
+          {
+            "target": "merging",
+            "guard": "byPolicy",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": {
+                    "value": "approve"
+                  },
+                  "approval.by": {
+                    "value": "policy"
+                  },
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "context.ci.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              }
+            ]
+          },
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              }
+            ]
+          },
+          {
+            "target": "askingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              }
+            ]
+          },
+          {
+            "target": "waitingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              }
+            ]
+          },
+          {
+            "target": "building",
+            "guard": "failed",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "verdict"
+                  },
+                  "failure.sha": "event.observed.head",
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.blobs.report"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "verdict.result": "event.output.result",
+                  "verdict.report": "event.observed.blobs.report",
+                  "verdict.sha": "event.observed.head",
+                  "verdict.briefHash": "event.observed.briefHash"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "verdict"
+                  },
+                  "failure.sha": "event.observed.head",
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.blobs.report"
+                }
+              }
+            ]
+          }
         ],
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
       },
       "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] },
-        "pr.pushed": { "target": "verifying", "reenter": true, "actions": [{ "type": "set", "params": { "pr.headSha": "event.headSha" } }] },
-        "github.check_run.completed": [
-        { "target": "building", "guard": "redOnHead", "description": "a check went red on the PR's head, with a build left: build again with the check as the failure", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
-        { "target": "replanning", "guard": "redOnHead", "description": "a check went red with no build left", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
-      ]
+        "tripwire": {
+          "target": "replanning",
+          "guard": "tripwireOnPr",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "tripwire"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": "event.url",
+                "failure.detail": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        },
+        "ci.observed": [
+          {
+            "target": "building",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "guard": "byPolicy",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": {
+                    "value": "approve"
+                  },
+                  "approval.by": {
+                    "value": "policy"
+                  },
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "event.observed.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "askingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "waitingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "guard": "onHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          }
+        ],
+        "pr.head.observed": [
+          {
+            "target": "landedUnverified",
+            "guard": "mergedOutside"
+          },
+          {
+            "target": "judging",
+            "reenter": true,
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "pr.headSha": "event.observed.head",
+                  "ci": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
       }
     },
-    "awaitingMerge": {
-      "meta": { "needs": ["verifiedHead"] },
+    "waitingCi": {
+      "meta": {
+        "needs": [
+          "verifiedHead"
+        ]
+      },
+      "on": {
+        "tripwire": {
+          "target": "replanning",
+          "guard": "tripwireOnPr",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "tripwire"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": "event.url",
+                "failure.detail": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        },
+        "ci.observed": [
+          {
+            "target": "building",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "guard": "byPolicy",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": {
+                    "value": "approve"
+                  },
+                  "approval.by": {
+                    "value": "policy"
+                  },
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "event.observed.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "askingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "waitingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "guard": "onHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          }
+        ],
+        "pr.head.observed": [
+          {
+            "target": "landedUnverified",
+            "guard": "mergedOutside"
+          },
+          {
+            "target": "judging",
+            "reenter": true,
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "pr.headSha": "event.observed.head",
+                  "ci": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "asking": {
+      "meta": {
+        "needs": [
+          "verifiedHead",
+          "ciGreen"
+        ]
+      },
       "invoke": {
         "id": "ask",
         "src": "ask",
-        "input": { "question": { "value": "Merge this PR at the verified commit?" }, "choices": { "value": ["approve", "reject"] }, "pr": "context.pr", "verdict": "context.verdict" },
+        "input": {
+          "question": {
+            "value": "Merge this PR at the verified commit?"
+          },
+          "choices": {
+            "value": [
+              "approve",
+              "reject"
+            ]
+          },
+          "pr": "context.pr",
+          "verdict": "context.verdict"
+        },
         "onDone": [
-          { "target": "merging", "description": "approved (merging needs approved)", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
-          { "target": "replanning", "description": "rejected", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+          {
+            "target": "merging",
+            "guard": "approve",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "context.ci.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "context.ci.touchesCi"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "rejected"
+                  },
+                  "failure.sha": "context.pr.headSha",
+                  "failure.url": "context.pr.url",
+                  "failure.detail": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
         ],
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
       },
       "on": {
-        "tripwire": { "target": "replanning", "guard": "tripwireOnPr", "description": "the PR passed its round limit (derive.js rework's tripwire row): step back instead of another round", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.tripwire": "event.url", "failure.rounds": "event.rounds", "failure.limit": "event.limit" } }] },
-        "pr.pushed": { "target": "verifying", "actions": [{ "type": "set", "params": { "pr.headSha": "event.headSha" } }] },
-        "github.check_run.completed": [
-        { "target": "building", "guard": "redOnHead", "description": "a check went red on the PR's head, with a build left: build again with the check as the failure", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] },
-        { "target": "replanning", "guard": "redOnHead", "description": "a check went red with no build left", "actions": [{ "type": "set", "params": { "failure": { "value": null }, "failure.check": "event.check", "failure.conclusion": "event.conclusion", "failure.sha": "event.head_sha", "failure.url": "event.details_url" } }] }
-      ]
+        "tripwire": {
+          "target": "replanning",
+          "guard": "tripwireOnPr",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "tripwire"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": "event.url",
+                "failure.detail": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        },
+        "ci.observed": [
+          {
+            "target": "building",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "guard": "byPolicy",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": {
+                    "value": "approve"
+                  },
+                  "approval.by": {
+                    "value": "policy"
+                  },
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "event.observed.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "askingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "waitingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "guard": "onHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          }
+        ],
+        "pr.head.observed": [
+          {
+            "target": "landedUnverified",
+            "guard": "mergedOutside"
+          },
+          {
+            "target": "judging",
+            "reenter": true,
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "pr.headSha": "event.observed.head",
+                  "ci": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "askingCi": {
+      "meta": {
+        "needs": [
+          "verifiedHead",
+          "ciGreenEdited"
+        ]
+      },
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": {
+          "question": {
+            "value": "This PR edits CI config (.github/**), so its green CI was judged by its own changes. Merge it at the verified commit anyway?"
+          },
+          "choices": {
+            "value": [
+              "approve",
+              "reject"
+            ]
+          },
+          "pr": "context.pr",
+          "verdict": "context.verdict"
+        },
+        "onDone": [
+          {
+            "target": "merging",
+            "guard": "approve",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "context.ci.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": "event.output.choice",
+                  "approval.by": "event.output.by",
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "context.ci.touchesCi"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "rejected"
+                  },
+                  "failure.sha": "context.pr.headSha",
+                  "failure.url": "context.pr.url",
+                  "failure.detail": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      },
+      "on": {
+        "tripwire": {
+          "target": "replanning",
+          "guard": "tripwireOnPr",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "tripwire"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": "event.url",
+                "failure.detail": {
+                  "value": null
+                }
+              }
+            }
+          ]
+        },
+        "ci.observed": [
+          {
+            "target": "building",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "guard": "redOnHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "check"
+                  },
+                  "failure.sha": "event.observed.sha",
+                  "failure.url": "event.observed.url",
+                  "failure.detail": "event.observed.failing"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "guard": "byPolicy",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              },
+              {
+                "type": "set",
+                "params": {
+                  "approval.choice": {
+                    "value": "approve"
+                  },
+                  "approval.by": {
+                    "value": "policy"
+                  },
+                  "approval.sha": "context.pr.headSha",
+                  "approval.touchesCi": "event.observed.touchesCi"
+                }
+              }
+            ]
+          },
+          {
+            "target": "merging",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "asking",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "askingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "target": "waitingCi",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          },
+          {
+            "guard": "onHead",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "ci": "event.observed"
+                }
+              }
+            ]
+          }
+        ],
+        "pr.head.observed": [
+          {
+            "target": "landedUnverified",
+            "guard": "mergedOutside"
+          },
+          {
+            "target": "judging",
+            "reenter": true,
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "pr.headSha": "event.observed.head",
+                  "ci": {
+                    "value": null
+                  }
+                }
+              }
+            ]
+          }
+        ]
       }
     },
     "merging": {
-      "meta": { "needs": ["verifiedHead", "approved"] },
+      "meta": {
+        "needs": [
+          "verifiedHead",
+          "ciPassed",
+          "approved"
+        ]
+      },
       "invoke": {
         "id": "merge",
         "src": "merge",
-        "input": { "pr": "context.pr", "sha": "context.verdict.sha" },
-        "onDone": { "target": "done", "actions": [{ "type": "set", "params": { "merge": "event.output" } }] },
-        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+        "input": {
+          "pr": "context.pr",
+          "sha": "context.verdict.sha"
+        },
+        "onDone": {
+          "target": "done",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "merge.sha": "event.output.sha"
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "merge"
+                },
+                "failure.sha": "context.verdict.sha",
+                "failure.url": "context.pr.url",
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
       }
     },
     "replanning": {
       "invoke": {
         "id": "ask",
         "src": "ask",
-        "input": { "question": { "value": "This item stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "verdict": "context.verdict", "failure": "context.failure" },
+        "input": {
+          "question": {
+            "value": "This item stalled. Replan it with a written five whys, or drop it?"
+          },
+          "choices": {
+            "value": [
+              "replan",
+              "drop"
+            ]
+          },
+          "verdict": "context.verdict",
+          "failure": "context.failure"
+        },
         "onDone": [
           {
             "target": "briefing",
             "guard": "replan",
-            "actions": [{ "type": "set", "params": { "why": "event.output.why", "builds": { "value": 0 }, "verdict": { "value": null }, "failure": { "value": null } } }]
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "why": "event.output.why",
+                  "builds": {
+                    "value": 0
+                  },
+                  "pr": {
+                    "value": null
+                  },
+                  "verdict": {
+                    "value": null
+                  },
+                  "approval": {
+                    "value": null
+                  },
+                  "ci": {
+                    "value": null
+                  }
+                }
+              },
+              {
+                "type": "inc",
+                "params": "attempt"
+              }
+            ]
           },
-          { "target": "dropped", "guard": "drop", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
-          { "target": "replanning", "reenter": true, "description": "replan without a written why: ask again, no build starts", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+          {
+            "target": "dropped",
+            "guard": "drop"
+          },
+          {
+            "target": "replanning",
+            "reenter": true,
+            "description": "replan without a written why: ask again"
+          }
         ],
         "onError": "dropped"
       }
     },
-    "done": { "type": "final", "meta": { "needs": ["isMerged"] } },
-    "dropped": { "type": "final" }
+    "done": {
+      "type": "final",
+      "meta": {
+        "needs": [
+          "isMerged"
+        ]
+      }
+    },
+    "landedUnverified": {
+      "type": "final"
+    },
+    "dropped": {
+      "type": "final"
+    }
   },
   "meta": {
     "guards": {
-      "hasIssue": ["context.issue.url", "context.issue.expect"],
-      "hasBriefs": ["context.briefs.builder", "context.briefs.verifier"],
-      "buildsLeft": [{ "path": "context.builds", "below": 2 }],
-      "hasPr": ["context.pr.branch", "context.pr.headSha"],
-      "failed": [{ "path": "context.verdict.result", "is": "FAIL" }],
-      "verifiedHead": [{ "path": "context.verdict.result", "is": "PASS" }, { "path": "context.verdict.sha", "same": "context.pr.headSha" }],
-      "approved": [{ "path": "context.decision.choice", "is": "approve" }],
-      "replan": [{ "path": "event.output.choice", "is": "replan" }, "event.output.why"],
-      "drop": [{ "path": "event.output.choice", "is": "drop" }],
-      "isMerged": ["context.merge.sha"],
-      "tripwireOnPr": [{ "path": "event.url", "same": "context.pr.url" }],
-      "redOnHead": [{ "path": "event.conclusion", "in": ["failure", "timed_out"] }, { "path": "event.head_sha", "same": "context.pr.headSha" }]
+      "hasIssue": [
+        "context.issue.url",
+        "context.issue.expect"
+      ],
+      "hasBriefs": [
+        "context.briefs.builder",
+        "context.briefs.verifier"
+      ],
+      "buildsLeft": [
+        {
+          "path": "context.builds",
+          "below": 2
+        }
+      ],
+      "hasPr": [
+        "context.pr.branch",
+        "context.pr.headSha"
+      ],
+      "failed": [
+        {
+          "path": "context.verdict.result",
+          "is": "FAIL"
+        }
+      ],
+      "verifiedHead": [
+        {
+          "path": "context.verdict.result",
+          "is": "PASS"
+        },
+        {
+          "path": "context.verdict.sha",
+          "same": "context.pr.headSha"
+        },
+        {
+          "path": "context.verdict.briefHash",
+          "same": "context.briefs.verifier"
+        }
+      ],
+      "ciPassed": [
+        {
+          "path": "context.ci.sha",
+          "same": "context.pr.headSha"
+        },
+        {
+          "path": "context.ci.conclusion",
+          "is": "success"
+        }
+      ],
+      "ciGreen": [
+        {
+          "path": "context.ci.sha",
+          "same": "context.pr.headSha"
+        },
+        {
+          "path": "context.ci.conclusion",
+          "is": "success"
+        },
+        {
+          "path": "context.ci.touchesCi",
+          "is": false
+        }
+      ],
+      "ciGreenEdited": [
+        {
+          "path": "context.ci.sha",
+          "same": "context.pr.headSha"
+        },
+        {
+          "path": "context.ci.conclusion",
+          "is": "success"
+        },
+        {
+          "path": "context.ci.touchesCi",
+          "is": true
+        }
+      ],
+      "approved": [
+        {
+          "path": "context.approval.choice",
+          "is": "approve"
+        },
+        {
+          "path": "context.approval.sha",
+          "same": "context.pr.headSha"
+        },
+        {
+          "path": "context.approval.touchesCi",
+          "same": "context.ci.touchesCi"
+        }
+      ],
+      "byPolicy": [
+        {
+          "path": "context.approver",
+          "is": "policy"
+        },
+        {
+          "path": "context.ci.touchesCi",
+          "is": false
+        }
+      ],
+      "approve": [
+        {
+          "path": "event.output.choice",
+          "is": "approve"
+        }
+      ],
+      "replan": [
+        {
+          "path": "event.output.choice",
+          "is": "replan"
+        },
+        "event.output.why"
+      ],
+      "drop": [
+        {
+          "path": "event.output.choice",
+          "is": "drop"
+        }
+      ],
+      "isMerged": [
+        "context.merge.sha"
+      ],
+      "tripwireOnPr": [
+        {
+          "path": "event.url",
+          "same": "context.pr.url"
+        }
+      ],
+      "redOnHead": [
+        {
+          "path": "event.observed.conclusion",
+          "is": "failure"
+        },
+        {
+          "path": "event.observed.sha",
+          "same": "context.pr.headSha"
+        }
+      ],
+      "onHead": [
+        {
+          "path": "event.observed.sha",
+          "same": "context.pr.headSha"
+        }
+      ],
+      "mergedOutside": [
+        {
+          "path": "event.observed.merged",
+          "is": true
+        }
+      ]
     },
-    "delays": { "buildTimeout": 3600000 },
+    "delays": {
+      "buildTimeout": 3600000
+    },
+    "ci": {
+      "required": [
+        "test"
+      ],
+      "paths": [
+        ".github/"
+      ]
+    },
     "input": {
       "type": "object",
-      "required": ["issue"],
+      "required": [
+        "issue"
+      ],
       "properties": {
         "issue": {
           "type": "object",
-          "required": ["url", "expect"],
-          "properties": { "url": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } }
+          "required": [
+            "url",
+            "expect"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expect": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "approver": {
+          "enum": [
+            "policy"
+          ]
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },
     "events": {
       "tripwire": {
         "type": "object",
-        "required": ["url", "rounds", "limit"],
-        "properties": { "url": { "type": "string", "minLength": 1 }, "rounds": { "type": "integer" }, "limit": { "type": "integer" } }
+        "required": [
+          "url",
+          "rounds",
+          "limit"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rounds": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        }
       },
-      "pr.pushed": { "type": "object", "required": ["headSha"], "properties": { "headSha": { "$ref": "#sha" } } },
-      "github.check_run.completed": {
+      "pr.head.observed": {
         "type": "object",
-        "required": ["check", "conclusion", "head_sha"],
-        "properties": { "check": { "type": "string", "minLength": 1 }, "conclusion": { "type": "string" }, "head_sha": { "$ref": "#sha" } }
+        "required": [
+          "observed"
+        ],
+        "properties": {
+          "observed": {
+            "type": "object",
+            "required": [
+              "head",
+              "merged"
+            ],
+            "properties": {
+              "head": {
+                "$ref": "#sha"
+              },
+              "merged": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "ci.observed": {
+        "type": "object",
+        "required": [
+          "observed"
+        ],
+        "properties": {
+          "observed": {
+            "type": "object",
+            "required": [
+              "sha",
+              "conclusion",
+              "touchesCi"
+            ],
+            "properties": {
+              "sha": {
+                "$ref": "#sha"
+              },
+              "conclusion": {
+                "enum": [
+                  "success",
+                  "failure",
+                  "pending"
+                ]
+              },
+              "touchesCi": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
       }
     },
     "actors": {
       "brief": {
         "type": "object",
-        "required": ["builder", "verifier"],
-        "properties": { "builder": { "type": "string", "minLength": 1 }, "verifier": { "type": "string", "minLength": 1 } }
+        "required": [
+          "builder",
+          "verifier"
+        ],
+        "properties": {
+          "builder": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verifier": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       },
       "build": {
         "type": "object",
-        "required": ["pr"],
+        "required": [
+          "pr"
+        ],
         "properties": {
           "pr": {
             "type": "object",
-            "required": ["branch", "headSha", "url"],
-            "properties": { "branch": { "type": "string", "minLength": 1 }, "headSha": { "$ref": "#sha" }, "url": { "type": "string", "minLength": 1 } }
+            "required": [
+              "branch",
+              "headSha",
+              "url"
+            ],
+            "properties": {
+              "branch": {
+                "type": "string",
+                "minLength": 1
+              },
+              "headSha": {
+                "$ref": "#sha"
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         }
       },
       "verify": {
         "type": "object",
-        "required": ["result", "sha", "report"],
-        "properties": { "result": { "enum": ["PASS", "FAIL"] }, "sha": { "$ref": "#sha" }, "report": { "type": "string", "minLength": 1 } }
+        "required": [
+          "result",
+          "report"
+        ],
+        "properties": {
+          "result": {
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          },
+          "report": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
       },
       "ask": {
         "type": "object",
-        "required": ["choice", "by"],
-        "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } }
+        "required": [
+          "choice",
+          "by"
+        ],
+        "properties": {
+          "choice": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string"
+          }
+        }
       },
-      "merge": { "type": "object", "required": ["sha"], "properties": { "sha": { "$ref": "#sha" } } }
+      "merge": {
+        "type": "object",
+        "required": [
+          "sha"
+        ],
+        "properties": {
+          "sha": {
+            "$ref": "#sha"
+          }
+        }
+      }
     },
-    "schemas": { "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" } }
+    "schemas": {
+      "sha": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{40}$"
+      }
+    }
   }
 }

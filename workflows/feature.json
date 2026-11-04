@@ -1,0 +1,482 @@
+{
+  "id": "feature",
+  "description": "Lane E: one goal, several PRs. The person owns intent (the issue); the planner owns the plan (slices). Each slice is a child quick-fix item merged into the feature branch under policy approval; the whole feature is verified once on a final child quick-fix item from the feature branch to main, with one person tap.",
+  "initial": "planning",
+  "context": {
+    "issue": null,
+    "why": null,
+    "branch": null,
+    "plan": null,
+    "slices": {
+      "count": 0,
+      "at": 0,
+      "merged": 0
+    },
+    "replans": 0,
+    "failure": null,
+    "merge": null
+  },
+  "output": {
+    "issue": "context.issue",
+    "merge": "context.merge"
+  },
+  "states": {
+    "planning": {
+      "meta": {
+        "needs": [
+          "hasIssue",
+          "replansLeft"
+        ]
+      },
+      "invoke": {
+        "id": "plan",
+        "src": "plan",
+        "input": {
+          "issue": "context.issue",
+          "why": "context.why",
+          "failure": "context.failure",
+          "merged": "context.slices.merged",
+          "branch": "context.branch"
+        },
+        "onDone": {
+          "target": "slicing",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "plan": "event.output.slices",
+                "slices.count": "event.observed.counts.slices",
+                "slices.at": {
+                  "value": 0
+                }
+              }
+            }
+          ]
+        },
+        "onError": {
+          "target": "replanning",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "failure": {
+                  "value": null
+                },
+                "failure.kind": {
+                  "value": "error"
+                },
+                "failure.sha": {
+                  "value": null
+                },
+                "failure.url": {
+                  "value": null
+                },
+                "failure.detail": "event.error"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "slicing": {
+      "meta": {
+        "needs": [
+          "hasPlan"
+        ]
+      },
+      "invoke": {
+        "id": "slice",
+        "src": "start",
+        "input": {
+          "workflow": {
+            "value": "quick-fix"
+          },
+          "list": "context.plan",
+          "at": "context.slices.at",
+          "approver": {
+            "value": "policy"
+          },
+          "base": "context.branch"
+        }
+      },
+      "on": {
+        "child.ended": [
+          {
+            "target": "finishing",
+            "guard": "childMerged",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "slices.at"
+              },
+              {
+                "type": "inc",
+                "params": "slices.merged"
+              }
+            ]
+          },
+          {
+            "target": "slicing",
+            "reenter": true,
+            "guard": "childMerged",
+            "actions": [
+              {
+                "type": "inc",
+                "params": "slices.at"
+              },
+              {
+                "type": "inc",
+                "params": "slices.merged"
+              }
+            ]
+          },
+          {
+            "target": "planning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "slice"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.child"
+                }
+              },
+              {
+                "type": "inc",
+                "params": "replans"
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "slice"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.child"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "finishing": {
+      "meta": {
+        "needs": [
+          "allSliced"
+        ]
+      },
+      "invoke": {
+        "id": "final",
+        "src": "start",
+        "input": {
+          "workflow": {
+            "value": "quick-fix"
+          },
+          "list": {
+            "value": [
+              {}
+            ]
+          },
+          "at": {
+            "value": 0
+          },
+          "issue": "context.issue",
+          "branch": "context.branch",
+          "base": {
+            "value": "main"
+          }
+        }
+      },
+      "on": {
+        "child.ended": [
+          {
+            "target": "done",
+            "guard": "childMerged",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "merge": "event.observed.output.merge"
+                }
+              }
+            ]
+          },
+          {
+            "target": "replanning",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "failure": {
+                    "value": null
+                  },
+                  "failure.kind": {
+                    "value": "final"
+                  },
+                  "failure.sha": {
+                    "value": null
+                  },
+                  "failure.url": {
+                    "value": null
+                  },
+                  "failure.detail": "event.observed.child"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "ask",
+        "src": "ask",
+        "input": {
+          "question": {
+            "value": "This feature stalled. Replan it with a written five whys, or drop it?"
+          },
+          "choices": {
+            "value": [
+              "replan",
+              "drop"
+            ]
+          },
+          "failure": "context.failure"
+        },
+        "onDone": [
+          {
+            "target": "planning",
+            "guard": "replan",
+            "actions": [
+              {
+                "type": "set",
+                "params": {
+                  "why": "event.output.why",
+                  "replans": {
+                    "value": 0
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "target": "dropped",
+            "guard": "drop"
+          },
+          {
+            "target": "replanning",
+            "reenter": true
+          }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "done": {
+      "type": "final",
+      "meta": {
+        "needs": [
+          "isMerged"
+        ]
+      }
+    },
+    "dropped": {
+      "type": "final"
+    }
+  },
+  "meta": {
+    "guards": {
+      "replan": [
+        {
+          "path": "event.output.choice",
+          "is": "replan"
+        },
+        "event.output.why"
+      ],
+      "drop": [
+        {
+          "path": "event.output.choice",
+          "is": "drop"
+        }
+      ],
+      "replansLeft": [
+        {
+          "path": "context.replans",
+          "below": 2
+        }
+      ],
+      "hasIssue": [
+        "context.issue.url",
+        "context.issue.expect",
+        "context.branch"
+      ],
+      "hasPlan": [
+        "context.plan"
+      ],
+      "allSliced": [
+        {
+          "path": "context.slices.at",
+          "same": "context.slices.count"
+        }
+      ],
+      "childMerged": [
+        {
+          "path": "event.observed.state",
+          "is": "done"
+        }
+      ],
+      "isMerged": [
+        "context.merge.sha"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "issue",
+        "branch"
+      ],
+      "properties": {
+        "issue": {
+          "type": "object",
+          "required": [
+            "url",
+            "expect"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expect": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "events": {
+      "child.ended": {
+        "type": "object",
+        "required": [
+          "observed"
+        ],
+        "properties": {
+          "observed": {
+            "type": "object",
+            "required": [
+              "child",
+              "state"
+            ],
+            "properties": {
+              "child": {
+                "type": "string",
+                "minLength": 1
+              },
+              "state": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "actors": {
+      "plan": {
+        "type": "object",
+        "required": [
+          "slices"
+        ],
+        "properties": {
+          "slices": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "issue"
+              ],
+              "properties": {
+                "issue": {
+                  "type": "object",
+                  "required": [
+                    "url",
+                    "expect"
+                  ],
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "expect": {
+                      "type": "array",
+                      "minItems": 1,
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "start": {
+        "type": "object"
+      },
+      "ask": {
+        "type": "object",
+        "required": [
+          "choice",
+          "by"
+        ],
+        "properties": {
+          "choice": {
+            "type": "string"
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1
+          },
+          "why": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

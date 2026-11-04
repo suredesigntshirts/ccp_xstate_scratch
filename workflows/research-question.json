@@ -1,0 +1,89 @@
+{
+  "id": "research-question",
+  "description": "Lane E: one sub-question of a research item, a child item. A researcher answers it with a finding and its sources; its failure ends the child in failed, which the parent counts toward its join.",
+  "initial": "researching",
+  "context": {
+    "question": null,
+    "finding": null,
+    "sources": null
+  },
+  "output": {
+    "finding": "context.finding",
+    "sources": "context.sources"
+  },
+  "states": {
+    "researching": {
+      "meta": {
+        "needs": [
+          "hasQuestion"
+        ]
+      },
+      "invoke": {
+        "id": "research",
+        "src": "research",
+        "input": {
+          "question": "context.question"
+        },
+        "onDone": {
+          "target": "done",
+          "actions": [
+            {
+              "type": "set",
+              "params": {
+                "finding": "event.observed.blobs.finding",
+                "sources": "event.output.sources"
+              }
+            }
+          ]
+        },
+        "onError": "failed"
+      }
+    },
+    "done": {
+      "type": "final"
+    },
+    "failed": {
+      "type": "final"
+    }
+  },
+  "meta": {
+    "guards": {
+      "hasQuestion": [
+        "context.question"
+      ]
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "question"
+      ],
+      "properties": {
+        "question": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "actors": {
+      "research": {
+        "type": "object",
+        "required": [
+          "finding",
+          "sources"
+        ],
+        "properties": {
+          "finding": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}
