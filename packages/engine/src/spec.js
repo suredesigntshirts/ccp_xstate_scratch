@@ -81,7 +81,7 @@ const bindTransition = (spec, siblings, state, transition, at) => {
   if (!target) throw new Error(`no state ${transition.target} beside the transition to it`);
   const names = [...(transition.guard ? [transition.guard] : []), ...(target.meta?.needs ?? [])];
   const actions = [transition.actions ?? []].flat();
-  const marked = actions.length ? { ...transition, actions: marks(actions, at) } : transition;
+  const marked = actions.length ? { ...transition, actions: marks(actions, Array.isArray(transition.actions) ? `${at}/actions` : null, at) } : transition;
   if (!names.length) return marked;
   const guard = ({ context, event }) => {
     const after = applyActions(context, event, actions);
@@ -90,9 +90,10 @@ const bindTransition = (spec, siblings, state, transition, at) => {
   return { ...marked, guard };
 };
 
-// Each set action followed by its wrote marker: { at: the set's JSON pointer, writes: its params }.
-const marks = (actions, at) =>
-  actions.flatMap((a, j) => (a.type === 'set' ? [a, { type: 'wrote', params: { at: `${at}/actions/${j}`, writes: a.params } }] : [a]));
+// Each set action followed by its wrote marker: { at: the set's JSON pointer, writes: its params }. `list` is the
+// pointer of the transition's actions list; null when actions is a single action, whose pointer is `${at}/actions`.
+const marks = (actions, list, at) =>
+  actions.flatMap((a, j) => (a.type === 'set' ? [a, { type: 'wrote', params: { at: list ? `${list}/${j}` : `${at}/actions`, writes: a.params } }] : [a]));
 
 // A state, and its child states, with every transition bound. Targets are sibling state names.
 // `at` is the state's JSON pointer in the workflow file, so each wrote marker can name where its set action is.

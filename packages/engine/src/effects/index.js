@@ -9,6 +9,12 @@ import { card } from './card.js';
 import { post } from './post.js';
 import { timer, cancel } from './timer.js';
 import { item } from './item.js';
+import { EFFECTS } from '../stages.js';
+
+// The actor names these handlers serve. The load check (stages.js EFFECTS) lets a workflow invoke exactly these besides
+// stages and workflows, so the two lists must agree: a handler added here and not there fails at import, loudly.
+const SERVES = ['merge', 'ask', 'post'];
+if (SERVES.join() !== EFFECTS.join()) throw new Error(`effects/index.js serves ${SERVES.join(', ')}, but stages.js EFFECTS lists ${EFFECTS.join(', ')}`);
 
 export { item, childResults, settle, openItems, pump } from './item.js';
 

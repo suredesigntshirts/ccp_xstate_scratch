@@ -37,10 +37,34 @@ test('P2: every line of every rendered prompt traces to the workflow JSON, the r
   }
 });
 
-// The string and template literals of a source file, comments dropped and ${...} left out, as measure.mjs reads them.
-// Load refusals (lines that throw or call bad(...)) are dropped too: they are thrown at load, never rendered to an agent.
+// The code of a source file without the arguments of its load refusals: every call bad(...), fail(...) or
+// new Error(...) is cut out from its name to its closing parenthesis, strings skipped while matching. They are thrown
+// at load, never rendered to an agent; matching by call site, not by line, keeps wording beside them in the scan.
+function withoutRefusals(code) {
+  let out = '';
+  let i = 0;
+  const call = /\b(?:bad|fail|new Error)\(/g;
+  for (let m; (m = call.exec(code)); i = call.lastIndex) {
+    out += code.slice(i, m.index);
+    let depth = 1;
+    let j = call.lastIndex;
+    while (depth && j < code.length) {
+      const c = code[j];
+      if (c === "'" || c === '"' || c === '`') {
+        for (j++; j < code.length && code[j] !== c; j++) if (code[j] === '\\') j++;
+      } else if (c === '(') depth++;
+      else if (c === ')') depth--;
+      j++;
+    }
+    call.lastIndex = j;
+  }
+  return out + code.slice(i);
+}
+
+// The string and template literals of a source file, comments and load refusals dropped and ${...} left out, as
+// measure.mjs reads them.
 function literals(src) {
-  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l) && !/\bbad\(|throw new Error/.test(l)).join('\n');
+  const code = withoutRefusals(src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n'));
   const out = [];
   for (const m of code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
     out.push((m[1] ?? m[2] ?? m[3]).replace(/\$\{[^}]*\}/g, ''));

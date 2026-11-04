@@ -241,8 +241,13 @@ export async function offer(host, inputs, handlers = {}) {
     results.push({ outcome: result.outcome, row: result.row });
     if (result.outcome !== 'applied') continue;
     // A run's result (or error) just moved into the item: its handler may record where it went (stage.json).
+    // A run this transition stopped (its state was left) ends too, with no output: the record says so.
     const ended = input.run && host.effects.get(input.run)?.effect;
     if (ended && handlers.run?.ended) await handlers.run.ended(ended, result.row);
+    for (const stop of result.effects ?? []) {
+      const run = stop.type === 'stop' && host.effects.get(stop.run)?.effect;
+      if (run && handlers.run?.ended) await handlers.run.ended(run, result.row);
+    }
     queue.push(...(await runEffects(host, handlers)).follow);
   }
   return results;

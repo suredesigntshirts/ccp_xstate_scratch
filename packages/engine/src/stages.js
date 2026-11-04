@@ -8,9 +8,10 @@
 // every stage alike: the part headings, the data rule, the worktree limit and the return mechanics.
 //
 // This file is the only place a prompt is assembled (sections, render), the chart walk that says which invoke reads
-// which context path and which set action writes it (chart, readers), the load-time check that refuses a workflow
-// whose stages or wiring are broken (checkStages), and the accept-time check that a field marked covers covers every
-// line it names (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
+// which context path, which set action writes it and which states follow which (chart, readers), what a context path
+// can hold on entering a state (shapes), the load-time check that refuses a workflow whose stages, coverage or wiring
+// are broken (checkStages), and the accept-time check that a field marked covers covers every line it names
+// (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
 
 export const PARTS = Object.freeze(['rules', 'inputs']);
 /** The input that fills the Task part. Every stage declares it; it is never shown under Inputs. */
@@ -95,139 +96,277 @@ export const assemble = (parts) =>
 /** The one prompt of a model-stage run. */
 export const render = (run) => assemble(sections(run));
 
-// ---- The chart: which invoke reads which context path, and which set action writes which
+// ---- The chart: which invoke reads which context path, which set action writes which, and which states follow which
 
 /** a and b name the same value, or one holds the other. */
 export const overlap = (a, b) => a === b || a.startsWith(`${b}.`) || b.startsWith(`${a}.`);
 
-// Every { type: 'set', params } under a state's own transitions (not its child states, invokes or meta), with its
-// pointer; `src` is the invoke whose onDone or onError holds it, if any.
-const setsIn = (node, at, out, src = null) => {
-  if (Array.isArray(node)) node.forEach((x, i) => setsIn(x, `${at}/${i}`, out, src));
-  else if (isObject(node)) {
-    if (node.type === 'set' && isObject(node.params)) {
-      for (const [path, from] of Object.entries(node.params)) out.push({ set: at, path, from, ...(src ? { src } : {}) });
-      return;
-    }
-    for (const [k, v] of Object.entries(node)) if (!['states', 'meta', 'input', 'invoke'].includes(k)) setsIn(v, `${at}/${esc(k)}`, out, src);
-  }
-  return out;
-};
-
 /**
- * The workflow's wiring, read from its JSON: invokes [{ at, state, id, src, input }] (state is the state's path) and
- * writes [{ set, path, from, src? }], every context path a set action writes, its source, the set's JSON pointer, and
- * the invoke whose result it takes (src), when it sits in an onDone or onError.
+ * The workflow's wiring, read from its JSON:
+ * - invokes [{ at, state, id, src, input }]: state is the state's path, a list of names;
+ * - writes [{ set, path, from, state, after, event?, src? }]: every context path a set action writes, its source, the
+ *   set's JSON pointer, the state whose transition holds it, the state the transition enters (after; the same state
+ *   for a transition without a target), the outside event it answers, and the invoke whose result it takes (src);
+ * - transitions [{ at, state, after, guard, event?, src? }];
+ * - reach(key): the states (dotted paths) the item can be in after entering state key, key included.
+ * Targets are sibling state names, as spec.js binds them.
  */
 export function chart(spec) {
   const invokes = [];
   const writes = [];
+  const transitions = [];
+  const nodes = new Map();
   const walk = (node, at, path) => {
     for (const [name, st] of Object.entries(node.states ?? {})) {
       const here = `${at}/states/${esc(name)}`;
       const p = [...path, name];
+      const key = p.join('.');
+      nodes.set(key, st);
+      const add = (ts, where, extra) => {
+        const many = Array.isArray(ts);
+        [ts].flat().forEach((t, i) => {
+          const tr = typeof t === 'string' ? { target: t } : t;
+          if (!isObject(tr)) return;
+          const tat = many ? `${where}/${i}` : where;
+          const after = tr.target ? [...path, tr.target].join('.') : key;
+          transitions.push({ at: tat, state: key, after, guard: tr.guard ?? null, ...extra });
+          const acts = tr.actions == null ? [] : Array.isArray(tr.actions) ? tr.actions.map((a, j) => [a, `${tat}/actions/${j}`]) : [[tr.actions, `${tat}/actions`]];
+          for (const [a, aat] of acts) {
+            if (!isObject(a) || a.type !== 'set' || !isObject(a.params)) continue;
+            for (const [wp, from] of Object.entries(a.params)) writes.push({ set: aat, path: wp, from, state: key, after, ...extra });
+          }
+        });
+      };
+      for (const [ev, ts] of Object.entries(st.on ?? {})) add(ts, `${here}/on/${esc(ev)}`, { event: ev });
+      for (const [d, ts] of Object.entries(st.after ?? {})) add(ts, `${here}/after/${esc(d)}`, {});
       const list = st.invoke == null ? [] : Array.isArray(st.invoke) ? st.invoke.map((v, i) => [v, `${here}/invoke/${i}`]) : [[st.invoke, `${here}/invoke`]];
       for (const [inv, iat] of list) {
         invokes.push({ at: iat, state: p, id: inv.id, src: inv.src, input: inv.input ?? {} });
-        setsIn(inv, iat, writes, inv.src);
+        if (inv.onDone != null) add(inv.onDone, `${iat}/onDone`, { src: inv.src });
+        if (inv.onError != null) add(inv.onError, `${iat}/onError`, { src: inv.src });
       }
-      setsIn(st, here, writes);
       walk(st, here, p);
     }
   };
   walk(spec, '', []);
-  return { invokes, writes };
+  // In a state, its ancestors' transitions apply too; entering a state enters its ancestors and descendants.
+  const kin = (key) => [...nodes.keys()].filter((k) => k === key || k.startsWith(`${key}.`) || key.startsWith(`${k}.`));
+  const cache = new Map();
+  const reach = (key) => {
+    if (!cache.has(key)) {
+      const seen = new Set();
+      const todo = kin(key);
+      while (todo.length) {
+        const k = todo.pop();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        for (const t of transitions) if (k === t.state || k.startsWith(`${t.state}.`)) todo.push(...kin(t.after));
+      }
+      cache.set(key, seen);
+    }
+    return cache.get(key);
+  };
+  return { invokes, writes, transitions, nodes, reach };
 }
 
-/** The invokes in the chart that read a context path (or a part of it, or a whole that holds it). */
-export const readers = (spec, path) =>
-  chart(spec).invokes.flatMap((inv) => Object.entries(inv.input)
+/**
+ * The invokes in the chart that read a context path (or a part of it, or a whole that holds it). With `after` (a
+ * state, as a dotted path), only those the item can reach from that state: the ones a write on entering it can feed.
+ */
+export const readers = (spec, path, after = null) => {
+  const { invokes, reach } = chart(spec);
+  const near = after == null ? null : reach(after);
+  return invokes.filter((inv) => !near || near.has(inv.state.join('.'))).flatMap((inv) => Object.entries(inv.input)
     .filter(([, from]) => typeof from === 'string' && from.startsWith('context.') && overlap(from.slice(8), path))
     .map(([name, from]) => ({
       actor: inv.src, invoke: inv.id, state: inv.state.join('.'), input: name, reads: from, at: `${inv.at}/input/${esc(name)}`,
       kind: isStage(spec.meta?.actors?.[inv.src]) ? 'stage' : EFFECTS.includes(inv.src) ? 'effect' : 'workflow'
     })));
+};
+
+// ---- Shapes: what a schema says is at a path
+
+const at = (value, path) => String(path).split('.').reduce((v, k) => v?.[k], value);
+const isLiteral = (from) => isObject(from) && 'value' in from;
+/** A value the workflow does not describe further: it may hold anything. */
+const OPEN = Object.freeze({ open: true });
+const SCALAR = ['string', 'number', 'integer', 'boolean', 'null'];
+const deref = (s, defs) => {
+  while (isObject(s) && s.$ref) s = defs[s.$ref.slice(1)];
+  return s;
+};
+
+/**
+ * The schema node at segs below a schema, $refs resolved: properties by name, array items by index. OPEN where the
+ * schema says nothing further (a node with no properties and no items, or a field the host stamps on a ref { url, at }),
+ * and undefined where the schema has no such value (an unknown property, or anything below a scalar).
+ */
+export const nodeAt = (schema, defs, segs) => {
+  let s = schema;
+  for (const seg of segs) {
+    s = deref(s, defs);
+    if (!isObject(s) || s.open) return OPEN;
+    const props = s.properties;
+    if (isObject(props) && Object.hasOwn(props, seg)) s = props[seg];
+    else if (isObject(props) && props.url && props.at && STAMPED.includes(seg)) return OPEN;
+    else if (s.items && /^\d+$/.test(seg)) s = s.items;
+    else if (isObject(props) || s.items || SCALAR.includes(s.type) || 'enum' in s || 'const' in s) return undefined;
+    else return OPEN;
+  }
+  s = deref(s, defs);
+  return isObject(s) ? s : OPEN;
+};
+
+/**
+ * What a context path can hold when the item enters a state, as a list of shapes (schema nodes, OPEN, or { value }
+ * for a literal); empty when nothing feeds it there. A path is fed by the item's input (meta.input), a non-null
+ * context default at that very path, or a set action whose transition can reach the state and that writes the path,
+ * a part of it, or a whole that holds it. A whole feeds the rest of the path only if its source has it: an invoke's
+ * output by that actor's output schema, an outside event by meta.events, a literal by its value, a copy of another
+ * context path by what feeds that path where the copy is made; an error (event.error) has no parts.
+ */
+export function shapes(spec, path, state, wiring = chart(spec), seen = new Set()) {
+  const defs = spec.meta?.schemas ?? {};
+  const key = `${path}@${state}`;
+  if (seen.has(key)) return [];
+  seen.add(key);
+  const out = [];
+  if (isObject(spec.meta?.input)) {
+    const s = nodeAt(spec.meta.input, defs, path.split('.'));
+    if (s !== undefined) out.push(s);
+  }
+  const given = at(spec.context, path);
+  if (given != null) out.push({ value: given });
+  const source = (w, rest) => {
+    const from = w.from;
+    if (isLiteral(from)) {
+      const v = rest.length ? at(from.value, rest.join('.')) : from.value;
+      return v == null ? [] : [{ value: v }];
+    }
+    if (typeof from !== 'string') return [];
+    if (from.startsWith('context.')) return shapes(spec, [from.slice(8), ...rest].join('.'), w.state, wiring, seen);
+    const segs = from.split('.');
+    if (segs[0] !== 'event') return [];
+    let s;
+    if (segs[1] === 'output' && w.src) s = nodeAt(spec.meta?.actors?.[w.src], defs, [...segs.slice(2), ...rest]);
+    else if (segs[1] === 'error' && w.src) s = segs.length === 2 && !rest.length ? OPEN : undefined;
+    else if (w.event && isObject(spec.meta?.events?.[w.event])) s = nodeAt(spec.meta.events[w.event], defs, [...segs.slice(1), ...rest]);
+    else s = rest.length ? undefined : OPEN;
+    return s === undefined ? [] : [s];
+  };
+  for (const w of wiring.writes) {
+    if (!overlap(w.path, path) || !wiring.reach(w.after).has(state)) continue;
+    if (w.path.startsWith(`${path}.`)) {
+      if (source(w, []).length) out.push(OPEN); // a part written: the path holds an object with that part
+    } else {
+      out.push(...source(w, w.path === path ? [] : path.slice(w.path.length + 1).split('.')));
+    }
+  }
+  return out;
+}
 
 // ---- The load check
 
-const at = (value, path) => String(path).split('.').reduce((v, k) => v?.[k], value);
-const prefixes = (path) => path.split('.').map((_, i, all) => all.slice(0, i + 1).join('.'));
-const isLiteral = (from) => isObject(from) && 'value' in from;
+const PASS = /^pass$/i;
+const listsPass = (s) => isObject(s) && [...(Array.isArray(s.enum) ? s.enum : []), ...('const' in s ? [s.const] : [])].some((v) => typeof v === 'string' && PASS.test(v));
+const fromOutput = (from) => typeof from === 'string' && /^event\.output(\.|$)/.test(from);
 
-// Whether an output schema has a value at segs (a path below the output): properties by name, array items by index;
-// a node with neither is open. A ref { url, at } also has the fields the host stamps on it (STAMPED).
-const schemaHas = (schema, defs, segs) => {
-  let s = schema;
-  for (const seg of segs) {
-    while (isObject(s) && s.$ref) s = defs[s.$ref.slice(1)];
-    if (!isObject(s)) return true;
-    const props = s.properties;
-    if (isObject(props) && Object.hasOwn(props, seg)) s = props[seg];
-    else if (isObject(props) && props.url && props.at && STAMPED.includes(seg)) return true;
-    else if (s.items && /^\d+$/.test(seg)) s = s.items;
-    else if (isObject(props) || s.items) return false;
-    else return true;
+/**
+ * Why a stage can say PASS ({ field } or { guard, path }), or null. It can when an output field's schema ($refs resolved) lists PASS, in any case,
+ * or when the chart branches on PASS from its output: a guard with an `in` condition holding PASS that reads a context
+ * path the stage's result is written to, or event.output on a transition that takes the stage's result.
+ */
+function saysPass(spec, src, wiring) {
+  const st = spec.meta.actors[src];
+  const defs = spec.meta?.schemas ?? {};
+  for (const name of Object.keys(st.properties)) if (listsPass(nodeAt(st, defs, [name]))) return { field: name };
+  for (const [guard, conds] of Object.entries(spec.meta?.guards ?? {})) {
+    for (const c of [conds].flat()) {
+      if (!isObject(c) || !Array.isArray(c.in) || !c.in.some((v) => typeof v === 'string' && PASS.test(v))) continue;
+      const p = String(c.path);
+      const used = (t) => t.src === src && (t.guard === guard || (wiring.nodes.get(t.after)?.meta?.needs ?? []).includes(guard));
+      const hit = p.startsWith('context.')
+        ? wiring.writes.some((w) => w.src === src && fromOutput(w.from) && overlap(w.path, p.slice(8)))
+        : fromOutput(p) && wiring.transitions.some(used);
+      if (hit) return { guard, path: p };
+    }
   }
-  return true;
-};
+  return null;
+}
 
 /**
  * The spec, or a throw naming the first breach. `workflows` lists the workflow names an invoke may start as a child
  * item; without it, an invoke that is no stage and no effect is not checked. Checks, in order:
  * - every stage has its parts: rules (non-empty text), inputs (each with a meaning, `task` among them) and an output
- *   schema; a covers path starts at a declared input; an output whose result can say PASS declares covers;
+ *   schema;
+ * - covers: a field marked covers is a list of { line, result } entries, and its covers path names a list in the
+ *   input the stage is given (through its wiring); a stage that can say PASS (saysPass) declares covers;
  * - every invoke names a stage, a host effect or a workflow (a workflow pinned before the contract is refused here);
- * - every stage invoke gives exactly its declared inputs, each a literal or a context path that the item's input,
- *   a non-null context default or some set action in the chart writes; a literal task is non-empty text.
+ * - every stage invoke gives exactly its declared inputs, and every invoke input (stage, effect or workflow) is a
+ *   literal or a context path that something feeds when the invoke's state is entered (shapes); a literal task is
+ *   non-empty text.
  */
 export function checkStages(spec, { workflows = null } = {}) {
   const actors = spec.meta?.actors ?? {};
+  const defs = spec.meta?.schemas ?? {};
   const bad = (src, what) => { throw new Error(`${spec.id}: stage ${src} ${what}`); };
+  const wiring = chart(spec);
   for (const src of stagesOf(spec)) {
     const st = actors[src];
     for (const p of PARTS) if (!(p in st)) bad(src, `lacks ${p}`);
     if (!Array.isArray(st.rules) || !st.rules.length || !st.rules.every(text)) bad(src, 'rules are empty');
     if (!isObject(st.inputs)) bad(src, 'inputs are invalid');
     for (const [name, meaning] of Object.entries(st.inputs)) if (!text(meaning)) bad(src, `input ${name} lacks meaning`);
-    if (!Object.hasOwn(st.inputs, TASK)) bad(src, `lacks input ${TASK}`);
+    if (!Object.hasOwn(st.inputs, TASK)) bad(src, 'task' in st ? `has a task part, the form before this contract: declare an input ${TASK} and wire it in the invoke` : `lacks input ${TASK}`);
     if (!isObject(st.properties)) bad(src, 'lacks output schema');
+  }
+  for (const inv of wiring.invokes) {
+    const st = actors[inv.src];
+    if (isStage(st)) {
+      if (Object.keys(inv.input).sort().join() !== Object.keys(st.inputs).sort().join()) bad(inv.src, `invoke ${inv.id} inputs differ`);
+      continue;
+    }
+    if (EFFECTS.includes(inv.src) || !workflows || workflows.includes(inv.src)) continue;
+    const lacks = PARTS.filter((p) => !(isObject(st) && p in st)).join(' and ');
+    throw new Error(`${spec.id}: actor ${inv.src}, invoked at ${inv.at}, is not a stage (it lacks ${lacks}), a host effect (${EFFECTS.join(', ')}) or a workflow. A workflow pinned before the stage contract cannot run: finish its items on the engine that started them, or migrate it`);
+  }
+  for (const src of stagesOf(spec)) {
+    const st = actors[src];
+    const mine = wiring.invokes.filter((inv) => inv.src === src);
     for (const [name, p] of Object.entries(st.properties)) {
-      if (p?.covers != null && !Object.hasOwn(st.inputs, String(p.covers).split('.')[0])) bad(src, `output ${name} covers nothing`);
+      if (p?.covers == null) continue;
+      const [head, ...rest] = String(p.covers).split('.');
+      if (!Object.hasOwn(st.inputs, head)) bad(src, `output ${name} covers nothing`);
+      const item = deref(nodeAt(st, defs, [name, '0']), defs);
+      if (!isObject(item?.properties?.line) || !isObject(item?.properties?.result)) bad(src, `output ${name} covers ${p.covers}, but is not a list of { line, result } entries`);
+      for (const inv of mine) {
+        const from = inv.input[head];
+        const got = isLiteral(from) ? [{ value: at(from.value, rest.join('.')) }]
+          : typeof from === 'string' && from.startsWith('context.') ? shapes(spec, [from.slice(8), ...rest].join('.'), inv.state.join('.'), wiring) : [];
+        const list = got.some((s) => (s.value !== undefined ? Array.isArray(s.value) : s.type === 'array' || isObject(s.items)));
+        if (!list) bad(src, `output ${name} covers ${p.covers}, which is not a list in the input invoke ${inv.id} gives (at ${inv.at})`);
+      }
     }
     // A verdict the host cannot check line by line is a verdict nobody checks: coverage cannot be left out.
-    const says = st.properties.result?.enum;
-    if (Array.isArray(says) && says.includes('PASS') && !Object.values(st.properties).some((p) => p?.covers != null)) {
-      bad(src, 'output result can say PASS, but no output field declares covers');
-    }
+    const says = Object.values(st.properties).some((p) => p?.covers != null) ? null : saysPass(spec, src, wiring);
+    if (says?.field) bad(src, `output ${says.field} can say PASS, but no output field declares covers`);
+    if (says) bad(src, `output reaches guard ${says.guard}, which tests ${says.path} for PASS, but no output field declares covers`);
   }
-  const { invokes, writes } = chart(spec);
-  // A write feeds a path when it writes that path, a part of it, or a whole that holds it; a whole taken from an
-  // invoke's output must have the rest of the path in that actor's output schema (or be a field the host stamps).
-  const feeds = (w, path) => {
-    if (!overlap(w.path, path) || (isLiteral(w.from) && w.from.value == null)) return false;
-    if (!path.startsWith(`${w.path}.`) || !w.src || typeof w.from !== 'string' || !/^event\.output(\.|$)/.test(w.from)) return true;
-    const below = [...w.from.split('.').slice(2), ...path.slice(w.path.length + 1).split('.')];
-    return schemaHas(actors[w.src], spec.meta?.schemas ?? {}, below);
-  };
-  const fed = (path) =>
-    Object.hasOwn(spec.meta?.input?.properties ?? {}, path.split('.')[0]) ||
-    prefixes(path).some((q) => at(spec.context, q) != null) ||
-    writes.some((w) => feeds(w, path));
-  for (const inv of invokes) {
+  for (const inv of wiring.invokes) {
     const st = actors[inv.src];
-    if (!isStage(st)) {
-      if (EFFECTS.includes(inv.src) || !workflows || workflows.includes(inv.src)) continue;
-      const lacks = PARTS.filter((p) => !(isObject(st) && p in st)).join(' and ');
-      throw new Error(`${spec.id}: actor ${inv.src}, invoked at ${inv.at}, is not a stage (it lacks ${lacks}), a host effect (${EFFECTS.join(', ')}) or a workflow. A workflow pinned before the stage contract cannot run: finish its items on the engine that started them, or migrate it`);
-    }
-    if (Object.keys(inv.input).sort().join() !== Object.keys(st.inputs).sort().join()) bad(inv.src, `invoke ${inv.id} inputs differ`);
+    const stage = isStage(st);
+    const who = stage ? `stage ${inv.src}` : `${EFFECTS.includes(inv.src) ? 'effect' : 'workflow'} ${inv.src}`;
+    const fail = (what) => { throw new Error(`${spec.id}: ${who} ${what}`); };
+    const state = inv.state.join('.');
     for (const [name, from] of Object.entries(inv.input)) {
       if (isLiteral(from)) {
-        if (name === TASK && !text(from.value)) bad(inv.src, 'task is empty');
+        if (stage && name === TASK && !text(from.value)) fail('task is empty');
         continue;
       }
-      if (typeof from !== 'string' || !from.startsWith('context.')) bad(inv.src, `input ${name} reads ${JSON.stringify(from)}: an input is a context path or a literal`);
-      if (!fed(from.slice(8))) bad(inv.src, `input ${name} reads ${from}, which nothing writes: no set action, no item input and no context default gives it`);
+      if (typeof from !== 'string' || !from.startsWith('context.')) fail(`input ${name} reads ${JSON.stringify(from)}: an input is a context path or a literal`);
+      if (!shapes(spec, from.slice(8), state, wiring).length) {
+        fail(`input ${name} reads ${from}, which nothing writes before ${state}: no item input, context default or set action on a way into ${state} gives it`);
+      }
     }
   }
   return spec;
@@ -235,19 +374,25 @@ export function checkStages(spec, { workflows = null } = {}) {
 
 // ---- The accept-time check
 
-/** Why a result breaks a field marked covers in its schema, or null. */
+/**
+ * Why a result breaks a field marked covers in its schema, or null. Every entry's line is one of the covered lines,
+ * each exactly once, and any top-level field whose value is the word PASS or FAIL (any case) agrees with the entries.
+ */
 export function uncovered(schema, input, result) {
+  const word = (v) => String(v).toUpperCase() === 'PASS';
   for (const [field, f] of Object.entries(schema?.properties ?? {})) {
     if (f?.covers == null) continue;
-    const want = at(input, f.covers) ?? [];
+    const want = at(input, f.covers);
+    if (!Array.isArray(want)) return `${f.covers} is not a list`;
     const entries = Array.isArray(result?.[field]) ? result[field] : [];
     const got = entries.map((e) => e?.line);
     const miss = want.find((l) => !got.includes(l));
     if (miss !== undefined) return `result.${field} lacks ${JSON.stringify(miss)}`;
     const extra = got.find((l, i) => !want.includes(l) || got.indexOf(l) !== i);
     if (extra !== undefined) return `result.${field} repeats or adds ${JSON.stringify(extra)}`;
-    if (result && 'result' in result && (result.result === 'PASS') !== entries.every((e) => e.result === 'PASS')) {
-      return `result.result disagrees with result.${field}`;
+    const all = entries.every((e) => word(e?.result));
+    for (const [k, v] of Object.entries(result ?? {})) {
+      if (typeof v === 'string' && /^(pass|fail)$/i.test(v) && word(v) !== all) return `result.${k} disagrees with result.${field}`;
     }
   }
   return null;

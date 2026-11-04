@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runDir } from '../../src/actors.js';
 import { assemble, DATA_RULE, WORKTREE_RULE, returnLine, runLine } from '../../src/stages.js';
-import { makeWorld, ISSUE, BRIEFS, builds, verifies, tapWake, suiteWake } from './world.js';
+import { makeWorld, ISSUE, BRIEFS, builds, verifies, tapWake, suiteWake, offer, pending } from './world.js';
 
 const sha256 = (t) => createHash('sha256').update(t).digest('hex');
 const FILE = new URL('../../../../workflows/quick-fix.json', import.meta.url);
@@ -130,7 +130,7 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.deepEqual(target.amended.map((a) => [a.path, a.by.kind, a.by.event]),
       [['pr.at', 'event', 'github.check_suite.completed'], ['pr.green', 'literal', 'github.check_suite.completed']], 'the suite event moved the head and set green');
     const checkout = input('verify', 'checkout').producer;
-    assert.deepEqual([checkout.kind, checkout.run, checkout.field], ['stage', runs.build, 'pr.checkout'], 'checkout: stamped by the host on build\'s pr');
+    assert.deepEqual([checkout.kind, checkout.stamped, checkout.run, checkout.actor, checkout.field], ['host', 'checkout', runs.build, 'build', 'pr.checkout'], 'checkout: stamped by the host on build\'s pr, not written by the build agent');
     assert.equal(input('verify', 'checkout').value, stamped(runs.build).pr.checkout);
 
     // Where each output went, and which invokes in the chart read it.
@@ -144,6 +144,76 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.deepEqual(verify.wrote.map((x) => [x.path, x.from]), [['verdict', 'event.output']]);
     assert.ok(verify.wrote[0].readBy.some((r) => r.actor === 'build' && r.input === 'verdict'), 'a FAIL verdict would reach the next build');
     assert.equal(verify.ended.state, '"awaitingMerge"');
+  } finally {
+    await w.close();
+  }
+});
+
+test('S4: a FAIL loop, a head move and a replan: every producer is the run that really wrote it, and a stopped run says so', async () => {
+  const w = await makeWorld();
+  const R = {};
+  const rec = (id) => JSON.parse(readFileSync(join(runDir(w.root, id), 'stage.json'), 'utf8'));
+  const input = (id, name) => rec(id).inputs.find((i) => i.name === name);
+  try {
+    await w.start('x', 'quick-fix', { issue: ISSUE });
+    R.brief1 = w.openRun('x', 'brief').id;
+    assert.ok((await w.agent('x', 'brief', () => BRIEFS)).accepted);
+    await w.drive('x');
+    R.build1 = w.openRun('x', 'build').id;
+    assert.ok((await w.agent('x', 'build', builds(w, 1))).accepted);
+    await w.drive('x');
+    R.verify1 = w.openRun('x', 'verify').id;
+    assert.ok((await w.agent('x', 'verify', verifies(w, 'FAIL'))).accepted);
+    await w.drive('x');
+    assert.equal(w.host('x').snapshot.value, 'building');
+    R.build2 = w.openRun('x', 'build').id;
+    assert.ok((await w.agent('x', 'build', builds(w, 1), 'b2')).accepted);
+    await w.drive('x');
+    assert.equal(w.host('x').snapshot.value, 'verifying');
+    R.stopped = w.openRun('x', 'verify').id;
+    const moved = w.commit(w.repo, 'moved');
+    w.gh.push(1, moved);
+    w.gh.green(moved);
+    await w.drive('x', suiteWake(moved, 1));
+    assert.equal(w.host('x').snapshot.value, 'reverifying');
+    R.verify2 = w.openRun('x', 'verify').id;
+    assert.notEqual(R.verify2, R.stopped);
+    assert.ok((await w.agent('x', 'verify', verifies(w, 'FAIL'), 'v2')).accepted);
+    await w.drive('x');
+    assert.equal(w.host('x').snapshot.value, 'replanning');
+    const h = w.host('x');
+    const ask = pending(h).runs.find((r) => r.actor === 'ask');
+    await offer(h, [{ event: { type: `xstate.done.actor.${ask.invoke}`, output: { choice: 'replan', by: 'person', why: 'WHY' } }, run: ask.id, source: { system: 'hearth', ref: 'c:typed' } }], w.handlersFor(h));
+    await w.drive('x');
+    R.brief2 = w.openRun('x', 'brief').id;
+    assert.ok((await w.agent('x', 'brief', () => ({ builder: 'B2', verifier: 'V2' }), 'br2')).accepted);
+    await w.drive('x');
+    R.build3 = w.openRun('x', 'build').id;
+
+    const by = (id, name) => { const p = input(id, name).producer; return [p.kind, p.run ?? null, p.field ?? null]; };
+    assert.deepEqual(by(R.build2, 'verdict'), ['stage', R.verify1, null], 'build2 fixes verify1\'s verdict');
+    assert.deepEqual(by(R.build2, 'previous'), ['stage', R.build1, 'pr']);
+    assert.deepEqual(by(R.build2, 'task'), ['stage', R.brief1, 'builder']);
+    assert.deepEqual(by(R.verify2, 'target'), ['stage', R.build2, 'pr']);
+    assert.deepEqual(input(R.verify2, 'target').amended.map((a) => [a.path, a.by.kind]), [['pr.at', 'event'], ['pr.green', 'literal']], 'the head move amended the target');
+    assert.deepEqual(by(R.verify2, 'checkout'), ['host', R.build2, 'pr.checkout']);
+    assert.deepEqual(by(R.brief2, 'why'), ['effect', ask.id, 'why'], 'the typed why came from the ask');
+    assert.deepEqual(by(R.build3, 'task'), ['stage', R.brief2, 'builder']);
+    assert.equal(input(R.build3, 'task').value, 'B2');
+    for (const k of ['previous', 'verdict', 'failure']) {
+      const p = input(R.build3, k).producer;
+      assert.equal(p.kind, 'literal', `build3 ${k}: reset by the replan`);
+      assert.ok(p.at.startsWith('/states/replanning/invoke/onDone/0/actions/0/params/'), `build3 ${k}: at ${p.at}`);
+    }
+    // The verify run the head move stopped: ended, marked stopped, with no output and nothing written.
+    const gone = rec(R.stopped);
+    assert.equal(gone.ended?.stopped, true, 'a stopped run says so');
+    assert.equal(gone.ended.state, '"reverifying"');
+    assert.ok(!('output' in gone) && gone.wrote.length === 0);
+    // verify1's FAIL went into building, and only invokes reachable from there are listed as its readers.
+    const v1 = rec(R.verify1);
+    assert.equal(v1.wrote[0].into, 'building');
+    assert.ok(v1.wrote[0].readBy.some((r) => r.actor === 'build' && r.input === 'verdict'));
   } finally {
     await w.close();
   }

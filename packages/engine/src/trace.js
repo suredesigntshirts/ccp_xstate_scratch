@@ -10,11 +10,13 @@
 // A producer is the last write to the path an input reads (or to a whole that holds it): the run and output field of
 // the stage that returned it ({ kind: 'stage', run, actor, field }), a child workflow or host effect likewise, the
 // item's input ({ kind: 'initial', field }), a literal in the workflow ({ kind: 'literal', at }), an outside event
-// ({ kind: 'event', event, source, field }), a copy of another path ({ kind: 'copy', from, of }), or the context
-// default ({ kind: 'default', at }). Later writes to parts of the path are listed as amended. Every write is in the
+// ({ kind: 'event', event, source, field }), a copy of another path ({ kind: 'copy', from, of }), the host for a field
+// it stamps on a ref a run returned ({ kind: 'host', stamped, run, actor, field }), or the context default
+// ({ kind: 'default', at }). Later writes to parts of the path are listed as amended. A run whose state was left before
+// it returned (its stop) ends with ended.stopped and no output. Every write is in the
 // journal: the host puts each applied transition's writes in its engine.transition row (host.js writesOf), so the
 // record is derived from the journal and the workflow JSON alone. Nothing here imports XState.
-import { chart, esc, isStage, EFFECTS, readers } from './stages.js';
+import { chart, esc, isStage, EFFECTS, readers, STAMPED } from './stages.js';
 
 const isObject = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
 const kindOf = (spec, actor) => (isStage(spec.meta?.actors?.[actor]) ? 'stage' : EFFECTS.includes(actor) ? 'effect' : 'workflow');
@@ -33,6 +35,9 @@ export function producerOf(log, path, spec) {
     const rest = path.slice(log[base].path.length + 1);
     const by = log[base].by;
     producer = rest ? (['stage', 'effect', 'workflow', 'initial'].includes(by.kind) ? { ...by, field: join(by.field, rest) } : { ...by, part: rest }) : by;
+    // A field the host stamps on a ref the run returned ({ url, at }): the host wrote it at accept, not the run.
+    const last = rest.split('.').pop();
+    if (by.run && STAMPED.includes(last)) producer = { kind: 'host', stamped: last, run: by.run, actor: by.actor, field: producer.field, transition: by.transition, at: by.at };
   } else if (!Object.hasOwn(spec?.context ?? {}, top)) {
     producer = { kind: 'none' };
   }
@@ -124,14 +129,23 @@ export function stageRecord({ spec, run, parts, promptHash, value, rows, transit
   };
 }
 
-/** The ended half: what the applied done or error transition `row` took from the run, and who reads it next. */
+/**
+ * The ended half: what the applied done or error transition `row` took from the run, and who reads it next: the
+ * invokes in the chart that read a written path and that the item can reach from the state the transition entered.
+ * A row that is not the run's own done or error left the run's state and stopped it: ended says stopped, and
+ * nothing came out.
+ */
 export function endRecord(record, spec, row) {
-  const { event, transition, writes = [] } = row.payload;
+  const { event, transition, writes = [], run } = row.payload;
+  const ended = { transition, event: event.type, state: row.state };
+  if (run !== record.run) return { ...record, ended: { ...ended, stopped: true }, wrote: [] };
   const out = (w) => typeof w.from === 'string' && (w.from === 'event.output' || w.from.startsWith('event.output.') || w.from === 'event.error');
+  const sets = chart(spec).writes;
+  const after = (w) => sets.find((x) => x.set === w.set && x.path === w.path)?.after ?? null;
   return {
     ...record,
-    ended: { transition, event: event.type, state: row.state },
+    ended,
     ...(event.type.startsWith('xstate.error.') ? { error: event.error ?? null } : { output: event.output ?? null }),
-    wrote: writes.filter(out).map((w) => ({ path: w.path, from: w.from, at: paramAt(w), readBy: readers(spec, w.path) }))
+    wrote: writes.filter(out).map((w) => ({ path: w.path, from: w.from, at: paramAt(w), into: after(w), readBy: readers(spec, w.path, after(w)) }))
   };
 }
