@@ -9,9 +9,10 @@ import { card } from './card.js';
 import { post } from './post.js';
 import { timer, cancel } from './timer.js';
 
-export { github, GitHubError } from './github.js';
+export { github, GitHubError, fetchText } from './github.js';
 export { prRef } from './merge.js';
 export { relay, recordCard, cardFile } from './relay.js';
+export { items } from './items.js';
 
 /**
  * Handlers for runEffects: { run, timer, cancel }. `github` is a client from github.js; `hearth` ({ card, post,
@@ -19,8 +20,9 @@ export { relay, recordCard, cardFile } from './relay.js';
  * the wake a timer needs. `actors` adds run handlers by actor name. A hearth with ready(effect) (relay.js) holds a
  * card or post until it says the thread side is done.
  */
-export function handlers({ github, hearth = null, clock = {}, actors = {} } = {}) {
+export function handlers({ github, hearth = null, clock = {}, actors = {}, items = null } = {}) {
   const byActor = {
+    ...(items && { items }),
     ...(github && { merge: merge({ github }) }),
     ...(hearth && { ask: card({ hearth }), post: post({ hearth }) }),
     ...actors

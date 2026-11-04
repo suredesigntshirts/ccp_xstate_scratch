@@ -1,0 +1,141 @@
+{
+  "id": "research",
+  "description": "Question to verified, published report. A root item splits the question into leaf items that each answer with sources the host fetches; the root writes the report from what the leaves found, a verifier checks it against the host's copies of the sources, and the person approves the post.",
+  "initial": "start",
+  "output": { "question": "facts.input.v.question", "answer": "facts.answer.v", "sources": "facts.answer.seen.sources", "report": "facts.report.v", "published": "facts.published.v", "attempt": "facts.attempt.v" },
+  "states": {
+    "start": {
+      "always": [{ "target": "answering", "guard": "isLeaf" }, { "target": "planning" }]
+    },
+    "planning": {
+      "invoke": { "id": "plan", "src": "brief", "input": { "input": "facts.input.v" }, "onDone": "fanning", "onError": "replanning" }
+    },
+    "fanning": {
+      "meta": { "needs": ["hasQuestions"] },
+      "invoke": {
+        "id": "answers",
+        "src": "items",
+        "input": { "workflow": { "value": "research" }, "each": "facts.plan.v.questions", "as": { "value": "question" }, "leaf": { "value": true } },
+        "onDone": ["composing", "replanning"]
+      }
+    },
+    "answering": {
+      "invoke": {
+        "id": "answer",
+        "src": "build",
+        "input": { "question": "facts.input.v.question", "task": { "value": "Answer the question. Cite every claim as a source { url, quote } whose quote appears verbatim at the url." } },
+        "onDone": "done",
+        "onError": "failed"
+      },
+      "after": { "answerTimeout": "failed" }
+    },
+    "composing": {
+      "meta": { "needs": ["someFound"] },
+      "invoke": {
+        "id": "report",
+        "src": "build",
+        "input": { "question": "facts.input.v.question", "brief": "facts.plan.v.writer", "answers": "facts.answers.v.found", "verdict": "facts.verify.v" },
+        "onDone": "verifying",
+        "onError": "replanning"
+      }
+    },
+    "verifying": {
+      "invoke": {
+        "id": "verify",
+        "src": "verify",
+        "input": { "question": "facts.input.v.question", "brief": "facts.plan.v.verifier", "report": "facts.report.v.text", "sources": "facts.report.seen.sources" },
+        "onDone": [
+          { "target": "awaitingApproval", "guard": "passed" },
+          { "target": "composing", "guard": "failedWithRound" },
+          { "target": "replanning" }
+        ],
+        "onError": "replanning"
+      }
+    },
+    "awaitingApproval": {
+      "invoke": {
+        "id": "approval",
+        "src": "ask",
+        "input": { "question": { "value": "Publish this verified report?" }, "choices": { "value": ["publish", "reject"] }, "report": "facts.report.v", "verdict": "facts.verify.v" },
+        "onDone": [{ "target": "publishing", "guard": "publish" }, { "target": "replanning" }],
+        "onError": "replanning"
+      }
+    },
+    "publishing": {
+      "meta": { "needs": ["approvedReport"] },
+      "invoke": { "id": "published", "src": "post", "input": { "text": "facts.report.v.text" }, "onDone": "done", "onError": "replanning" }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "replan",
+        "src": "ask",
+        "input": { "question": { "value": "This research stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "facts": "facts" },
+        "onDone": [
+          { "target": "replanned", "guard": "replan" },
+          { "target": "dropped", "guard": "drop" },
+          { "target": "replanning", "reenter": true }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "replanned": {
+      "invoke": {
+        "id": "attempt",
+        "src": "items",
+        "input": { "workflow": { "value": "research" }, "each": "facts.input.v", "why": "facts.replan.v.why" },
+        "onDone": [{ "target": "done", "guard": "allDone" }, { "target": "dropped" }]
+      }
+    },
+    "done": { "type": "final" },
+    "failed": { "type": "final" },
+    "dropped": { "type": "final" }
+  },
+  "meta": {
+    "guards": {
+      "isLeaf": [{ "path": "facts.input.v.leaf", "is": true }],
+      "hasQuestions": ["facts.plan.v.questions"],
+      "someFound": ["facts.answers.v.found"],
+      "passed": [{ "path": "event.output.result", "is": "PASS" }],
+      "failedWithRound": [{ "path": "event.output.result", "is": "FAIL" }, { "path": "facts.report.n", "below": 2 }],
+      "publish": [{ "path": "event.output.choice", "is": "publish" }],
+      "approvedReport": [{ "path": "facts.approval.v.choice", "is": "publish" }],
+      "allDone": [{ "path": "event.output.done", "same": "event.output.total" }],
+      "replan": [{ "path": "event.output.choice", "is": "replan" }, "event.output.why"],
+      "drop": [{ "path": "event.output.choice", "is": "drop" }]
+    },
+    "delays": { "answerTimeout": 3600000 },
+    "input": {
+      "type": "object",
+      "required": ["question"],
+      "properties": { "question": { "type": "string", "minLength": 1 }, "leaf": { "type": "boolean" }, "why": { "type": "string", "minLength": 1 } }
+    },
+    "events": {},
+    "actors": {
+      "brief": {
+        "type": "object",
+        "required": ["questions", "writer", "verifier"],
+        "properties": {
+          "questions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "writer": { "type": "string", "minLength": 1 },
+          "verifier": { "type": "string", "minLength": 1 }
+        }
+      },
+      "build": {
+        "type": "object",
+        "required": ["text", "sources"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "sources": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["url", "quote"], "properties": { "url": { "type": "string", "minLength": 1 }, "quote": { "type": "string", "minLength": 1 } } } }
+        }
+      },
+      "verify": { "type": "object", "required": ["result", "report"], "properties": { "result": { "enum": ["PASS", "FAIL"] }, "report": { "type": "string", "minLength": 1 } } },
+      "ask": { "$ref": "#ask" },
+      "post": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string", "minLength": 1 } } },
+      "items": { "$ref": "#join" }
+    },
+    "schemas": {
+      "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
+      "join": { "type": "object", "required": ["total", "done", "found", "items"], "properties": { "total": { "type": "integer" }, "done": { "type": "integer" }, "found": { "type": "array" }, "items": { "type": "array" } } }
+    }
+  }
+}

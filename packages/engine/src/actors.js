@@ -16,6 +16,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { append } from '../../journal/src/index.js';
 import { check } from './schema.js';
 import { prRef } from './effects/merge.js';
+import { fetchText as defaultFetchText } from './effects/github.js';
 
 /** The actors that are agents. Others (merge, ask, post) are host effects (effects/index.js). */
 export const AGENTS = Object.freeze(['brief', 'build', 'verify']);
@@ -104,6 +105,9 @@ function contextOf(run) {
     `When you are done, call the harness return tool (its name ends in harness__return; load it with ToolSearch if it is deferred) with`,
     `{ "run": "${run.run}", "result": <your result> }. The result must match this JSON Schema: ${JSON.stringify(run.schema)}${Object.keys(run.defs).length ? ` (with $ref into ${JSON.stringify(run.defs)})` : ''}.`,
     `Only the agent this run started may return its result, and a claimed PR must be on GitHub at the claimed head.`,
+    // D-wildcard attest: the host also checks these, so the agent must know them (executor deviation).
+    `Your worktree's HEAD must be that same commit when you return (check the PR's head out in your worktree first), or the result is refused (worktree-head).`,
+    `Every source { url, quote } you cite is fetched by the host, and its quote must appear verbatim on the page, or the result is refused (source-fact).`,
     Object.keys(input).length ? `Your input: ${JSON.stringify(input)}` : ''
   ].filter(Boolean).join('\n');
 }
@@ -314,7 +318,7 @@ export function confine({ worktree, tool, input }) {
  * claimed head. `github` is a client from effects/github.js ({ pull }). Returns { accepted: { run, hash } } or
  * { refused: { rule, reason } }; both are journalled in the item's file.
  */
-export async function accept({ root, caller, run: runId, result, toolUseId, github, session = null }) {
+export async function accept({ root, caller, run: runId, result, toolUseId, github, session = null, fetchText = defaultFetchText }) {
   const run = loadRun(root, runId);
   if (!run) return { refused: { rule: 'unknown-run', reason: `no prepared run ${JSON.stringify(runId ?? null)}` } };
   const refuse = (rule, reason) => {
@@ -338,23 +342,22 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
   const problems = check(run.schema, result, run.defs);
   if (problems.length) return refuse('schema', `${run.actor} result: ${problems.join('; ').replaceAll('$', 'result')}`);
 
-  for (const { path, pr } of claimedPrs(result)) {
-    const ref = prRef(pr.url);
-    if (!ref) return refuse('github-fact', `${path}.url ${JSON.stringify(pr.url)} is not a GitHub PR URL`);
-    let now;
+  // D-wildcard: every claim is checked where it enters, and what the host saw is kept as `seen`.
+  let worktreeHead = null;
+  if (claimedPrs(result).length) {
     try {
-      now = await github.pull(ref);
-    } catch (error) {
-      const why = error.status === 404 ? 'GitHub shows no such PR' : `GitHub could not be read (${error.message})`;
-      return refuse('github-fact', `${path}: ${pr.url}: ${why}`);
+      worktreeHead = execFileSync('git', ['-C', run.worktree, 'rev-parse', 'HEAD'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    } catch {
+      worktreeHead = null;
     }
-    if (now?.head?.sha !== pr.headSha) return refuse('github-fact', `${path}: GitHub shows ${pr.url} at head ${now?.head?.sha ?? 'none'}, not the claimed ${pr.headSha}`);
-    if (pr.branch && now?.head?.ref !== pr.branch) return refuse('github-fact', `${path}: GitHub shows ${pr.url} on branch ${now?.head?.ref}, not the claimed ${pr.branch}`);
   }
+  const attested = await attest({ root, result, worktreeHead, github, fetchText });
+  if (attested.refused) return refuse(attested.refused.rule, attested.refused.reason);
+  const { seen } = attested;
 
   const text = JSON.stringify(result);
   const { hash, bytes } = storeBlob(root, text);
-  if (!writeOnce(join(dir, 'result.json'), { result, hash, caller, toolUseId, at: new Date().toISOString() })) {
+  if (!writeOnce(join(dir, 'result.json'), { result, ...(seen ? { seen } : {}), hash, caller, toolUseId, at: new Date().toISOString() })) {
     return refuse('already-returned', `run ${run.run} already returned its result`);
   }
   journal(root, run, {
@@ -372,6 +375,71 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
     }
   }
   return { accepted: { run: run.run, hash } };
+}
+
+/**
+ * D-wildcard: check every claim a result makes against its own source of truth, and say what the host saw.
+ * A claimed PR { url, headSha }: GitHub's pull must be at headSha (github-fact), and so must the claimant's worktree
+ * HEAD (worktree-head); seen.github = { ref, head, base, toDefault, ci } from GitHub's pull and its files. A claimed
+ * source { url, quote }: the host fetches the url, the quote must appear in it with whitespace collapsed
+ * (source-fact), and the page is stored as blobs/<sha256>; seen.sources = [{ url, quote, blob }].
+ * Returns { seen } (undefined when there was nothing to check) or { refused: { rule, reason } }.
+ */
+export async function attest({ root, result, worktreeHead, github, fetchText }) {
+  const seen = {};
+  for (const { path, pr } of claimedPrs(result)) {
+    const ref = prRef(pr.url);
+    if (!ref) return { refused: { rule: 'github-fact', reason: `${path}.url ${JSON.stringify(pr.url)} is not a GitHub PR URL` } };
+    let now;
+    try {
+      now = await github.pull(ref);
+    } catch (error) {
+      const why = error.status === 404 ? 'GitHub shows no such PR' : `GitHub could not be read (${error.message})`;
+      return { refused: { rule: 'github-fact', reason: `${path}: ${pr.url}: ${why}` } };
+    }
+    if (now?.head?.sha !== pr.headSha) return { refused: { rule: 'github-fact', reason: `${path}: GitHub shows ${pr.url} at head ${now?.head?.sha ?? 'none'}, not the claimed ${pr.headSha}` } };
+    if (pr.branch && now?.head?.ref !== pr.branch) return { refused: { rule: 'github-fact', reason: `${path}: GitHub shows ${pr.url} on branch ${now?.head?.ref}, not the claimed ${pr.branch}` } };
+    if (worktreeHead !== pr.headSha) return { refused: { rule: 'worktree-head', reason: `${path}: the claimant's worktree is at ${worktreeHead ?? 'none'}, not the claimed ${pr.headSha}` } };
+    if (!seen.github) {
+      let files;
+      try {
+        files = await github.files(ref);
+      } catch (error) {
+        return { refused: { rule: 'github-fact', reason: `${path}: the files of ${pr.url} could not be read (${error.message})` } };
+      }
+      seen.github = {
+        ref: `${ref.owner}/${ref.repo}#${ref.pullNumber}`,
+        head: now.head.sha,
+        base: now.base?.ref ?? null,
+        toDefault: now.base?.ref === now.base?.repo?.default_branch,
+        ci: (files ?? []).map((f) => f.filename).filter((name) => String(name).startsWith('.github/'))
+      };
+    }
+  }
+  const sources = claimedSources(result);
+  if (sources.length) {
+    seen.sources = [];
+    const squash = (t) => String(t).replace(/\s+/g, ' ').trim();
+    for (const { path, source } of sources) {
+      let body;
+      try {
+        body = await fetchText(source.url);
+      } catch (error) {
+        return { refused: { rule: 'source-fact', reason: `${path}: ${source.url} could not be fetched (${error.message})` } };
+      }
+      if (!squash(body).includes(squash(source.quote))) return { refused: { rule: 'source-fact', reason: `${path}: the quote is not on ${source.url}` } };
+      const { hash } = storeBlob(root, body);
+      seen.sources.push({ url: source.url, quote: source.quote, blob: hash });
+    }
+  }
+  return { seen: Object.keys(seen).length ? seen : undefined };
+}
+
+// Every { url, quote } object in a result, at any depth: a claimed source.
+function claimedSources(value, path = 'result') {
+  if (!value || typeof value !== 'object') return [];
+  const here = typeof value.url === 'string' && typeof value.quote === 'string' ? [{ path, source: value }] : [];
+  return [...here, ...Object.entries(value).flatMap(([k, v]) => claimedSources(v, `${path}.${k}`))];
 }
 
 // Every { url, headSha } object in a result: a claim of a PR at a head, `pr` at the top (quick-fix's build) or anywhere
@@ -459,7 +527,7 @@ export function resultsOf(host) {
     }
     if (!got) continue;
     inputs.push({
-      event: { type: `xstate.done.actor.${run.invoke}`, output: got.result },
+      event: { type: `xstate.done.actor.${run.invoke}`, output: got.result, ...(got.seen ? { seen: got.seen } : {}) },
       run: run.id,
       source: { system: 'harness', ref: `return ${got.toolUseId ?? got.hash}` }
     });
