@@ -1,0 +1,10 @@
+{
+  "effect": "toy-v1:3.ask",
+  "ref": "cmsg_01VhYV3jhQ9s4qrrh2th12sNBT3tuZcMNfPfiXXuv7WQWq",
+  "question": "Merge this PR at the verified commit?",
+  "choices": [
+    "approve",
+    "reject"
+  ],
+  "at": "2026-10-30T21:38:18.078Z"
+}

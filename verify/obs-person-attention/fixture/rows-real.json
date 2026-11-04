@@ -1,0 +1,63 @@
+{
+ "about": "What the verifier read on 2026-10-30 for rows-real. No person text: ids, times and hashes only.",
+ "thread": "cmsg_01VhYV3jhQ9s4qrrh2th12sN8VmmfRj9W1iKvVYBXDUDjc",
+ "session": "session_01KfkB5HZRbfGRGcZb4ar2mX",
+ "read_thread_person_messages": [
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sNFxsFCVDdMY5sogoYZQay6a",
+   "2026-10-30T11:32:00Z"
+  ],
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sNNWd9ZS5GZmwxb49rPahdyG",
+   "2026-10-30T16:15:16Z"
+  ],
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sN8K3WdQMstxpd3GSVni6XWw",
+   "2026-10-30T16:17:16Z"
+  ],
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sNAwGi7YmHBdnDScSLmiNnmx",
+   "2026-10-30T16:18:58Z"
+  ],
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sNDFBEqbLH4tMvCsY3qF3eKR",
+   "2026-10-30T16:28:06Z"
+  ],
+  [
+   "cmsg_01VhYV3jhQ9s4qrrh2th12sNNzCoefJgRfizgykTpqVwnA",
+   "2026-10-30T16:54:30Z"
+  ]
+ ],
+ "read_thread_person_taps": [
+  {
+   "card": "cmsg_01VhYV3jhQ9s4qrrh2th12sN7oo3Bm18DgfoRpQy3bR2XZ",
+   "option_index": 0,
+   "at": "2026-10-30T16:54:27Z",
+   "shown_as": "agent-authored activity message tool=decide, decision_id, chosen_by the person"
+  }
+ ],
+ "wake_prompts_sha256": [
+  "ebf64597f94a5328519fdb56d2b9896db4567c546f2684e920b1e4015919eab0",
+  "2f93248eeac3b56253ba65d71e8141112a43e69d09918091dc377d63e3a2f63b",
+  "76f8ffb9f44ee65a27480b9e2167a30116ad8dc2b5c516d8d47925a85d9f0ba4",
+  "656885992a9dc19a70d2c559d2b7581e8d57ba85b2e3fcce9470b5a8cb4888e7",
+  "5e757b67f4ddf4c0cffb765c26976955007887d33e46ab2290c1fb3c7ed9bab6",
+  "b6dd4b5eb576c0cfeca610d378561354258875728295027567926bcd4f2596f9",
+  "130d2ec79eaa9cfa8787f7156527657c4cfd725e2d7ea0880e98fc2d7a4b1a49",
+  "a9c9d366c64b2344c3750bc71f55601ec08233289e4dc552747d8c0d8fca0529",
+  "eb6e3095065e7904dc84b4231068cbe0d63060ef824f92c0dd8a0943a8f5859d",
+  "531b6d8ce3e2ffec45d0f868a7e3fa996671717b9a3a077bd401fdef6f1c726c",
+  "238881fb82c2d6fe72de56199ec71405fa07d2e8a88073010d640baf2c989f2b",
+  "4ff54226cba9d16f216443723181e77ef221cf0aa6143131c0178078e31efe14",
+  "c4fae1f4c49334a314069b34d2de8086f68ef20e50d908f2ed2eb074706cb3ea",
+  "0e30848ea5f7ac3b1aa9a02f249d7c187f0c7d0becf27844aeed3f1032c3ae9b",
+  "5315ca63ab6c9eee570f8e80fde5d2ed6f738a6567b35ac9f3708b315caf8014",
+  "be0c818a29f4e992b75c6c730b2c0a5cec550806eb39650abd11279780b3e786",
+  "7073a6803ba19fb77be246456f3f563cec5640f355b0ded6c487acf39bc472d1",
+  "c729bf42e56b62eea7b7f080706ac5e211278787e23daa600c0f5f451bec4a10",
+  "2c518e5d81062a88686f602362b49aaa0985a8949064835f4c70c3927fb4cf66",
+  "5e26304827e4dbaaaf216b87f050000b2e9ab91df1eda5f64639232955763cfa"
+ ],
+ "list_events_user_events": 205,
+ "wake_prompts_run": 20
+}

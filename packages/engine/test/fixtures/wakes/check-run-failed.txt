@@ -1,0 +1,6 @@
+<wake reason="external-event" current-time="2026-10-30T17:02:44Z">
+  <event source="github" kind="check_run.completed" from="system" trust="relay" untrusted-keys="check,title,summary,details_url">
+    <!-- The following CI check failed on the PR. Investigate the failure and determine what action (if any) is needed. If you opened this PR, this wake ends in a pushed fix or in one comment on the PR: what is failing, then either why it is not this PR's and the fix you ported into it (or that none exists yet) or what blocks fixing it, with the failed check re-run once when you have the means. A failure you already commented on this way needs no second comment. Lacking the means to re-run does not hand the PR to anyone else: note it in that comment and keep the PR watched until it is green. -->
+    {"check":"test","check_run_id":124199251145,"conclusion":"failure","details_url":"https://github.com/suredesigntshirts/ccp_xstate/actions/runs/41095266274/job/124199251145","head_sha":"3319b198683980e579df4743666340b57158996b","pr":"suredesigntshirts/ccp_xstate#27"}
+  </event>
+</wake>

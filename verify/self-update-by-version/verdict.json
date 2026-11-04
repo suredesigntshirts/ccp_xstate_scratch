@@ -1,0 +1,31 @@
+{
+  "item": "self-update-by-version",
+  "verified_sha": "db20589ef0f697a2499cba210496795c463e7b30",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5GUeqgfhdQ3hcvUkHq#agent=verifier-release-engine",
+    "model": "claude-sonnet-5-5"
+  },
+  "summary": "Re-verified at db20589 (RELEASED now includes packages/engine/src). release.test.mjs 11 pass; notice-behind + no-self-edit 12 pass (strace present, nothing skipped). test/setup.test.mjs 'copy-not-link' fails identically at db20589 and at a worktree of origin/main (the clone has release branches up to 0.1.12 fetched), so it is not caused by this change. The change touches only scripts/release/release.mjs and its test: not setup.sh, not the notice hook, so the update path's writes are unchanged. Version only rises: nextVersion is max(manifest, latest patch+1) and plan() throws 'refused' unless above the newest release.",
+  "results": [
+    {
+      "id": "release",
+      "status": "MET",
+      "command": "git fetch origin main 'refs/heads/release/*:refs/remotes/origin/release/*'; RELEASE_SHA=db20589ef0f697a2499cba210496795c463e7b30 node scripts/release/release.mjs plan (head), then the same in a scratch worktree with release.mjs reverted to db20589~1; node --test scripts/release/test/release.test.mjs. No branch or tag pushed.",
+      "excerpt": "With the change: release=true, latest 0.1.12, version 0.1.13, tag harness-v0.1.13, changed [packages/engine/src/effects/index.js, packages/engine/src/effects/relay.js], '2 released file(s) changed since harness-v0.1.12' (engine-toy-run changed the engine with no release). Without it: release=false, changed [], 'nothing under plugins/harness or packages/journal changed since harness-v0.1.12'. New tests: engine src change releases harness-v0.1.1, engine test and bin changes do not; every path setup.sh archives is in RELEASED. Earlier scratch-repo proof (plugin merge makes a release, non-plugin merge makes none, rerun makes none) stands; the plugin-path logic is unchanged. Version only rises (nextVersion, 'refused' throw)."
+    },
+    {
+      "id": "behind-notice",
+      "status": "MET",
+      "command": "node --test plugins/harness/test/notice-behind.test.mjs (6 pass at db20589); mutated plugins/harness/scripts/notice-behind.mjs twice with sed, reran, reverted with git checkout. Also mutated RELEASED in release.mjs (dropped 'packages/engine/src'; and changed it to 'packages/engine') and ran release.test.mjs.",
+      "excerpt": "Head: 6 pass, 0 fail. Mutation 1: 'not ok 1 - behind-notice: a session on an older release is told once, then not again within 30 minutes' (5 pass, 1 fail). Mutation 2: 'not ok 3 - behind-notice: nothing is said on the newest release, with no release, or when origin cannot be reached' (5 pass, 1 fail). RELEASED mutations: release.test.mjs 9 pass, 2 fail (tests 10 and 11). Tree clean after each revert.",
+      "mutation": "(1) replaced 'Date.now() - last < INTERVAL_MS' with 'false' so the 30-minute throttle never applies; (2) replaced 'byVersion(mine.version, latest.version) >= 0' with 'false' so the notice is also said on the newest release",
+      "red_test": "(1) behind-notice: a session on an older release is told once, then not again within 30 minutes; (2) behind-notice: nothing is said on the newest release, with no release, or when origin cannot be reached"
+    },
+    {
+      "id": "no-self-edit",
+      "status": "MET",
+      "command": "git show db20589 --stat (only scripts/release/release.mjs and scripts/release/test/release.test.mjs changed); node --test verify/self-update-by-version/no-self-edit.test.mjs with plugins/harness/test/notice-behind.test.mjs",
+      "excerpt": "The change adds a path to a git pathspec list read by plan(); no write path changed, and setup.sh and the notice hook are untouched. no-self-edit.test.mjs: 7 tests (5-12 above) all ok with strace available, 0 skipped: setup.sh beside a live Claude leaves the plugin untouched, the notice hook writes nothing under the plugin root, release.mjs writes only git refs."
+    }
+  ]
+}

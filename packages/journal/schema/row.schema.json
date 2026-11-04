@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suredesigntshirts/ccp_xstate/packages/journal/schema/row.schema.json",
+  "title": "Journal row",
+  "description": "One line of a journal file. Only external inputs and observations become rows. See docs/journal.md.",
+  "type": "object",
+  "required": [
+    "v",
+    "id",
+    "at",
+    "kind",
+    "source",
+    "session",
+    "release",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "v": {
+      "description": "The row format version. Rows from an older v are upcast on read and never rewritten.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": {
+      "description": "Unique row id. An effect's outcome is keyed by it, so a duplicate wake can't repeat the effect.",
+      "type": "string",
+      "minLength": 1
+    },
+    "at": {
+      "description": "When the row was written, as an ISO 8601 UTC time with milliseconds.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "kind": {
+      "description": "What the row records, as dotted lower-case words (docs/journal.md lists the kinds).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)*$"
+    },
+    "source": {
+      "description": "Where the fact came from, recorded at write time: the system that reported it and its own id for it.",
+      "type": "object",
+      "required": [
+        "system",
+        "ref"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "system": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "session": {
+      "description": "The Claude-Session that wrote the row.",
+      "type": "string",
+      "minLength": 1
+    },
+    "agent": {
+      "description": "The subagent within the session, if any.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "item": {
+      "description": "The plan item the row belongs to, if any.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "state": {
+      "description": "The item's or workflow's state when the row was written, if known.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "release": {
+      "description": "The writer's harness release (x.y.z). A writer older than the newest row in a file is refused.",
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "placeholder": {
+      "description": "Set, with the reason, on a row that stands in for missing data, so health checks can count it.",
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "description": "The kind's own fields.",
+      "type": "object"
+    }
+  }
+}

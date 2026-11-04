@@ -1,0 +1,191 @@
+[
+  {
+    "kind": "wake",
+    "source": {
+      "system": "claude-code",
+      "ref": "a0844a00-990e-4235-8f1b-efb351ea6248"
+    },
+    "agent": null,
+    "payload": {
+      "reason": "prompt",
+      "source": "user",
+      "hash": "b03c0f49d709615e7dca13603cab659bae22b2311b2622776447c3ac402ae5d6",
+      "bytes": 215
+    }
+  },
+  {
+    "kind": "tool.call",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_01KtwuRBnbXUCC1JeEroFg48"
+    },
+    "agent": null,
+    "payload": {
+      "tool": "Read",
+      "inputHash": "d6fe8b7c8c1f30ce66de3eb7d485bb4903d21f340111aac3a11c987e7c8d0cc8",
+      "inputBytes": 29,
+      "ms": 14,
+      "ok": true
+    }
+  },
+  {
+    "kind": "tool.call",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_01VpUwFgh99s9DRdcrqx2LdH"
+    },
+    "agent": null,
+    "payload": {
+      "tool": "Bash",
+      "inputHash": "894c154ea347cc798a797e6efbaa3f50eb5da34da477a15fe0ff516ca81b6335",
+      "inputBytes": 25,
+      "ms": 104,
+      "ok": true
+    }
+  },
+  {
+    "kind": "agent.spawn",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_0167QsdEUpqG5ZP4Am1KnfLe"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "agentId": "aa2c1a5a260bb1ed5",
+      "type": "general-purpose",
+      "model": null,
+      "briefHash": "7654b522c20c5498e81e3a6e7591af75cc26c96708feb711c4b8bf54539d8637",
+      "depth": 1
+    }
+  },
+  {
+    "kind": "tool.call",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_01GsCAFZLURANSfwiEQuQ5u6"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "tool": "Bash",
+      "inputHash": "80fd99f1550cf675a0b70c0b6ee862b2ccf03dd042b96d246fabeee084cbc4ac",
+      "inputBytes": 55,
+      "ms": 32,
+      "ok": true
+    }
+  },
+  {
+    "kind": "tool.call",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_01Xcaxs9uud6yzZq34CkepGp"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "tool": "SubagentHandback",
+      "inputHash": "22c5fa15cbe4bd7b067071599913aa345456366f4b485dc630efd68ec3a0933c",
+      "inputBytes": 21,
+      "ms": 41,
+      "ok": true
+    }
+  },
+  {
+    "kind": "agent.finish",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_0167QsdEUpqG5ZP4Am1KnfLe"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "agentId": "aa2c1a5a260bb1ed5",
+      "type": "general-purpose",
+      "model": "claude-sonnet-5-5",
+      "ms": 5673,
+      "tokens": {
+        "input": 4,
+        "output": 133,
+        "cacheRead": 33109,
+        "cacheCreation": 35004
+      },
+      "resultHash": "77daf4f28084649ef2aaef9d941d731bd3ee8181fa7acf4d65844d754c58801b"
+    }
+  },
+  {
+    "kind": "result.stored",
+    "source": {
+      "system": "journal",
+      "ref": "blobs/77daf4f28084649ef2aaef9d941d731bd3ee8181fa7acf4d65844d754c58801b"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "agentId": "aa2c1a5a260bb1ed5",
+      "hash": "77daf4f28084649ef2aaef9d941d731bd3ee8181fa7acf4d65844d754c58801b",
+      "bytes": 7
+    }
+  },
+  {
+    "kind": "tool.call",
+    "source": {
+      "system": "claude-code",
+      "ref": "toolu_0167QsdEUpqG5ZP4Am1KnfLe"
+    },
+    "agent": null,
+    "payload": {
+      "tool": "Agent",
+      "inputHash": "6471ce310232337984f9e649b46df4f84e7d990aca354f0b495e5cbfb78a9b6d",
+      "inputBytes": 171,
+      "ms": 5770,
+      "ok": true
+    }
+  },
+  {
+    "kind": "brief.stored",
+    "source": {
+      "system": "journal",
+      "ref": "blobs/7654b522c20c5498e81e3a6e7591af75cc26c96708feb711c4b8bf54539d8637"
+    },
+    "agent": "aa2c1a5a260bb1ed5",
+    "payload": {
+      "agentId": "aa2c1a5a260bb1ed5",
+      "hash": "7654b522c20c5498e81e3a6e7591af75cc26c96708feb711c4b8bf54539d8637",
+      "bytes": 65
+    }
+  },
+  {
+    "kind": "wake",
+    "source": {
+      "system": "claude-code",
+      "ref": "a0844a00-990e-4235-8f1b-efb351ea6248"
+    },
+    "agent": null,
+    "payload": {
+      "reason": "agent-message",
+      "source": "subagent",
+      "hash": "e65cfc382e98f7918bae92560038843499f4eeb3d099a7f376886f1f2584751e",
+      "bytes": 542
+    }
+  },
+  {
+    "kind": "turn.usage",
+    "source": {
+      "system": "claude-code",
+      "ref": "a0844a00-990e-4235-8f1b-efb351ea6248"
+    },
+    "agent": null,
+    "payload": {
+      "tokens": {
+        "input": 8,
+        "output": 318,
+        "cacheRead": 112392,
+        "cacheCreation": 17950
+      },
+      "messages": 3,
+      "models": [
+        "claude-sonnet-5-5"
+      ],
+      "cost": null,
+      "fiveHour": null,
+      "sevenDay": null
+    },
+    "placeholder": "cost and the 5-hour and 7-day usage windows do not reach a hook"
+  }
+]

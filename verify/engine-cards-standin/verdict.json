@@ -1,0 +1,17 @@
+{
+  "item": "engine-cards-standin",
+  "verified_sha": "d1531f3b0662d955f5121f1c1f8662648cff3826",
+  "verifier": { "session": "https://claude.ai/code/session_01KfkB5GUeqgfhdQ3hcvUkHq#agent=verifier-cards-standin", "model": "claude-sonnet-5-5" },
+  "results": [
+    { "id": "legal-only", "status": "MET", "command": "node --test verify/engine-cards-standin/standin.test.mjs",
+      "excerpt": "bin/host.js answer on self-recorded items: illegal choice, missing grants file, expired grant, grant for another repo/ask/workflow/choice, empty grants, card not up, non-ask run, no --by each exit 2 with 'refused: <reason>', add no engine.transition row and make no merge; 4/4 pass" },
+    { "id": "grant-source", "status": "MET", "command": "node --test verify/engine-cards-standin/standin.test.mjs; toy-run.sh check sa-cards1",
+      "excerpt": "accepted row: source {system:standin, ref:'<grant id> <card id>'}, output {choice, by:<session>, grant:<id>}; first covering grant named; scratch run row 4: standin '2026-10-31-away-4h cmsg_01VhYV3j...', by the verifier session" },
+    { "id": "host-merges", "status": "MET", "command": "scripts/toy-run.sh run sa-cards1 --issue .../ccp_xstate_scratch/issues/27 --expect /tmp/sa-expect.json; scripts/toy-run.sh answer sa-cards1 approve <session>; gh api repos/suredesigntshirts/ccp_xstate_scratch/pulls/28; scripts/toy-run.sh check sa-cards1; node --test verify/engine-cards-standin/world.test.mjs",
+      "excerpt": "answer: state done, rows standin ask answer then engine merge completion. GitHub PR 28 merged=true, head 82666e5d (= verdict sha), merge_commit_sha 4ae770b0cda2dc2cb38fddcc0336debd7f4451bc = merge effect's sha. check: 0 merges not made by the host's merge effect, 0 missing rows. Note: the item journal has engine.effect merge rows and no pr.merge rows (those are the agent hook's rows; the host's merge is an engine.effect)" },
+    { "id": "no-tap-needed-for-person", "status": "MET", "command": "node --test packages/engine/test/standin.test.js (after each mutation, then restored)",
+      "excerpt": "builder test 'a tap first still answers the ask, and a stand-in answer after it is refused' and 'bin/host.js answer ... late tap not applied' cover both orders; goes red under both mutations",
+      "mutation": "(1) standin.js: 'if (!run || run.actor !== ask) throw' replaced by 'if (false) throw'; (2) wake.js: tap branch condition 'wake.reason === decision-chosen && wake.notes.decision_id' replaced by 'false'",
+      "red_test": "a tap first still answers the ask, and a stand-in answer after it is refused (mutation 1 also reds 'standinInput refuses before the card is up, an illegal choice, ...')" }
+  ]
+}

@@ -1,0 +1,10 @@
+{"at":"2026-10-30T10:17:13.267Z","probe":"hook-budget","hook":"SessionStart","phase":"start","sleep":12}
+{"at":"2026-10-30T10:17:14.273Z","probe":"hook-budget","hook":"SessionStart","phase":"tick","s":1}
+{"at":"2026-10-30T10:17:15.277Z","probe":"hook-budget","hook":"SessionStart","phase":"tick","s":2}
+{"at":"2026-10-30T10:17:16.281Z","probe":"hook-budget","hook":"SessionStart","phase":"tick","s":3}
+{"at":"2026-10-30T10:17:17.285Z","probe":"hook-budget","hook":"SessionStart","phase":"tick","s":4}
+{"at":"2026-10-30T10:17:22.581Z","probe":"hook-budget","hook":"PreToolUse","phase":"start","sleep":12}
+{"at":"2026-10-30T10:17:23.587Z","probe":"hook-budget","hook":"PreToolUse","phase":"tick","s":1}
+{"at":"2026-10-30T10:17:24.591Z","probe":"hook-budget","hook":"PreToolUse","phase":"tick","s":2}
+{"at":"2026-10-30T10:17:25.596Z","probe":"hook-budget","hook":"PreToolUse","phase":"tick","s":3}
+{"at":"2026-10-30T10:17:26.600Z","probe":"hook-budget","hook":"PreToolUse","phase":"tick","s":4}

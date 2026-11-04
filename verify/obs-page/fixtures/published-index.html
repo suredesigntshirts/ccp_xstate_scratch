@@ -1,0 +1,851 @@
+<title>Harness Observe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a control strip (scope, refresh, freshness), then four answer panels in a two-column grid that stacks on phones. */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --fg: #1b2230; --muted: #5b6577; --line: #dde1e8;
+  --accent: #2f5fb3; --warn: #a35a00; --bad: #b3261e; --ok: #1f7a4a;
+  --bar-work: #2f5fb3; --bar-person: #a35a00; --bar-ci: #6b4fb3; --bar-wake: #3d8f8a; --bar-rebuild: #8a8f99; --bar-unknown: #c9ced6;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161d; --panel: #1a2029; --fg: #e4e8ef; --muted: #98a2b3; --line: #2c3440;
+  --accent: #7ea6ef; --warn: #e3a453; --bad: #f08a80; --ok: #6cc796;
+  --bar-work: #7ea6ef; --bar-person: #e3a453; --bar-ci: #ab95ef; --bar-wake: #6cc0ba; --bar-rebuild: #8a93a3; --bar-unknown: #3a4350;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161d; --panel: #1a2029; --fg: #e4e8ef; --muted: #98a2b3; --line: #2c3440;
+  --accent: #7ea6ef; --warn: #e3a453; --bad: #f08a80; --ok: #6cc796;
+  --bar-work: #7ea6ef; --bar-person: #e3a453; --bar-ci: #ab95ef; --bar-wake: #6cc0ba; --bar-rebuild: #8a93a3; --bar-unknown: #3a4350;
+  color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1 { font-size: 1.35rem; margin: 0; text-wrap: balance; }
+h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.strip { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.strip label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: .85rem; }
+select, button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; max-width: 100%; }
+button { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .6; cursor: progress; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fresh { display: flex; flex-wrap: wrap; gap: 6px 16px; font: .8rem var(--mono); color: var(--muted); }
+.fresh b { color: var(--fg); font-weight: 600; }
+.status { font-size: .9rem; color: var(--muted); }
+.status.err { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.big { font: 600 1.6rem var(--mono); font-variant-numeric: tabular-nums; }
+.sub { color: var(--muted); font-size: .85rem; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 400; }
+th.n { text-align: right; }
+td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font: .8rem var(--mono); }
+.bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bar-unknown); margin: 10px 0; }
+.bar span { display: block; height: 100%; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chip { display: inline-block; font-size: .75rem; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); }
+.chip.bad { color: var(--bad); border-color: var(--bad); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+
+<div class="wrap">
+  <div class="strip">
+    <h1>Where the time, tokens and refusals went</h1>
+  </div>
+  <div class="strip">
+    <label for="scope">Show <select id="scope"><option value="">Everything in the journal</option></select></label>
+    <button id="refresh" type="button">Refresh</button>
+    <span id="status" class="status">Press Refresh to read the journal.</span>
+  </div>
+  <div class="fresh" id="fresh">
+    <span>Page release <b id="page-release"></b></span>
+    <span>Journal release <b id="release">–</b></span>
+    <span>Newest row <b id="newest">–</b></span>
+    <span>Refreshed <b id="refreshed">–</b></span>
+    <span>Read <b id="read">–</b></span>
+  </div>
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-item" id="item-panel" hidden>
+      <h2 id="h-item">Item</h2>
+      <div class="big" id="item-state">–</div>
+      <div class="sub" id="item-sub"></div>
+      <div class="scroll"><table id="item"><tbody></tbody></table></div>
+      <div class="scroll"><table id="item-asks"><thead><tr><th>Card posted (UTC)</th><th>Answered by</th><th>Choice</th><th class="n">Wait</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-tokens">
+      <h2 id="h-tokens">Tokens by agent</h2>
+      <div class="big" id="tokens-total">–</div>
+      <div class="sub" id="tokens-split"></div>
+      <div class="scroll"><table id="tokens"><thead><tr><th>Session</th><th>Agent</th><th class="n">Input</th><th class="n">Output</th><th class="n">Cache read</th><th class="n">Cache write</th><th class="n">Total</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-time">
+      <h2 id="h-time">Time by kind</h2>
+      <div class="big" id="time-wall">–</div>
+      <div class="sub">wall-clock time between each session's first and last row</div>
+      <div class="bar" id="time-bar"></div>
+      <div class="scroll"><table id="time"><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-refusals">
+      <h2 id="h-refusals">What was refused, and why</h2>
+      <div class="big" id="refusals-count">–</div>
+      <div class="sub" id="refusals-rules"></div>
+      <div class="scroll"><table id="refusals"><thead><tr><th>When (UTC)</th><th>Rule</th><th>Tool</th><th>By</th><th>Then</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-asks">
+      <h2 id="h-asks">What was asked of the person</h2>
+      <div class="big" id="asks-cards">–</div>
+      <div class="sub" id="asks-sub"></div>
+      <div class="scroll"><table id="asks"><thead><tr><th>Card posted (UTC)</th><th>Thread</th><th>Answer</th><th class="n">Wait</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-refreshes">
+      <h2 id="h-refreshes">Recent refreshes</h2>
+      <div class="sub" id="refresh-note">Each refresh is recorded as a page.refresh row in this page's own store.</div>
+      <div class="scroll"><table id="refreshes"><thead><tr><th>When (UTC)</th><th class="n">Took</th><th class="n">Rows</th><th class="n">Files</th><th>Newest row</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</div>
+
+<script>
+// Built by plugins/harness/pages/observe/build.mjs; edit the sources, not this script.
+window.ObserveData = (() => {
+// packages/journal/src/derive/time.js
+const { WAIT_KINDS, time } = (() => {
+// The time view (plan item obs-time-and-rework): where one session's wall-clock time went. Time is working while a
+// turn, a tool call, a hook or a subagent is in progress; every other stretch is waiting, labelled by the wake that ended it
+// (on the person, on CI, on another wake), or rebuild for the start-up between a new SessionStart and that wake, or
+// unknown when no wake with a reason ends it. A gap is never counted as working. It reads rows and writes nothing.
+// docs/journal.md, "Derived views", says what each part reads.
+
+/** Which waiting kind a wake reason means. A reason not listed here is a `wake`; a wake with no reason is unknown. */
+const WAIT_KINDS = Object.freeze({
+  mention: 'person',
+  'decision-chosen': 'person',
+  prompt: 'person',
+  'external-event': 'ci',
+});
+
+const ms = (iso) => Date.parse(iso);
+const iso = (t) => new Date(t).toISOString();
+
+/**
+ * The time view over `rows` (any order, any mix of sessions and kinds). Returns { sessions, totals }: sessions maps
+ * each session id to { from, to, wallMs, workingMs, waitingMs: { person, ci, wake, rebuild }, unknownMs, gaps }, and
+ * totals sums them. Each gap is { from, to, ms, label, reason, inputs }, inputs naming the row ids it was labelled
+ * from. For every session, workingMs + each waitingMs + unknownMs equals wallMs.
+ */
+function time(rows, { waitKinds = WAIT_KINDS } = {}) {
+  const seen = new Set();
+  const bySession = new Map();
+  for (const r of rows) {
+    if (!r || seen.has(r.id)) continue;
+    seen.add(r.id);
+    if (!bySession.has(r.session)) bySession.set(r.session, []);
+    bySession.get(r.session).push(r);
+  }
+  const sessions = {};
+  for (const [id, list] of bySession) sessions[id] = sessionTime(list.sort((a, b) => a.at.localeCompare(b.at)), waitKinds);
+  const totals = { wallMs: 0, workingMs: 0, waitingMs: { person: 0, ci: 0, wake: 0, rebuild: 0 }, unknownMs: 0 };
+  for (const s of Object.values(sessions)) {
+    totals.wallMs += s.wallMs;
+    totals.workingMs += s.workingMs;
+    totals.unknownMs += s.unknownMs;
+    for (const k of Object.keys(totals.waitingMs)) totals.waitingMs[k] += s.waitingMs[k];
+  }
+  return { sessions, totals };
+}
+
+function sessionTime(rows, waitKinds) {
+  const from = ms(rows[0].at);
+  const to = ms(rows.at(-1).at);
+  const busy = [];
+  const clip = (a, b) => [Math.max(from, a), Math.min(to, b)];
+
+  // Turns: a main-session wake to the Stop row after it. A turn with no Stop before the next wake ends at its last row.
+  const main = rows.filter((r) => !r.agent);
+  const unclosed = [];
+  for (let i = 0; i < main.length; i++) {
+    if (main[i].kind !== 'wake') continue;
+    let last = main[i];
+    let closed = false;
+    for (let j = i + 1; j < main.length && main[j].kind !== 'wake'; j++) {
+      last = main[j];
+      if (main[j].kind === 'turn.usage') { closed = true; break; }
+    }
+    busy.push(clip(ms(main[i].at), ms(last.at)));
+    if (!closed) unclosed.push(ms(last.at));
+  }
+  // Tool calls and hook runs: their own duration, ending at the row.
+  for (const r of rows) {
+    if ((r.kind === 'tool.call' || r.kind === 'hook.run') && Number.isFinite(r.payload?.ms)) busy.push(clip(ms(r.at) - r.payload.ms, ms(r.at)));
+  }
+  // Subagents: spawn to finish, or to the agent's last row when no finish was seen.
+  const spawns = new Map();
+  for (const r of rows) {
+    const agentId = r.payload?.agentId ?? r.agent;
+    if (r.kind === 'agent.spawn') spawns.set(agentId, { start: ms(r.at), end: ms(r.at) });
+    else if (agentId && spawns.has(agentId)) spawns.get(agentId).end = ms(r.at);
+  }
+  for (const { start, end } of spawns.values()) busy.push(clip(start, end));
+
+  const merged = [];
+  for (const [a, b] of busy.filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0])) {
+    const lastSpan = merged.at(-1);
+    if (lastSpan && a <= lastSpan[1]) lastSpan[1] = Math.max(lastSpan[1], b);
+    else merged.push([a, b]);
+  }
+  const workingMs = merged.reduce((sum, [a, b]) => sum + b - a, 0);
+
+  const gaps = [];
+  let cursor = from;
+  for (const [a, b] of [...merged, [to, to]]) {
+    if (a > cursor) gaps.push(...labelGap(cursor, a, b, rows, main, unclosed, waitKinds));
+    cursor = Math.max(cursor, b);
+  }
+  const waitingMs = { person: 0, ci: 0, wake: 0, rebuild: 0 };
+  let unknownMs = 0;
+  for (const g of gaps) {
+    if (g.label === 'unknown') unknownMs += g.ms;
+    else waitingMs[g.label] += g.ms;
+  }
+  return { from: iso(from), to: iso(to), wallMs: to - from, workingMs, waitingMs, unknownMs, gaps };
+}
+
+// A gap ends where the next busy span starts. If a main-session wake with a reason is in that span (the capture
+// hook that writes the wake row starts just before it), the gap waited on it;
+// a SessionStart inside the gap splits off its tail as rebuild. A gap after a turn that never closed, or one no
+// wake ends, is unknown.
+function labelGap(a, b, spanEnd, rows, main, unclosed, waitKinds) {
+  const gap = (from, to, label, reason, inputs) => ({ from: iso(from), to: iso(to), ms: to - from, label, reason, inputs });
+  const wake = main.find((r) => r.kind === 'wake' && ms(r.at) >= b && ms(r.at) <= spanEnd);
+  if (!wake) return [gap(a, b, 'unknown', 'no wake ends this gap', [])];
+  if (unclosed.includes(a)) return [gap(a, b, 'unknown', 'the turn before it never closed', [wake.id])];
+  const reason = wake.payload?.reason;
+  if (!reason) return [gap(a, b, 'unknown', 'the wake has no reason', [wake.id])];
+  const label = waitKinds[reason] ?? 'wake';
+  const start = rows.filter((r) => r.kind === 'session.fingerprint' && ms(r.at) >= a && ms(r.at) < b).at(-1);
+  if (!start) return [gap(a, b, label, reason, [wake.id])];
+  return [
+    gap(a, ms(start.at), label, reason, [wake.id]),
+    gap(ms(start.at), b, 'rebuild', start.payload?.start ?? null, [start.id, wake.id]),
+  ].filter((g) => g.ms > 0);
+}
+
+return { WAIT_KINDS, time };
+})();
+// packages/journal/src/derive/attention.js
+const { CAPS, attention, attentionOf } = (() => {
+// The attention view (plan item obs-person-attention): what the harness asked of the person, from journal rows.
+// Per UTC day and per thread it counts the person's messages and taps, the cards and posts put in front of them,
+// and how long each card waited for its tap; and it flags any hour in which posts went over the platform's caps
+// (ledger L-message-caps: about 20 per thread and 60 per project). It reads rows and writes nothing.
+// docs/journal.md, "Person rows", says what each row holds.
+
+/** The platform's hourly message caps (ledger L-message-caps). */
+const CAPS = Object.freeze({ thread: 20, project: 60 });
+
+const HOUR = 13; // 'YYYY-MM-DDTHH'
+const DAY = 10; // 'YYYY-MM-DD'
+
+// When the person acted is the platform's sent-at on the wake; the row's own time is when the session read it.
+const when = (row) => row.payload?.sentAt ?? row.at;
+
+const empty = () => ({ messages: 0, taps: 0, cards: 0, posts: 0, open: 0, waits: { count: 0, totalMs: 0, maxMs: 0 } });
+
+/**
+ * The attention view over `rows` (any order, any mix of kinds and sessions). Returns
+ * { days, threads, cards, hours, flags }: days and threads map a key to counts, cards lists each card with its post
+ * time, tap and wait, hours lists posts per thread-hour and project-hour, and flags lists the hours over a cap.
+ * A row read twice (the same id) counts once, and so does a message the journal saw on two wakes (the same id).
+ */
+function attention(rows, { caps = CAPS } = {}) {
+  const seen = new Set();
+  const unique = rows.filter((r) => r && !seen.has(r.id) && seen.add(r.id));
+  const days = {};
+  const threads = {};
+  const bump = (key, thread, field, by = 1) => {
+    for (const [map, k] of [[days, key.slice(0, DAY)], [threads, thread ?? 'unknown']]) {
+      map[k] ??= empty();
+      map[k][field] += by;
+    }
+  };
+
+  const messages = new Set();
+  for (const r of unique.filter((r) => r.kind === 'person.message')) {
+    const key = r.payload.messageId ? `${r.payload.thread} ${r.payload.messageId}` : r.id;
+    if (messages.has(key)) continue;
+    messages.add(key);
+    bump(when(r), r.payload.thread, 'messages');
+  }
+
+  // Cards by id, then each tap joined to its card. A card the tap names that the journal never saw posted is listed
+  // with postedAt null, so a gap in capture shows instead of vanishing.
+  const cards = new Map();
+  for (const r of unique.filter((r) => r.kind === 'card.posted').sort((a, b) => a.at.localeCompare(b.at))) {
+    const id = r.payload.cardId ?? r.id;
+    if (cards.has(id)) continue;
+    cards.set(id, { cardId: id, thread: r.payload.thread ?? null, card: r.payload.card ?? null, postedAt: r.at, tappedAt: null, option: null, optionIndex: null, waitMs: null });
+  }
+  for (const r of unique.filter((r) => r.kind === 'person.tap').sort((a, b) => when(a).localeCompare(when(b)))) {
+    const id = r.payload.cardId;
+    const card = cards.get(id) ?? { cardId: id, thread: null, card: null, postedAt: null, tappedAt: null, option: null, optionIndex: null, waitMs: null };
+    cards.set(id, card);
+    if (card.tappedAt) continue; // a card closes on its first tap
+    card.thread ??= r.payload.thread ?? null;
+    card.tappedAt = when(r);
+    card.option = r.payload.option ?? null;
+    card.optionIndex = r.payload.optionIndex ?? null;
+    if (card.postedAt) card.waitMs = Date.parse(card.tappedAt) - Date.parse(card.postedAt);
+    bump(card.tappedAt, card.thread, 'taps');
+  }
+  for (const card of cards.values()) {
+    if (!card.postedAt) continue;
+    bump(card.postedAt, card.thread, 'cards');
+    if (!card.tappedAt) bump(card.postedAt, card.thread, 'open');
+    if (card.waitMs === null) continue;
+    for (const map of [days[card.tappedAt.slice(0, DAY)], threads[card.thread ?? 'unknown']]) {
+      map.waits.count += 1;
+      map.waits.totalMs += card.waitMs;
+      map.waits.maxMs = Math.max(map.waits.maxMs, card.waitMs);
+    }
+  }
+
+  // Everything the session posted counts against the caps: plain posts and cards alike.
+  const perThread = {};
+  const perProject = {};
+  const out = unique.filter((r) => r.kind === 'post.sent' || r.kind === 'card.posted');
+  for (const r of out) {
+    if (r.kind === 'post.sent') bump(r.at, r.payload.thread, 'posts');
+    const hour = r.at.slice(0, HOUR);
+    const thread = r.payload.thread ?? cards.get(r.payload.cardId)?.thread ?? 'unknown';
+    perThread[`${thread} ${hour}`] = (perThread[`${thread} ${hour}`] ?? 0) + 1;
+    perProject[hour] = (perProject[hour] ?? 0) + 1;
+  }
+  const hours = {
+    thread: Object.entries(perThread).map(([k, posts]) => {
+      const [thread, hour] = k.split(' ');
+      return { thread, hour, posts, over: posts > caps.thread };
+    }).sort((a, b) => a.hour.localeCompare(b.hour) || a.thread.localeCompare(b.thread)),
+    project: Object.entries(perProject).map(([hour, posts]) => ({ hour, posts, over: posts > caps.project }))
+      .sort((a, b) => a.hour.localeCompare(b.hour)),
+  };
+  const flags = [
+    ...hours.thread.filter((h) => h.over).map((h) => ({ scope: 'thread', thread: h.thread, hour: h.hour, posts: h.posts, cap: caps.thread })),
+    ...hours.project.filter((h) => h.over).map((h) => ({ scope: 'project', hour: h.hour, posts: h.posts, cap: caps.project })),
+  ];
+  const listed = [...cards.values()].sort((a, b) => (a.postedAt ?? a.tappedAt).localeCompare(b.postedAt ?? b.tappedAt));
+  return { days, threads, cards: listed, hours, flags };
+}
+
+/** The attention view over every journal file under `root`. It lists folders, so it is for offline tools only. */
+function attentionOf(root, options) {
+  const { rows, bad } = readAll(root);
+  return { ...attention(rows, options), bad: bad.length };
+}
+
+return { CAPS, attention, attentionOf };
+})();
+// plugins/harness/pages/observe/data.js
+const { parseJournal, scopes, inScope, lastFinishes, tokensByAgent, timeByKind, refusals, asks, items, itemView, freshness, observe, refreshRow } = (() => {
+// The observe page's data layer (plan item obs-page): for a day, a thread or a session, where the tokens went, where
+// the time went, what was refused and why, and what was asked of the person, from journal rows. It reads rows and
+// writes nothing but the page.refresh row it hands back. The page bundles this file with the derived views it uses
+// (build.mjs), so the page and the tests run the same code. docs/journal.md, "The observe page", says what it shows.
+
+const DAY = 10; // 'YYYY-MM-DD'
+
+/** The rows of one journal file's text, and every line it couldn't use with its line number and reason. */
+function parseJournal(text, file = null) {
+  const rows = [];
+  const bad = [];
+  text.split('\n').forEach((line, i) => {
+    if (!line.trim()) return;
+    try {
+      const row = JSON.parse(line);
+      if (!row || typeof row.id !== 'string' || typeof row.at !== 'string' || typeof row.kind !== 'string') throw new Error('not a row');
+      rows.push(row);
+    } catch (err) {
+      bad.push({ file, line: i + 1, reason: err.message });
+    }
+  });
+  return { rows, bad };
+}
+
+// A session's thread is the thread its person, card and post rows name. A session in no thread has none.
+const threadsOf = (rows) => {
+  const out = new Map();
+  for (const r of rows) {
+    const t = r.payload?.thread;
+    if (t && ['person.message', 'person.tap', 'card.posted', 'post.sent'].includes(r.kind)) {
+      if (!out.has(r.session)) out.set(r.session, new Set());
+      out.get(r.session).add(t);
+    }
+  }
+  return out;
+};
+
+/** What the page can be scoped to: the UTC days, threads, sessions and items the rows hold, newest first. */
+function scopes(rows) {
+  const days = new Set();
+  const sessions = new Set();
+  for (const r of rows) {
+    days.add(r.at.slice(0, DAY));
+    sessions.add(r.session);
+  }
+  const threads = new Set([...threadsOf(rows).values()].flatMap((s) => [...s]));
+  const desc = (set) => [...set].sort().reverse();
+  return { days: desc(days), threads: desc(threads), sessions: desc(sessions), items: items(rows) };
+}
+
+/**
+ * The rows in `scope`: { day } keeps rows written that UTC day; { thread } keeps every row of the sessions working that
+ * thread; { session } keeps one session's rows; { item } keeps an item's rows, its agents' rows and the main-session rows
+ * of the sessions that applied its events; {} keeps all. A row read twice (the same id) is kept once.
+ */
+function inScope(rows, scope = {}) {
+  const seen = new Set();
+  const unique = rows.filter((r) => r && !seen.has(r.id) && seen.add(r.id));
+  if (scope.day) return unique.filter((r) => r.at.slice(0, DAY) === scope.day);
+  if (scope.thread) {
+    const map = threadsOf(unique);
+    return unique.filter((r) => map.get(r.session)?.has(scope.thread));
+  }
+  if (scope.session) return unique.filter((r) => r.session === scope.session);
+  if (scope.item) {
+    // The item's own rows, its agents' rows and the rows of the sessions that applied its events.
+    const own = unique.filter((r) => r.item === scope.item);
+    const agents = new Set(own.filter((r) => r.kind === 'agent.spawn').map((r) => r.payload?.agentId ?? r.agent));
+    const sessions = new Set(own.filter((r) => r.kind === 'engine.transition').map((r) => r.session));
+    return unique.filter((r) => r.item === scope.item || (r.agent && agents.has(r.agent)) || (!r.item && sessions.has(r.session) && !r.agent));
+  }
+  return unique;
+}
+
+const TOKEN_FIELDS = ['input', 'output', 'cacheRead', 'cacheCreation'];
+const zero = () => ({ input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 });
+const add = (into, t) => {
+  for (const f of TOKEN_FIELDS) into[f] += t?.[f] ?? 0;
+  into.total = TOKEN_FIELDS.reduce((s, f) => s + into[f], 0);
+  return into;
+};
+
+/**
+ * The token rows: every `turn.usage`, and each subagent's last `agent.finish` (by time), whose tokens are cumulative.
+ */
+function lastFinishes(rows) {
+  const last = new Map();
+  for (const r of rows) {
+    if (r?.kind !== 'agent.finish') continue;
+    const key = `${r.session} ${r.payload?.agentId ?? r.agent ?? 'unknown'}`;
+    if (!last.has(key) || r.at >= last.get(key).at) last.set(key, r);
+  }
+  const kept = new Set(last.values());
+  return rows.filter((r) => r?.kind === 'turn.usage' || kept.has(r));
+}
+
+/**
+ * Tokens by agent: the main session's turns (`turn.usage`, agent null) and each subagent (`agent.finish`), the same
+ * rows overhead.js counts. Returns { total, agents: [{ session, agent, type, rows, ...tokens }] }, biggest first.
+ * An agent's `agent.finish` tokens cover its whole transcript, so one that finished twice counts its last row, not
+ * the sum (retro finding 3, plan item engine-item-views).
+ */
+function tokensByAgent(rows) {
+  const agents = new Map();
+  for (const r of lastFinishes(rows)) {
+    const agent = r.kind === 'agent.finish' ? (r.payload?.agentId ?? r.agent ?? 'unknown') : null;
+    const key = `${r.session} ${agent ?? 'main'}`;
+    if (!agents.has(key)) agents.set(key, { session: r.session, agent, type: agent ? (r.payload?.type ?? null) : 'main', rows: 0, ...zero() });
+    const a = agents.get(key);
+    a.rows += 1;
+    add(a, r.payload?.tokens);
+  }
+  const list = [...agents.values()].sort((a, b) => b.total - a.total);
+  return { total: list.reduce((t, a) => add(t, a), zero()), agents: list };
+}
+
+/** Time by kind: the time view's totals (working, waiting on the person, CI, a wake, a rebuild, and unknown). */
+function timeByKind(rows) {
+  const { totals } = time(rows);
+  return { wallMs: totals.wallMs, workingMs: totals.workingMs, ...totals.waitingMs, unknownMs: totals.unknownMs };
+}
+
+/**
+ * What was refused: each `refusal` row with its rule, and whether it was retried (a later refusal or tool.call names
+ * it in `retryOf`), plus counts by rule. Newest first.
+ */
+function refusals(rows) {
+  const refusedAgain = new Set(rows.filter((r) => r.kind === 'refusal' && r.payload?.retryOf).map((r) => r.payload.retryOf));
+  const ran = new Map(rows.filter((r) => r.kind === 'tool.call' && r.payload?.retryOf).map((r) => [r.payload.retryOf, r.payload.ok]));
+  const list = rows.filter((r) => r.kind === 'refusal').map((r) => ({
+    id: r.id, at: r.at, session: r.session, agent: r.agent ?? null,
+    source: r.payload?.source ?? null, rule: r.payload?.rule ?? null, tool: r.payload?.tool ?? null,
+    then: refusedAgain.has(r.id) ? 'refused again' : ran.has(r.id) ? (ran.get(r.id) ? 'retried, ran' : 'retried, failed') : 'not retried',
+  })).sort((a, b) => b.at.localeCompare(a.at));
+  const byRule = {};
+  for (const r of list) byRule[r.rule ?? 'unknown'] = (byRule[r.rule ?? 'unknown'] ?? 0) + 1;
+  return { count: list.length, byRule, list };
+}
+
+/**
+ * What was asked of the person: the attention view's totals over the scope (their messages and taps, the cards and
+ * posts put in front of them, open cards, card waits), each card, and the hours over the platform's caps.
+ */
+function asks(rows) {
+  const view = attention(rows);
+  const totals = { messages: 0, taps: 0, cards: 0, posts: 0, open: 0, waits: { count: 0, totalMs: 0, maxMs: 0 } };
+  for (const d of Object.values(view.days)) {
+    for (const k of ['messages', 'taps', 'cards', 'posts', 'open']) totals[k] += d[k];
+    totals.waits.count += d.waits.count;
+    totals.waits.totalMs += d.waits.totalMs;
+    totals.waits.maxMs = Math.max(totals.waits.maxMs, d.waits.maxMs);
+  }
+  return { ...totals, list: view.cards, flags: view.flags };
+}
+
+const parseState = (s) => {
+  try {
+    return typeof s === 'string' ? JSON.parse(s) : s ?? null;
+  } catch {
+    return s;
+  }
+};
+const lastOf = (list, f) => list.reduce((got, x) => f(x) ?? got, null);
+
+/** The items the rows name (engine.transition rows of an item), newest first by their last row. */
+function items(rows) {
+  const at = new Map();
+  for (const r of rows) if (r?.item && r.kind === 'engine.transition' && !(at.get(r.item) > r.at)) at.set(r.item, r.at);
+  return [...at.entries()].sort((a, b) => b[1].localeCompare(a[1])).map(([item]) => item);
+}
+
+/**
+ * One item (plan item engine-item-views): its workflow and current state, the handles its events carried (issue, PR,
+ * verdict, merge), its build rounds, its tokens and its person asks, from every journal file, not only the item's.
+ * An item's work spans sessions: its actors' agents finish in the driver's session file, and its card is posted and
+ * tapped in the thread that owns it (retro finding 2). So the agents are the ones its agent.spawn rows bound, wherever
+ * their agent.finish rows are, each counted once at its last row (finding 3); the sessions that applied its events
+ * add their turns; and each ask's card is joined by its id to the card.posted and person.tap rows of any session.
+ * `now` ends an open card's wait.
+ */
+function itemView(rows, item, { now = null } = {}) {
+  const seen = new Set();
+  const all = rows.filter((r) => r && !seen.has(r.id) && seen.add(r.id));
+  const own = all.filter((r) => r.item === item).sort((a, b) => a.at.localeCompare(b.at));
+  const transitions = own.filter((r) => r.kind === 'engine.transition' && r.payload?.outcome === 'applied')
+    .sort((a, b) => (a.payload.seq ?? 0) - (b.payload.seq ?? 0));
+  if (!own.length) return null;
+  const events = transitions.map((t) => t.payload.event ?? {});
+  const outputs = (type) => events.filter((e) => e.type === type).map((e) => e.output);
+  const handles = {
+    issue: events.find((e) => e.type === 'xstate.init')?.input?.issue?.url ?? null,
+    pr: lastOf(outputs('xstate.done.actor.build'), (o) => o?.pr?.url ? { url: o.pr.url, headSha: o.pr.headSha ?? null } : null),
+    verdict: lastOf(outputs('xstate.done.actor.verify'), (o) => o?.result ? { result: o.result, sha: o.sha ?? null } : null),
+    merge: lastOf(outputs('xstate.done.actor.merge'), (o) => o?.sha ? { sha: o.sha } : null),
+  };
+
+  // Tokens: the item's agents (from its agent.spawn rows) at their last finish, and the turns of its sessions.
+  const agentIds = new Set(own.filter((r) => r.kind === 'agent.spawn').map((r) => r.payload?.agentId ?? r.agent).filter(Boolean));
+  const sessions = new Set(transitions.map((t) => t.session));
+  const finishes = lastFinishes(all.filter((r) => r.kind === 'agent.finish' && agentIds.has(r.payload?.agentId ?? r.agent)));
+  const turns = all.filter((r) => r.kind === 'turn.usage' && sessions.has(r.session));
+  const tokens = { total: zero(), agents: zero(), sessions: zero(), agentCount: agentIds.size, finished: finishes.length, sessionIds: [...sessions] };
+  for (const r of finishes) add(tokens.agents, r.payload?.tokens);
+  for (const r of turns) add(tokens.sessions, r.payload?.tokens);
+  add(add(tokens.total, tokens.agents), tokens.sessions);
+
+  // Asks: each ask run's card, posted and answered wherever that happened.
+  const cards = new Map(attention(all).cards.map((c) => [c.cardId, c]));
+  const answers = new Map(transitions.filter((t) => t.payload.run && /^xstate\.done\.actor\./.test(t.payload.event?.type ?? '')).map((t) => [t.payload.run, t]));
+  const end = now ?? all.reduce((m, r) => (r.at > m ? r.at : m), '');
+  // An ask run starts when its state is entered; its card's id is on the run's done row once the host has seen the
+  // card recorded. Until then the wait counts from the run's start.
+  const askRows = own.filter((r) => r.kind === 'engine.effect' && r.payload?.actor === 'ask' && r.payload?.type === 'run');
+  const asks = [...new Set(askRows.map((r) => r.payload.effect))]
+    .map((effect) => {
+      const mine = askRows.filter((r) => r.payload.effect === effect);
+      const cardId = lastOf(mine, (r) => r.payload.outcome?.ref ?? null);
+      const card = cardId ? cards.get(cardId) : null;
+      const answer = answers.get(effect);
+      const postedAt = card?.postedAt ?? (cardId ? mine.find((r) => r.payload.outcome?.ref)?.at : mine[0].at);
+      const answeredAt = answer?.at ?? card?.tappedAt ?? null;
+      return {
+        effect, cardId, thread: card?.thread ?? null, postedAt, answeredAt,
+        by: answer?.source?.system ?? (card?.tappedAt ? 'hearth' : null), choice: answer?.payload?.event?.output?.choice ?? card?.option ?? null,
+        waitMs: Date.parse(answeredAt ?? end) - Date.parse(postedAt), open: !answeredAt,
+      };
+    });
+  const last = transitions.at(-1);
+  return {
+    item,
+    workflow: transitions[0]?.payload?.workflow ?? null,
+    state: last ? parseState(last.state) : null,
+    since: last?.at ?? null,
+    firstAt: own[0].at,
+    lastAt: own.at(-1).at,
+    transitions: transitions.length,
+    rounds: transitions.filter((t) => parseState(t.state) === 'building').length,
+    handles,
+    tokens,
+    asks,
+    personWaitMs: asks.reduce((s, a) => s + (Number.isFinite(a.waitMs) ? a.waitMs : 0), 0),
+    refusals: own.filter((r) => r.kind === 'refusal').length,
+  };
+}
+
+/** The newest row's time, and the releases that wrote the rows, newest first. */
+function freshness(rows) {
+  const newestAt = rows.reduce((m, r) => (r.at > m ? r.at : m), '') || null;
+  const byVersion = (a, b) => b.split('.').map(Number).reduce((d, n, i) => d || n - Number(a.split('.')[i]), 0);
+  const releases = [...new Set(rows.map((r) => r.release).filter(Boolean))].sort(byVersion);
+  return { newestAt, release: releases[0] ?? null, releases };
+}
+
+/** Everything the page shows for `scope`: { scope, rows, freshness, tokens, time, refusals, asks, item }. */
+function observe(rows, scope = {}) {
+  const scoped = inScope(rows, scope);
+  return {
+    scope,
+    rows: scoped.length,
+    freshness: freshness(scoped),
+    tokens: tokensByAgent(scoped),
+    time: timeByKind(scoped),
+    refusals: refusals(scoped),
+    asks: asks(scoped),
+    item: scope.item ? itemView(rows, scope.item) : null,
+  };
+}
+
+/**
+ * The page.refresh journal row for one refresh: `url` is the page, `ms` how long reading and deriving took, `rows`,
+ * `files` and `bad` what it read, `newestAt` the newest row time, `release` the page's own build release, `scope` what
+ * the page showed and `viewer` the viewer's opaque id. The row's session is `page-observe`: the page is its own writer.
+ */
+function refreshRow({ id, at, url, ms, rows, files, bad, newestAt, release, scope = {}, viewer = null }) {
+  return {
+    v: 1, id, at, kind: 'page.refresh', session: 'page-observe', agent: null, item: 'obs-page', state: null,
+    release, source: { system: 'artifact', ref: url ?? 'unpublished' },
+    payload: { page: 'observe', ms, rows, files, bad, newestAt, scope, viewer },
+  };
+}
+
+return { parseJournal, scopes, inScope, lastFinishes, tokensByAgent, timeByKind, refusals, asks, items, itemView, freshness, observe, refreshRow };
+})();
+const PAGE_RELEASE = "0.1.16";
+return Object.freeze({ PAGE_RELEASE, parseJournal, scopes, inScope, items, itemView, lastFinishes, tokensByAgent, timeByKind, refusals, asks, freshness, observe, refreshRow });
+})();
+</script>
+<script>
+(() => {
+  const D = window.ObserveData;
+  const PROJECT_JOURNAL = ['harness', 'journal'];
+  const $ = (id) => document.getElementById(id);
+  const state = { rows: [], files: 0, bad: 0 };
+  $('page-release').textContent = D.PAGE_RELEASE;
+
+  const fmtN = (n) => n.toLocaleString('en-US');
+  const fmtMs = (ms) => {
+    if (!ms) return '0s';
+    const s = Math.round(ms / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return h ? `${h}h ${m}m` : m ? `${m}m ${r}s` : `${r}s`;
+  };
+  const many = (n, one, more = `${one}s`) => `${fmtN(n)} ${n === 1 ? one : more}`;
+  const utc = (iso) => iso ? iso.replace('T', ' ').slice(0, 19) : '–';
+  const short = (id) => id ? (id.length > 18 ? `…${id.slice(-10)}` : id) : '–';
+  const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
+  const rowOf = (cells) => { const tr = document.createElement('tr'); cells.forEach((c) => tr.append(c)); return tr; };
+  const fill = (id, rows, empty, cols) => {
+    const body = $(id).tBodies[0];
+    body.replaceChildren(...rows);
+    if (!rows.length) { const td = cell(empty, 'empty'); td.colSpan = cols; body.append(rowOf([td])); }
+  };
+
+  function scopeOf() {
+    const v = $('scope').value;
+    if (!v) return {};
+    const [k, ...rest] = v.split(':');
+    return { [k]: rest.join(':') };
+  }
+
+  function fillScopes() {
+    const keep = $('scope').value;
+    const { days, threads, sessions, items } = D.scopes(state.rows);
+    const opts = [new Option('Everything in the journal', '')];
+    for (const [label, key, list] of [['Item', 'item', items], ['Day', 'day', days], ['Thread', 'thread', threads], ['Session', 'session', sessions]]) {
+      const g = document.createElement('optgroup');
+      g.label = label;
+      list.forEach((x) => g.append(new Option(`${label} ${key === 'day' || key === 'item' ? x : short(x)}`, `${key}:${x}`)));
+      if (list.length) opts.push(g);
+    }
+    $('scope').replaceChildren(...opts);
+    $('scope').value = [...$('scope').querySelectorAll('option')].some((o) => o.value === keep) ? keep : '';
+  }
+
+  const TIME_KINDS = [['workingMs', 'Working', 'work'], ['person', 'Waiting on the person', 'person'], ['ci', 'Waiting on CI', 'ci'], ['wake', 'Waiting on another wake', 'wake'], ['rebuild', 'Container rebuild', 'rebuild'], ['unknownMs', 'Unknown', 'unknown']];
+
+  function render() {
+    const v = D.observe(state.rows, scopeOf());
+    $('release').textContent = v.freshness.release ?? '–';
+    $('newest').textContent = utc(v.freshness.newestAt);
+
+    // The item view (plan item engine-item-views): only when the scope is an item.
+    $('item-panel').hidden = !v.item;
+    if (v.item) {
+      const it = v.item;
+      $('h-item').textContent = `Item ${it.item}`;
+      $('item-state').textContent = `${typeof it.state === 'string' ? it.state : JSON.stringify(it.state)} · ${fmtN(it.tokens.total.total)} tokens`;
+      $('item-sub').textContent = `${it.workflow ?? 'unknown workflow'}, since ${utc(it.since)} · ${many(it.rounds, 'build round')} · ${many(it.transitions, 'transition')} · waited on the person ${fmtMs(it.personWaitMs)}`;
+      const h = it.handles;
+      fill('item', [
+        ['Issue', h.issue ?? '–'],
+        ['PR', h.pr ? `${h.pr.url} at ${h.pr.headSha?.slice(0, 7) ?? '?'}` : '–'],
+        ['Verdict', h.verdict ? `${h.verdict.result} at ${h.verdict.sha?.slice(0, 7) ?? '?'}` : '–'],
+        ['Merge', h.merge ? h.merge.sha.slice(0, 7) : '–'],
+        ['Agents', `${fmtN(it.tokens.agents.total)} tokens over ${many(it.tokens.agentCount, 'agent')}`],
+        ['Driving sessions', `${fmtN(it.tokens.sessions.total)} tokens in ${many(it.tokens.sessionIds.length, 'session')}`],
+        ['Refusals', fmtN(it.refusals)],
+      ].map(([k, x]) => rowOf([cell(k), cell(x)])), 'Nothing recorded for this item.', 2);
+      fill('item-asks', it.asks.map((a) => rowOf([cell(utc(a.postedAt)), cell(a.open ? 'open' : (a.by ?? '–')), cell(a.choice ?? '–'), cell(fmtMs(a.waitMs), 'n')])), 'The item asked the person nothing.', 4);
+    }
+
+    const t = v.tokens;
+    $('tokens-total').textContent = `${fmtN(t.total.total)} tokens`;
+    const sub = t.agents.filter((a) => a.agent).reduce((s, a) => s + a.total, 0);
+    $('tokens-split').textContent = `${fmtN(t.total.total - sub)} in main sessions, ${fmtN(sub)} in subagents; input, output and cache counted alike`;
+    fill('tokens', t.agents.map((a) => rowOf([cell(short(a.session)), cell(a.agent ? `${a.type ?? 'agent'} ${short(a.agent)}` : 'main'),
+      cell(fmtN(a.input), 'n'), cell(fmtN(a.output), 'n'), cell(fmtN(a.cacheRead), 'n'), cell(fmtN(a.cacheCreation), 'n'), cell(fmtN(a.total), 'n')])), 'No turn or subagent token rows in this scope.', 7);
+
+    const tm = v.time;
+    $('time-wall').textContent = fmtMs(tm.wallMs);
+    const bar = $('time-bar');
+    bar.replaceChildren(...TIME_KINDS.filter(([k]) => tm[k] > 0).map(([k, label, c]) => {
+      const s = document.createElement('span');
+      s.style.width = `${(100 * tm[k]) / (tm.wallMs || 1)}%`;
+      s.style.background = `var(--bar-${c})`;
+      s.title = `${label}: ${fmtMs(tm[k])}`;
+      return s;
+    }));
+    fill('time', TIME_KINDS.map(([k, label, c]) => {
+      const name = cell(label);
+      const key = document.createElement('span'); key.className = 'key'; key.style.background = `var(--bar-${c})`;
+      name.prepend(key);
+      return rowOf([name, cell(fmtMs(tm[k]), 'n'), cell(tm.wallMs ? `${Math.round((100 * tm[k]) / tm.wallMs)}%` : '–', 'n')]);
+    }), '', 3);
+
+    const r = v.refusals;
+    $('refusals-count').textContent = `${r.count} refused`;
+    $('refusals-rules').textContent = Object.entries(r.byRule).map(([k, n]) => `${k} ×${n}`).join(', ') || 'Nothing was refused in this scope.';
+    fill('refusals', r.list.map((x) => {
+      const then = cell(''); const chip = document.createElement('span');
+      chip.className = `chip ${x.then === 'retried, ran' ? 'ok' : x.then === 'not retried' ? 'warn' : 'bad'}`; chip.textContent = x.then; then.append(chip);
+      return rowOf([cell(utc(x.at)), cell(x.rule ?? 'unknown'), cell(x.tool ?? '–'), cell(`${x.source ?? '?'}${x.agent ? ' in a subagent' : ''}`), then]);
+    }), 'No refusals in this scope.', 5);
+
+    const a = v.asks;
+    $('asks-cards').textContent = `${many(a.cards, 'card')}, ${many(a.posts, 'post')}`;
+    $('asks-sub').textContent = `The person wrote ${many(a.messages, 'message')} and tapped ${many(a.taps, 'card')}; ${many(a.open, 'card')} still open; longest card wait ${fmtMs(a.waits.maxMs)}${a.flags.length ? `; ${many(a.flags.length, 'hour')} over the message caps` : ''}.`;
+    fill('asks', a.list.slice().reverse().map((c) => rowOf([cell(utc(c.postedAt)), cell(short(c.thread)), cell(c.tappedAt ? `option ${c.option ?? c.optionIndex}` : 'open'), cell(c.waitMs === null ? '–' : fmtMs(c.waitMs), 'n')])),
+      'No cards were put in front of the person in this scope.', 4);
+  }
+
+  // The journal root under the project's files: harness/journal, found by listing, since paths are passed back verbatim.
+  async function findDir(files, parent, name) {
+    let cursor;
+    do {
+      const page = await files.list({ ...(parent ? { path: parent } : {}), ...(cursor ? { cursor } : {}) });
+      const hit = page.entries.find((e) => e.isDirectory && e.path.replace(/\/$/, '').split('/').pop() === name);
+      if (hit) return hit.path;
+      cursor = page.cursor;
+    } while (cursor);
+    return null;
+  }
+
+  async function readText(files, path) {
+    const chunks = [];
+    let offset = 0, size = Infinity, revision = null;
+    while (offset < size) {
+      const res = await files.read(path, { offset });
+      if (revision && res.revision !== revision) return readText(files, path);
+      revision = res.revision; size = res.size;
+      chunks.push(res.bytes); offset += res.bytes.length;
+      if (!res.bytes.length) break;
+    }
+    const all = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+    let at = 0; for (const c of chunks) { all.set(c, at); at += c.length; }
+    return new TextDecoder().decode(all);
+  }
+
+  async function readJournal(files) {
+    let dir = null;
+    for (const name of PROJECT_JOURNAL) { dir = await findDir(files, dir, name); if (!dir) throw Object.assign(new Error('no harness/journal folder in the project files'), { code: 'not_found' }); }
+    const paths = [];
+    let cursor;
+    do {
+      const page = await files.list({ path: dir, recursive: true, ...(cursor ? { cursor } : {}) });
+      paths.push(...page.entries.filter((e) => !e.isDirectory && e.path.endsWith('.jsonl')).map((e) => e.path));
+      cursor = page.cursor;
+    } while (cursor);
+    const rows = [], bad = [];
+    for (const p of paths) {
+      const out = D.parseJournal(await readText(files, p), p);
+      rows.push(...out.rows); bad.push(...out.bad);
+    }
+    return { rows, bad, files: paths.length };
+  }
+
+  async function recordRefresh(row) {
+    const db = await claude.use('db');
+    if (!db) { $('refresh-note').textContent = 'This view cannot record refreshes (the page store is unavailable).'; return; }
+    try { await db.collection('refresh').doc(row.id).set(row); } catch (err) { $('refresh-note').textContent = `The refresh was not recorded: ${err.message ?? err.code}.`; }
+    try {
+      const snap = await db.collection('refresh').orderBy('at', 'desc').limit(8).get();
+      const list = (snap.docs ?? snap).map((d) => (typeof d.data === 'function' ? d.data() : d));
+      fill('refreshes', list.map((x) => rowOf([cell(utc(x.at)), cell(`${x.payload.ms} ms`, 'n'), cell(fmtN(x.payload.rows), 'n'), cell(String(x.payload.files), 'n'), cell(utc(x.payload.newestAt))])), 'No refreshes recorded yet.', 5);
+    } catch { /* the list is a convenience; the row above is what counts */ }
+  }
+
+  async function refresh() {
+    const btn = $('refresh');
+    btn.disabled = true;
+    $('status').className = 'status';
+    $('status').textContent = 'Reading the journal…';
+    const started = performance.now();
+    try {
+      const files = await claude.use('files');
+      if (!files) throw Object.assign(new Error('this view cannot read the project files'), { code: 'unavailable' });
+      const out = await readJournal(files);
+      Object.assign(state, { rows: out.rows, files: out.files, bad: out.bad.length });
+      fillScopes();
+      render();
+      const ms = Math.round(performance.now() - started);
+      const at = new Date().toISOString();
+      $('refreshed').textContent = utc(at);
+      $('read').textContent = `${fmtN(out.rows.length)} rows in ${out.files} files${out.bad.length ? `, ${out.bad.length} unreadable lines` : ''}, ${ms} ms`;
+      $('status').textContent = 'Up to date.';
+      const user = await claude.use('user');
+      const viewer = user && typeof user.id === 'function' ? await user.id().catch(() => null) : null;
+      await recordRefresh(D.refreshRow({ id: crypto.randomUUID(), at, url: location.href.split('#')[0], ms, rows: out.rows.length, files: out.files, bad: out.bad.length,
+        newestAt: D.freshness(out.rows).newestAt, release: D.PAGE_RELEASE, scope: scopeOf(), viewer }));
+    } catch (err) {
+      $('status').className = 'status err';
+      $('status').textContent = err.code === 'not_granted' ? 'Reading the project files was not allowed, so the page has nothing to show. Allow it from the page\'s Permissions menu.'
+        : err.code === 'not_found' ? `The journal was not found (${err.message}). Is the harness installed in this project?`
+        : `The journal could not be read: ${err.message ?? err.code}. Press Refresh to try again.`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('refresh').addEventListener('click', refresh);
+  $('scope').addEventListener('change', render);
+  render();
+  // One read once the page has loaded; after that, only the Refresh button reads. No timers run while nobody looks.
+  window.addEventListener('load', () => setTimeout(refresh, 0), { once: true });
+})();
+</script>

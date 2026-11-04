@@ -1,0 +1,41 @@
+{
+  "item": "parity-cases",
+  "verified_sha": "85de49c92ffea7fb2a06f3a2c5f29518940b680f",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5GEfxvf8tHZQEv2dbT#agent=verifier-parity-cases",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "all",
+      "status": "MET",
+      "command": "node --test packages/engine/test/parity/cases.test.js; then in a scratch `git archive HEAD` copy: rm C-push-after-pass.test.js, and separately removed the C-two-hosts-one-item entry from gaps.json, re-running cases.test.js each time",
+      "excerpt": "Head: 2 tests, 2 pass (and all 26 parity tests pass). Scratch copy minus a test file: \"not ok 1 - parity: every case ... C-push-after-pass has neither a test nor a gaps.json entry\". Scratch copy minus a gaps entry: \"not ok 1 ... C-two-hosts-one-item has neither a test nor a gaps.json entry\". 13 test files + 4 gaps entries = the 17 ids in plan/cases/work-item.md, none in both; each gaps item exists, is open and lists the case."
+    },
+    {
+      "id": "host",
+      "status": "MET",
+      "command": "read all 13 packages/engine/test/parity/C-*.test.js and world.js",
+      "excerpt": "Every test builds an item with restore() on a journal file and offer()s it events with the real handlers (src/effects merge/card/post/timer) via world.js; C-claimed-pr uses the real src/actors.js (spawn/bind/accept/deliver); C-missing-expect, C-older-writer, C-stand-in use bin/host.js as a child process; C-merge-outside-host drives the host then packages/journal/bin/journal-check.js. Stubs are only GitHub (a local HTTP server the real REST client talks to), the thread/clock (platform()), wake text shaped on the fixtures, and agent outputs (brief/build/verify, the platform). No test checks only pure transitions. Minor: C-pass-carries-to-merge-of-main's first test is a regex over the workflow JSON (not host-driven; the second test is); C-refused-action-not-retried and C-verdict-on-old-head stub the refusal / the verifier output, which are platform inputs. The positive \"workflow says carry\" branch of C-pass-carries is not tested (quick-fix has none)."
+    },
+    {
+      "id": "independent",
+      "status": "MET",
+      "command": "node --test verify/parity-cases/C-duplicate-wake-no-double-effect.test.mjs verify/parity-cases/C-red-ci-back-to-building.test.mjs verify/parity-cases/C-verdict-on-old-head.test.mjs (written from the case text and engine src, before reading the builder's tests); then node --test packages/engine/test/parity/*.test.js",
+      "excerpt": "Mine: 9 tests, 9 pass (dup wake twice + fresh host -> one rebuild; restart mid-merge with and without a lookup -> merge started once; red check -> building with check/conclusion/sha in the build input, old card then merges nothing; PASS for A with head B -> replanning, never awaitingMerge/merging, verdict kept). Builder's: 26/26 pass. No disagreement. My own first-draft failures were my stubs (queues that auto-finished the rebuild, a non-hex sha), not the engine."
+    },
+    {
+      "id": "gaps-real",
+      "status": "MET",
+      "command": "node --test verify/parity-cases/*.gap.test.mjs (four files, one per gaps.json case; they assert the current, case-breaking behaviour so CI stays green)",
+      "excerpt": "7 tests pass, each showing a Then that does not hold. C-finish-closes-waits: PR merged elsewhere event is refused, item stays awaitingMerge with the ask run open; leaving the asking state leaves a `stop` effect pending forever (handlers() has no stop), only 1 card ever made, none closed. C-waiting-does-not-stall: other item advances, but the only wakes ever asked for are buildTimeout ones; none in the waiting state, pending timers 0. C-builder-cannot-change-own-workflow: no row holds the workflow hash; restore() accepts an edited file (buildsLeft below 99) and the item runs a third build (builds===3) the filed workflow forbids. C-two-hosts-one-item: other session's offer() returns not-owner but its handlers posted the owner's pending card and wrote the ask start/done rows into the owner's file; owner and other restored together both posted the same effect id (2 cards, 1 key)."
+    },
+    {
+      "id": "ci",
+      "status": "MET",
+      "command": "mcp__github__pull_request_read get_check_runs, PR 59 (head 85de49c, confirmed by git ls-remote)",
+      "excerpt": "check run \"test\": status completed, conclusion success, https://github.com/suredesigntshirts/ccp_xstate/actions/runs/41300425578/job/124830022549 (11:06:55Z-11:07:27Z). The other check \"gates\" concluded failure at the same sha, as expected before a verdict exists (this commit adds it)."
+    }
+  ],
+  "summary": "All five Expect lines hold at 85de49c. npm test locally: 451 of 452 pass; the one failure is the known local-only copy-not-link in test/setup (fetched release branches). Defects, none blocking: (1) the listing test's second test asserts exact problem lists, so any scratch deletion fails both listing tests, not only the first; fine, but the first alone is what proves the check. (2) C-pass-carries-to-merge-of-main has a non-host regex test and no test of the positive \"workflow says carry\" branch; acceptable because quick-fix has no carry rule. (3) The tests stub the refusal in C-refused-action-not-retried and the verifier verdict in C-verdict-on-old-head; both are platform inputs, but no real auto-mode refusal is exercised. (4) The pr.pushed event is offered with a github source in C-push-after-pass and C-pass-carries; how a real push wake reaches the host is unproven (the builder records this as a risk). (5) The four gap characterisations in verify/parity-cases/*.gap.test.mjs go red the day the fix items land; the fix items should delete them with their gaps.json entries."
+}

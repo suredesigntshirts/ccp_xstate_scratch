@@ -1,0 +1,483 @@
+<title>Design Tournament Viewer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: one reading column of sections; the machine explorer breaks wider for its diagram. Lanes keep one color each, everywhere. */
+:root{
+  --bg:#f5f6f8; --surface:#ffffff; --fg:#151a22; --muted:#5b6575; --line:#d9dde4; --soft:#eceef2;
+  --edge:#7b8494; --edge-fail:#c4c9d2; --focus:#1f5fd1;
+  --today:#6b7280; --A:#0f8a7e; --B:#4f56c8; --C:#b7741a; --D:#b4407c; --E:#7c8796;
+  --good:#1d7a46; --warn:#a15c00; --bad:#b42323;
+  --display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1319; --surface:#171c24; --fg:#e7eaef; --muted:#9aa4b3; --line:#2b323d; --soft:#1f252e;
+  --edge:#8d97a7; --edge-fail:#3d4552; --focus:#6aa0ff;
+  --today:#9ca3af; --A:#3cc2b3; --B:#8f95f2; --C:#e3a24a; --D:#e27aae; --E:#a3adbb;
+  --good:#53c08a; --warn:#e3a24a; --bad:#f07272; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1319; --surface:#171c24; --fg:#e7eaef; --muted:#9aa4b3; --line:#2b323d; --soft:#1f252e;
+  --edge:#8d97a7; --edge-fail:#3d4552; --focus:#6aa0ff;
+  --today:#9ca3af; --A:#3cc2b3; --B:#8f95f2; --C:#e3a24a; --D:#e27aae; --E:#a3adbb;
+  --good:#53c08a; --warn:#e3a24a; --bad:#f07272; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(30px,5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:24px;font-weight:600}
+h3{font-size:17px;font-weight:600}
+p{margin:0;max-width:68ch}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:17px;color:var(--fg)}
+.muted{color:var(--muted)}
+code,.mono{font-family:var(--mono);font-size:.88em}
+section{display:flex;flex-direction:column;gap:14px}
+.sec-head{display:flex;flex-direction:column;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);white-space:nowrap}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block}
+/* process strip */
+.process{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.process div{padding:12px 12px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:4px;min-width:0}
+.process div:last-child{border-right:none}
+.process b{font-family:var(--display);font-weight:600;font-size:14.5px}
+.process span{font-size:13px;color:var(--muted)}
+.process i{font-style:normal;font-family:var(--mono);font-size:11px;color:var(--muted)}
+@media (max-width:760px){.process{grid-template-columns:1fr 1fr}.process div{border-bottom:1px solid var(--line)}}
+/* scoreboard */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 18px 12px;display:flex;flex-direction:column;gap:6px}
+.row{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;gap:12px;align-items:center;padding:6px 0;border-bottom:1px solid var(--soft)}
+.row:last-of-type{border-bottom:none}
+.row .who{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;min-width:0}
+.row .who small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.bar{height:22px;background:var(--soft);border-radius:4px;position:relative;overflow:hidden}
+.bar>span{position:absolute;inset:0 auto 0 0;border-radius:4px}
+.bar>em{position:absolute;left:8px;top:2px;font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--fg);mix-blend-mode:normal}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:15px;text-align:right;font-weight:500}
+.board .foot{font-size:12.5px;color:var(--muted);padding-top:6px}
+.stats{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+.stats th,.stats td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.stats th:first-child,.stats td:first-child{text-align:left}
+.stats th{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+/* lane cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--c);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.card .k{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card .k h3{color:var(--fg)}
+.card .k .rank{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.card .idea{font-size:14.5px}
+.card dl{margin:0;display:grid;grid-template-columns:88px minmax(0,1fr);gap:4px 10px;font-size:13px}
+.card dt{color:var(--muted);font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding-top:2px}
+.card dd{margin:0}
+.card button{align-self:flex-start}
+button{font:inherit;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:5px 10px}
+button:hover{border-color:var(--muted)}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+/* explorer */
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{display:inline-flex;align-items:center;gap:7px}
+.tabs button[aria-selected="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.explorer{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.canvas{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:6px}
+.canvas svg{display:block}
+.mstats{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--muted)}
+.mstats b{color:var(--fg);font-family:var(--mono);font-weight:500}
+.controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px}
+.controls label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.detail{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;font-size:13px;min-width:0}
+.detail h3{font-family:var(--mono);font-size:14px;font-weight:500}
+.detail ul{margin:0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.detail li{font-family:var(--mono);font-size:12px;line-height:1.45;padding:4px 6px;border-radius:4px;background:var(--soft);overflow-wrap:anywhere}
+.detail .lbl{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+svg text{font-family:var(--mono)}
+.node rect{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.node.main rect{stroke:var(--lc)}
+.node.final rect{stroke-width:3}
+.node.fail rect{stroke-dasharray:4 3;stroke:var(--edge)}
+.node text{fill:var(--fg);font-size:11.5px}
+.node .sub{fill:var(--muted);font-size:9.5px}
+.node{cursor:pointer}
+.node.sel rect{fill:var(--soft);stroke:var(--focus);stroke-width:2.5}
+.group rect{fill:none;stroke:var(--lc);stroke-dasharray:6 4;stroke-width:1.5}
+.group text{fill:var(--muted);font-size:10.5px}
+.edge path{fill:none;stroke:var(--edge);stroke-width:1.4}
+.edge.fail path{stroke:var(--edge-fail)}
+.edge.hi path{stroke:var(--focus);stroke-width:2.4}
+.edge text{fill:var(--muted);font-size:9.5px}
+.edge.hi text{fill:var(--focus)}
+.badge circle{fill:var(--soft);stroke:var(--line)}
+.badge text{fill:var(--muted);font-size:9.5px}
+#ah path{fill:var(--edge)} #ahf path{fill:var(--edge-fail)} #ahh path{fill:var(--focus)}
+/* matrix */
+.matrix{border-collapse:collapse;font-size:13px;width:100%}
+.matrix th,.matrix td{padding:5px 8px;border-bottom:1px solid var(--soft);text-align:center;white-space:nowrap}
+.matrix td:first-child,.matrix th:first-child{text-align:left;white-space:normal;min-width:190px}
+.matrix thead th{font-family:var(--mono);font-size:11px;font-weight:500;position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line)}
+.matrix .grp td{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--soft);text-align:left}
+.m{display:inline-block;min-width:34px;font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:4px}
+.m.kept{color:var(--muted)}
+.m.gone{color:var(--bad);text-decoration:line-through}
+.m.new{background:color-mix(in srgb,var(--good) 16%,transparent);color:var(--good);font-weight:500}
+.m.chg{background:color-mix(in srgb,var(--warn) 16%,transparent);color:var(--warn)}
+.m.x2{outline:1.5px solid currentColor}
+.legend{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:12.5px;color:var(--muted);align-items:center}
+.matrix tfoot td{font-family:var(--mono);font-weight:500;border-top:1px solid var(--line);border-bottom:none;padding-top:8px}
+/* scenario table */
+.scen{border-collapse:collapse;width:100%;font-size:13.5px}
+.scen th,.scen td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.scen thead th{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.scen td:first-child{min-width:170px}
+.scen td{min-width:170px}
+.scen td b{font-family:var(--display);font-weight:600;font-size:14.5px;display:block}
+.yes{color:var(--good);font-weight:600}.no{color:var(--bad);font-weight:600}.part{color:var(--warn);font-weight:600}
+.callout{border-left:3px solid var(--fg);padding:4px 0 4px 16px;display:flex;flex-direction:column;gap:8px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.two{grid-template-columns:1fr}.row{grid-template-columns:110px minmax(0,1fr) 54px}}
+ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+@media (prefers-reduced-motion:no-preference){.bar>span{transition:width .5s ease}}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">ccp_xstate · design tournament · run 3 Nov 2026</div>
+  <h1>Five designs for one factory</h1>
+  <p class="lede">Four designers worked independently on the same question: what should pass between states so the work is provably done? A fifth lane built the design we settled on in the six-round challenge, as a control. Each design was then built and tested by a helper, and a blind judge reran every test.</p>
+  <p class="muted" style="font-size:13.5px">Naming trap: <b>lane A</b> is the minimalist designer. The challenge's <b>“option A”</b> is lane <b>E</b>, the control.</p>
+</header>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">How the run worked</span><h2>Same problem, same tests, same judge</h2></div>
+  <div class="process">
+    <div><i>1</i><b>Frozen pack</b><span>One problem, 12 scenarios, scoring rules</span></div>
+    <div><i>2</i><b>4 designers + control</b><span>Couldn't see each other or the challenge files</span></div>
+    <div><i>3</i><b>Executor helpers</b><span>Built each design on a copy of the engine and wrote a runnable test per scenario</span></div>
+    <div><i>4</i><b>Blind judge</b><span>Reran every test, recounted primitives</span></div>
+    <div><i>5</i><b>Deletion round</b><span>Top two + control tried to remove pieces</span></div>
+    <div><i>6</i><b>Final judge</b><span>Reran again, wrote the result</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Scoreboard</span><h2>Everyone passed all 12, so size decided it</h2>
+  <p class="muted">The headline score is scenarios passed divided by the number of primitives a design needs. Interpreter changes count double. Since every lane passed 12 of 12, the score only measures how few building blocks each design used.</p></div>
+  <div class="board" id="board"></div>
+  <div class="scroll"><table class="stats" id="stats"></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">The five ideas</span><h2>What each designer bet on</h2></div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section id="explore">
+  <div class="sec-head"><span class="eyebrow">Quick-fix workflow, drawn from each lane's actual JSON</span><h2>See the machines side by side</h2>
+  <p class="muted">Each box is a state, and each arrow stands for one or more transitions between two states. Thicker arrows bundle more transitions. Click a state to list everything it listens for. Start with “Today” to see what we have now.</p></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="mstats" id="mstats"></div>
+  <div class="controls">
+    <label><input type="checkbox" id="showFail"> Show failure and retry paths</label>
+    <label><input type="checkbox" id="showLabels"> Show event names on arrows</label>
+  </div>
+  <div class="explorer">
+    <div class="canvas" id="canvas"></div>
+    <aside class="detail" id="detail"></aside>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Same scenario, five answers</span><h2>How each design catches the hard cases</h2>
+  <p class="muted">These are the four scenarios where the designs differ the most. All five pass each one, by different routes.</p></div>
+  <div class="scroll"><table class="scen" id="scen"></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">Building blocks</span><h2>Which primitives each design keeps, drops and adds</h2>
+  <p class="muted">Rows are primitives. “Today” is the engine as it is now. Totals are the judge's weighted counts after the deletion round.</p></div>
+  <div class="legend">
+    <span><span class="m kept">kept</span> kept as is</span>
+    <span><span class="m gone">drop</span> removed</span>
+    <span><span class="m new">new</span> added</span>
+    <span><span class="m chg">chg</span> changed</span>
+    <span><span class="m new x2">new</span> boxed = interpreter change, counts double</span>
+  </div>
+  <div class="scroll" style="max-height:640px"><table class="matrix" id="matrix"></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">The helper prompt, your special focus</span><h2>Does the verifier grade the right commit?</h2>
+  <p class="muted">The riskiest instruction we give an agent is “check out the PR head, then judge it”. If the verifier forgets, an honest verdict is graded against the wrong commit. The lanes split on whether the host does this step itself.</p></div>
+  <div class="scroll"><table class="scen" id="prompt"></table></div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="eyebrow">What it means</span><h2>Reading the result</h2></div>
+  <div class="two">
+    <div class="callout">
+      <h3>What the run showed</h3>
+      <ul class="plain">
+        <li>The control we converged on came last. Six rounds of challenge added observer events and effects, and fresh designers didn't need them.</li>
+        <li>The winner is today's engine with pieces taken out, not a new architecture. Fewest primitives does not mean a smaller chart. Lane A writes 52 transitions in quick-fix, compared with 27 today.</li>
+        <li>The best safety idea came from lane C: the host places the subject the verifier grades. The winner doesn't have it.</li>
+        <li>Lane D tried a genuinely different shape, a fact board. It gave by far the smallest workflow files but needed three interpreter changes.</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <h3>What it didn't prove</h3>
+      <ul class="plain">
+        <li>No real agent ran against any prompt. All agent output in the tests was stubbed, and GitHub was faked.</li>
+        <li>Lane A's lead rests partly on deletions with real costs. With no timers, a silent worker hangs with nobody told, and a replan tap without a written reason is refused.</li>
+        <li>The scoring rules decide a lot. Counting interpreter changes double is what sank lane D.</li>
+        <li>The recommended combination, lane A plus lane C's host-placed subject, hasn't been built yet.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="muted" style="font-size:13px">Sources: <code>/mnt/project-files/design-tournament/result.md</code>, each lane's <code>design.md</code>, and the <code>build/workflows/*.json</code> files the diagrams are drawn from.</p>
+</section>
+</div>
+
+<script>
+const DATA = __DATA__;
+const LANES = {
+  base:{name:'Today', sub:'main 5633401', c:'--today'},
+  A:{name:'A · Minimalist', sub:'delete before adding', c:'--A'},
+  B:{name:'B · Event-sourcing', sub:'the journal is the truth', c:'--B'},
+  C:{name:'C · Provenance', sub:'attestations with subjects', c:'--C'},
+  D:{name:'D · Wildcard', sub:'a fact board with gates', c:'--D'},
+  E:{name:'E · Control', sub:'the converged “option A”', c:'--E'},
+};
+const SCORE = [
+  {k:'A', pp:0.545, prim:22, lines:2645, taps:'1 / 2', vocab:true},
+  {k:'B', pp:0.414, prim:29, lines:3276, taps:'1 / 1*', vocab:false},
+  {k:'C', pp:0.387, prim:31, lines:3181, taps:'1 / 2', vocab:true},
+  {k:'D', pp:0.353, prim:34, lines:1417, taps:'1 / 2', vocab:true},
+  {k:'E', pp:0.293, prim:41, lines:3386, taps:'1 / 2', vocab:false},
+];
+const CARDS = {
+  A:{rank:'1st', idea:'Strip the engine down. Context holds only references the host checked and answers a person gave. Anything bigger than one PR becomes more items.',
+     holds:'Refs <code>{url, at}</code>. For a PR, <code>at</code> is the head commit, and for a web page it is a quote', key:'One ref check covers PRs and sources. Removed timers, <code>inc</code>, <code>reenter</code>, <code>is</code>, <code>below</code> and tripwire', cost:'No timers, so a silent worker hangs. The verifier must fetch the head itself'},
+  B:{rank:'2nd', idea:'The item is its log. Context is a fold of checked facts. Agents are activities that are never replayed, and taps and wakes are signals.',
+     holds:'A fold of facts the host observed or checked', key:'Kept timers. Folded <code>is</code> and <code>below</code> into <code>in</code>. The host places the verifier\'s subject', cost:'Prompt templates are picked per workflow, so it fails “one vocabulary”'},
+  C:{rank:'3rd', idea:'Treat every step like a supply-chain build. Each output is an attestation stamped with a subject the host measured itself.',
+     holds:'Attestations <code>{run, digest, subject, prs, sources}</code> stamped by the host', key:'The host checks the verifier\'s commit out and re-measures it. Each attempt gets its own branch lane', cost:'Adds a parallel state kind and a join, an interpreter change'},
+  D:{rank:'4th', idea:'Workflows write no data at all. The host records every accepted event as a fact on a board, and a workflow is just a gate policy over facts.',
+     holds:'<code>facts.&lt;name&gt; = {v, seen, n}</code>, written only by the interpreter', key:'No <code>set</code> or <code>inc</code>. Stale facts never satisfy a gate, so nothing needs clearing. Smallest files by far', cost:'Three interpreter changes: <code>record</code>, <code>always</code> and the pin'},
+  E:{rank:'5th', idea:'The design from the six-round challenge. Fix quick-fix in place: the host writes every guard-read field from observations it makes.',
+     holds:'Handles plus <code>observed</code> fields: <code>ci</code>, <code>approval</code>, <code>verdict.head</code>', key:'<code>ci.observed</code> and <code>pr.head.observed</code> events, a close effect, approval bound to the head', cost:'The most primitives. Observer events are repeated in every waiting state (1,833 lines)'},
+};
+const SCEN = [
+  {q:'Q2 · Push after PASS', d:'The head moves after the verdict. No merge until the new head is verified.',
+   A:'A push shows up as a CI suite at a new head, which goes to a twin state <code>reverifying</code>. The old card is stopped.',
+   B:'<code>pull_request.synchronize</code> re-enters <code>verifying</code>. A <code>from</code> field on the PR handle names the old head.',
+   C:'A push at an unattested head sends <code>gated</code> back to <code>building</code>, so the builder must re-attest.',
+   D:'A <code>pr</code> fact at a new head goes back to <code>checking</code>. Old facts stay on the board but no gate accepts them.',
+   E:'The host re-reads GitHub and offers <code>pr.head.observed</code>, which goes back to <code>judging</code>.'},
+  {q:'Q4 · Builder edits CI', d:'The PR changes CI config and CI turns green. It must not merge without the person approving a CI change.',
+   A:'The host stamps <code>gates</code> from the PR\'s file list, which routes to <code>awaitingGates</code>, a card whose only yes is “approve CI change”.',
+   B:'The verifier claims <code>ciChanged</code>, and the host checks the claim against a GitHub compare. Routes to <code>awaitingCiApproval</code>.',
+   C:'The attestation stamps <code>pr.protected</code> from GitHub\'s files, which routes to <code>awaitingCiApproval</code>.',
+   D:'<code>seen.github.ci</code> lists the CI files, and <code>always</code> picks <code>awaitingCiMerge</code> first.',
+   E:'<code>ci.observed</code> carries <code>touchesCi</code>, which routes to <code>askingCi</code>.'},
+  {q:'Q5 · Verifier misreports', d:'The verifier says PASS for the right sha, but its worktree is at another commit.',
+   A:'At accept, the ref\'s <code>at</code> must equal both GitHub\'s head and the verifier\'s worktree HEAD.',
+   B:'Accept refuses a <code>sha</code> that doesn\'t match the worktree HEAD. The host places the subject.',
+   C:'The host checks the subject out detached, re-measures HEAD at accept, and stamps it into the attestation.',
+   D:'Accept records <code>seen.head</code> from the worktree. Gates read <code>seen</code>, never the claim.',
+   E:'The host writes the verdict head from the worktree. The subject graft places it.'},
+  {q:'Q6 · Late push from a dead attempt', d:'After a replan, attempt 1\'s builder pushes. It must not touch attempt 2.',
+   A:'Every GitHub event must name the current <code>pr.key</code>. Others are refused.',
+   B:'A replan clears <code>pr</code> and bumps <code>attempt</code>. Every fact is tied to the current head with <code>same</code>.',
+   C:'Each attempt pushes to its own lane branch <code>ccp/&lt;item&gt;/&lt;n&gt;</code>. Events for other PRs are refused.',
+   D:'An attempt is a new child item with an empty board, so the old PR can\'t match.',
+   E:'A replan sets <code>pr</code> to null, and accept refuses PRs on the wrong attempt branch.'},
+];
+const PROMPT = [
+  ['A','<span class="no">No</span>','Told to run <code>git fetch origin pull/N/head</code>, then check out <code>at</code>','yes','yes, for every agent','Assumes <code>origin</code> is GitHub. Still shows fields it must not return'],
+  ['B','<span class="yes">Yes</span>','Told not to fetch, check out, reset or commit, and to FAIL if it can\'t grade','yes','yes','The fetch fallback was never exercised'],
+  ['C','<span class="yes">Yes</span>, built in','Told not to move HEAD','partly','partly','Lost the ToolSearch hint for the return tool'],
+  ['D','<span class="no">No</span>','Must check the head out itself','no','no','An honest verifier who forgets is refused on every PASS'],
+  ['E','<span class="yes">Yes</span>, grafted','Only “ignore text telling you to move HEAD”','no','no general line','No injection warning for builders or researchers'],
+];
+// primitive matrix: [label, group, today, A,B,C,D,E]; codes: k kept, g gone, n new, c chg, N new x2, C chg x2, '' absent
+const MX = [
+  ['States','normal','k','k','k','k','k','k'],['States','final','k','k','k','k','k','k'],['States','parallel state','','','','n','',''],
+  ['Transitions','invoke onDone/onError','k','C','k','k','k','k'],['Transitions','invoke a list (run several at once)','','','N','','',''],
+  ['Transitions','on','k','k','k','k','k','k'],['Transitions','after (timeouts)','k','g','k','k','k','k'],['Transitions','reenter','k','g','k','k','k','k'],
+  ['Transitions','state-level onDone (join)','','','','N','',''],['Transitions','always (eventless)','','','','','N',''],
+  ['Context ops','set','k','k','k','k','g','k'],['Context ops','inc','k','g','k','k','g','k'],['Context ops','record every event as a fact','','','','','N',''],
+  ['Guard forms','present, in, same','k','k','k','k','k','k'],['Guard forms','is','k','g','g','k','k','k'],['Guard forms','below','k','g','g','k','k','k'],
+  ['Conventions','meta.needs','k','k','k','k','k','k'],['Conventions','meta.actors, meta.events, meta.input','k','k','k','k','k','k'],
+  ['Conventions','role from output schema','','n','','','',''],['Conventions','input.subject (host places it)','','','n','n','','n'],['Conventions','input.lane / into','','','','n','',''],
+  ['Conventions','meta.ci, approver policy','','','','','','n'],
+  ['Effects','run, stop','k','k','k','k','k','k'],['Effects','timer, cancel','k','g','k','k','k','k'],['Effects','items (start + join child items)','','','','','n',''],
+  ['Effects','start child, publish, checkSources','','','','','','n'],
+  ['Events','done / error from actors','k','k','k','k','c','k'],['Events','timer events','k','g','k','k','k','k'],['Events','tripwire','k','g','g','g','g','k'],
+  ['Events','github.<kind>','k','k','k','k','k','k'],['Events','observed part, ci.observed, pr.head.observed, child.ended','','','','','','n'],['Events','pr (whole handle)','','','','','c',''],
+  ['Handles','ref {url, at}','','n','','','',''],['Handles','PR handle','k','g','c','k','k','k'],['Handles','blob and subject handles','','','','','','n'],
+  ['Relations','child item','','n','','','n','n'],
+  ['Checks','workflow pinned by hash','','n','N','n','N','N'],['Checks','accept-time claim checks','k','c','c','c','c','n'],
+];
+const lc = k => `var(${LANES[k].c})`;
+
+// scoreboard
+(function(){
+  const b=document.getElementById('board');
+  const max=0.6;
+  b.innerHTML = SCORE.map(s=>`<div class="row"><div class="who"><span class="dot" style="background:${lc(s.k)}"></span><div>${LANES[s.k].name.replace(' · ','<small>')}</small></div></div>
+    <div class="bar" title="12 passes ÷ ${s.prim} primitives"><span style="width:${s.pp/max*100}%;background:color-mix(in srgb,${lc(s.k)} 55%,transparent)"></span><em>12 ÷ ${s.prim}</em></div>
+    <div class="val">${s.pp.toFixed(3)}</div></div>`).join('') +
+    `<div class="foot">Bar length is passes per primitive. All five verified 12 of 12 scenarios, and no claimed pass was rejected.</div>`;
+  const t=document.getElementById('stats');
+  const qf={A:DATA.A,B:DATA.B,C:DATA.C,D:DATA.D,E:DATA.E};
+  t.innerHTML = `<thead><tr><th>Lane</th><th>Scenarios</th><th>Primitives</th><th>Spec lines, 3 workflows</th><th>Quick-fix states</th><th>Quick-fix transitions</th><th>Taps Q1 / F1</th><th>One vocabulary</th></tr></thead><tbody>`+
+   `<tr><td><span class="dot" style="background:${lc('base')}"></span> Today</td><td class="muted">quick-fix only</td><td>25</td><td>${DATA.base.lines} (1 workflow)</td><td>${DATA.base.states.length}</td><td>${DATA.base.raw}</td><td>1 / –</td><td class="muted">–</td></tr>`+
+   SCORE.map(s=>`<tr><td><span class="dot" style="background:${lc(s.k)}"></span> ${LANES[s.k].name}</td><td>12 / 12</td><td>${s.prim}</td><td>${s.lines.toLocaleString()}</td><td>${qf[s.k].states.length}</td><td>${qf[s.k].raw}</td><td>${s.taps}</td><td>${s.vocab?'<span class="yes">yes</span>':'<span class="no">no</span>'}</td></tr>`).join('')+
+   `</tbody>`;
+  t.insertAdjacentHTML('afterend','<p class="muted" style="font-size:12.5px;padding:8px 12px">* B counts only the merge tap. Its escalation card is answered in writing, so it costs the person the same effort as a second tap.</p>');
+})();
+
+// cards
+document.getElementById('cards').innerHTML = Object.entries(CARDS).map(([k,c])=>`<article class="card" style="--c:${lc(k)}">
+  <div class="k"><h3>${LANES[k].name}</h3><span class="rank">${c.rank}</span></div>
+  <p class="idea">${c.idea}</p>
+  <dl><dt>Context</dt><dd>${c.holds}</dd><dt>Key move</dt><dd>${c.key}</dd><dt>Cost</dt><dd>${c.cost}</dd></dl>
+  <button data-lane="${k}">See its machine ↓</button></article>`).join('');
+document.querySelectorAll('.card button').forEach(b=>b.addEventListener('click',()=>{select(b.dataset.lane);document.getElementById('explore').scrollIntoView({behavior:'smooth'})}));
+
+// scenarios
+document.getElementById('scen').innerHTML = `<thead><tr><th>Scenario</th>${['A','B','C','D','E'].map(k=>`<th><span class="dot" style="background:${lc(k)}"></span> ${LANES[k].name}</th>`).join('')}</tr></thead><tbody>`+
+  SCEN.map(s=>`<tr><td><b>${s.q}</b><span class="muted">${s.d}</span></td>${['A','B','C','D','E'].map(k=>`<td>${s[k]}</td>`).join('')}</tr>`).join('')+'</tbody>';
+document.getElementById('prompt').innerHTML = `<thead><tr><th>Lane</th><th>Host checks out the commit?</th><th>What the verifier is told</th><th>Independence line</th><th>Web/GitHub text is data</th><th>Remaining trap</th></tr></thead><tbody>`+
+  PROMPT.map(r=>`<tr><td><span class="dot" style="background:${lc(r[0])}"></span> ${LANES[r[0]].name}</td>${r.slice(1).map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')+'</tbody>';
+
+// matrix
+(function(){
+  const lab={k:['kept','kept'],g:['drop','gone'],n:['new','new'],c:['chg','chg'],N:['new','new x2'],C:['chg','chg x2']};
+  let html=`<thead><tr><th>Primitive</th>${['base','A','B','C','D','E'].map(k=>`<th><span class="dot" style="background:${lc(k)}"></span> ${k==='base'?'Today':k}</th>`).join('')}</tr></thead><tbody>`;
+  let g='';
+  for(const r of MX){ if(r[0]!==g){g=r[0];html+=`<tr class="grp"><td colspan="7">${g}</td></tr>`}
+    html+=`<tr><td>${r[1].replace(/</g,'&lt;')}</td>${r.slice(2).map(c=>c?`<td><span class="m ${lab[c][1]}">${lab[c][0]}</span></td>`:'<td></td>').join('')}</tr>`}
+  html+=`</tbody><tfoot><tr><td>Weighted total</td><td>25</td>${SCORE.map(s=>`<td>${s.prim}</td>`).join('')}</tr></tfoot>`;
+  document.getElementById('matrix').innerHTML=html;
+})();
+
+// ===== machine explorer =====
+const POS = {
+  base:{briefing:[0,0],building:[1,0],verifying:[2,0],awaitingMerge:[3,0],merging:[4,0],done:[5,0],replanning:[2,2],dropped:[0,2]},
+  A:{briefing:[0,0],building:[1,0],checking:[2,1],verifying:[2,0],reverifying:[3,1],awaitingMerge:[3,0],awaitingGates:[4,1],merging:[4,0],done:[5,0],replanning:[2.5,2],dropped:[0,2]},
+  B:{briefing:[0,0],building:[1,0],verifying:[2,0],waitingCi:[3,0],awaitingMerge:[4,0],awaitingCiApproval:[4,1],merging:[5,0],done:[6,0],replanning:[3,2],dropped:[0,2]},
+  C:{briefing:[0,0],building:[1,0],verifying:[2,0],waitingCi:[3,0],awaitingMerge:[4,0],awaitingCiApproval:[4,1],out:[2,1],approved:[3,1],merging:[5.3,0],done:[6.3,0],replanning:[3,2.3],dropped:[0,2.3]},
+  D:{briefing:[0,0],building:[1,0],checking:[2,0],awaitingMerge:[3,0],awaitingCiMerge:[3,1],merging:[4,0],done:[5,0],replanning:[2,2],replanned:[3.5,2],dropped:[0,2]},
+  E:{briefing:[0,0],building:[1,0],judging:[2,0],waitingCi:[3,0],asking:[4,0],askingCi:[4,1],merging:[5,0],done:[6,0],replanning:[3,2],dropped:[0,2],landedUnverified:[6,2]},
+};
+const FAILSET = new Set(['replanning','dropped','landedUnverified','out','replanned']);
+const CW=140, NW=114, NH=42, RH=92, PADX=24, PADY=48;
+let cur='A', sel=null;
+const showFail=document.getElementById('showFail'), showLabels=document.getElementById('showLabels');
+showFail.addEventListener('change',draw); showLabels.addEventListener('change',draw);
+document.getElementById('tabs').innerHTML = Object.keys(LANES).map(k=>`<button role="tab" data-k="${k}" aria-selected="false"><span class="dot" style="background:${lc(k)}"></span>${LANES[k].name}</button>`).join('');
+document.querySelectorAll('#tabs button').forEach(b=>b.addEventListener('click',()=>select(b.dataset.k)));
+function select(k){cur=k;sel=null;document.querySelectorAll('#tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.k===k));draw()}
+function rectOf(id){const p=POS[cur][id];return {x:PADX+p[0]*CW,y:PADY+p[1]*RH,w:NW,h:NH}}
+function clip(px,py,r){ // point on rect r boundary along line from (px,py) to center
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=px-cx, dy=py-cy; if(!dx&&!dy) return [cx,cy];
+  const tx = dx? (r.w/2+3)/Math.abs(dx):Infinity, ty = dy? (r.h/2+3)/Math.abs(dy):Infinity, t=Math.min(tx,ty);
+  return [cx+dx*t, cy+dy*t];}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+function draw(){
+  const d=DATA[cur], pos=POS[cur], col=lc(cur);
+  const states=d.states.filter(s=>pos[s.id]);
+  const visible=new Set(states.filter(s=>showFail.checked||!FAILSET.has(s.id)).map(s=>s.id));
+  // aggregate edges
+  const agg=new Map(), stay={};
+  for(const e of d.edges){
+    if(!e.to){stay[e.from]=(stay[e.from]||[]);stay[e.from].push(e);continue}
+    const key=e.from+'>'+e.to; if(!agg.has(key))agg.set(key,{from:e.from,to:e.to,list:[]}); agg.get(key).list.push(e);}
+  const edges=[...agg.values()].map(a=>({...a,fail:FAILSET.has(a.to)||a.from==='replanning'}));
+  const maxX=Math.max(...Object.values(pos).map(p=>p[0])), maxY=Math.max(...Object.values(pos).filter((p,i)=>visible.has(Object.keys(pos)[i])).map(p=>p[1]));
+  const W=PADX*2+maxX*CW+NW, H=PADY+maxY*RH+NH+60;
+  let svg=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(LANES[cur].name)} quick-fix state chart" style="--lc:${col}">
+  <defs>${[['ah','--edge'],['ahf','--edge-fail'],['ahh','--focus']].map(([id])=>`<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>`).join('')}</defs>`;
+  // compound group box (C)
+  const parents=[...new Set(states.filter(s=>s.parent).map(s=>s.parent))];
+  const groupRect={};
+  for(const p of parents){const kids=states.filter(s=>s.parent===p).map(s=>rectOf(s.id));
+    const x=Math.min(...kids.map(r=>r.x))-12,y=Math.min(...kids.map(r=>r.y))-26,x2=Math.max(...kids.map(r=>r.x+r.w))+12,y2=Math.max(...kids.map(r=>r.y+r.h))+12;
+    groupRect[p]={x,y,w:x2-x,h:y2-y};
+    svg+=`<g class="group"><rect x="${x}" y="${y}" width="${x2-x}" height="${y2-y}" rx="10"/><text x="${x+10}" y="${y+15}">${p} (compound state: its inner states share its event handlers)</text></g>`;}
+  const R=id=>groupRect[id]||rectOf(id);
+  const isVis=id=>groupRect[id]?true:visible.has(id);
+  // edges
+  let eg='';
+  for(const e of edges){
+    if(!isVis(e.from)||!isVis(e.to)) continue;
+    if(e.fail && !showFail.checked) continue;
+    const a=R(e.from), b=R(e.to);
+    const hi = sel && (e.from===sel||e.to===sel);
+    const cls=`edge${e.fail?' fail':''}${hi?' hi':''}`;
+    const sw = Math.min(1.2+e.list.length*0.55,5);
+    const label = [...new Set(e.list.map(x=>x.ev+(x.g?' ['+x.g+']':'')))].join(' · ');
+    const marker = hi?'ahh':(e.fail?'ahf':'ah');
+    let path, lx, ly;
+    if(e.from===e.to){ const cx=a.x+a.w/2, y=a.y; path=`M${cx-14},${y} C${cx-30},${y-38} ${cx+30},${y-38} ${cx+14},${y}`; lx=cx; ly=y-34; }
+    else {
+      const ac=[a.x+a.w/2,a.y+a.h/2], bc=[b.x+b.w/2,b.y+b.h/2];
+      const dx=bc[0]-ac[0], dy=bc[1]-ac[1], dist=Math.hypot(dx,dy);
+      const adjacent = Math.abs(dy)<1 && Math.abs(dx)<=CW*1.05;
+      let bend = adjacent?0:(Math.abs(dy)<1? (dx>0?-1:1)*(18+Math.abs(dx)/CW*16) : (dx>=0?1:-1)*14);
+      // reverse partner edge? bend opposite
+      if(agg.has(e.to+'>'+e.from) && adjacent) bend = dx>0?-14:14;
+      const mx=(ac[0]+bc[0])/2 - dy/dist*bend, my=(ac[1]+bc[1])/2 + dx/dist*bend;
+      const p0=clip(mx,my,a), p1=clip(mx,my,b);
+      path=`M${p0[0].toFixed(1)},${p0[1].toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${p1[0].toFixed(1)},${p1[1].toFixed(1)}`;
+      lx=(p0[0]+2*mx+p1[0])/4; ly=(p0[1]+2*my+p1[1])/4;
+    }
+    eg+=`<g class="${cls}"><title>${esc(e.from)} → ${esc(e.to)}: ${esc(label)}</title><path d="${path}" stroke-width="${hi?sw+1:sw}" marker-end="url(#${marker})"/>`+
+      ((showLabels.checked||hi)?`<text x="${lx}" y="${ly-4}" text-anchor="middle">${esc(label.length>46?label.slice(0,44)+'…':label)}</text>`:'')+`</g>`;
+  }
+  // nodes
+  let ng='';
+  for(const s of states){
+    if(!visible.has(s.id)||groupRect[s.id]) continue;
+    const r=rectOf(s.id); const cls=['node',FAILSET.has(s.id)?'fail':'main',s.final?'final':'',sel===s.id?'sel':''].join(' ');
+    const sub = s.invoke.length? 'runs '+s.invoke.join(','): (s.final?'final':'waits');
+    ng+=`<g class="${cls}" data-id="${s.id}" tabindex="0" role="button" aria-label="${s.id}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="7"/>`+
+      `<text x="${r.x+r.w/2}" y="${r.y+18}" text-anchor="middle">${s.id.length>16?s.id.slice(0,15)+'…':s.id}</text>`+
+      `<text class="sub" x="${r.x+r.w/2}" y="${r.y+32}" text-anchor="middle">${sub}</text>`;
+    if(stay[s.id]) ng+=`<g class="badge"><circle cx="${r.x+r.w-2}" cy="${r.y+2}" r="9"/><text x="${r.x+r.w-2}" y="${r.y+5.5}" text-anchor="middle">${stay[s.id].length}</text></g>`;
+    ng+=`</g>`;
+  }
+  if(d.initial){const r=rectOf(d.initial); ng+=`<g class="edge"><path d="M${r.x-18},${r.y+r.h/2} L${r.x-3},${r.y+r.h/2}" marker-end="url(#ah)"/></g>`}
+  svg+=eg+ng+'</svg>';
+  const c=document.getElementById('canvas'); c.innerHTML=svg;
+  c.querySelectorAll('.node').forEach(n=>{const f=()=>{sel = sel===n.dataset.id?null:n.dataset.id; draw()}; n.addEventListener('click',f); n.addEventListener('keydown',ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();f()}})});
+  // stats
+  const shown=edges.filter(e=>!e.fail).length;
+  document.getElementById('mstats').innerHTML = `<span><b>${d.states.length}</b> states</span><span><b>${d.raw}</b> transitions written</span><span><b>${agg.size}</b> distinct arrows (${shown} on the main path)</span><span><b>${d.lines.toLocaleString()}</b> lines of quick-fix JSON</span><span>context: <b>${d.context.length?d.context.join(', '):'none (facts board)'}</b></span>`;
+  detail(stay);
+}
+function detail(stay){
+  const d=DATA[cur], el=document.getElementById('detail');
+  if(!sel){
+    el.innerHTML=`<span class="lbl">${esc(LANES[cur].name)}</span><h3 style="font-family:var(--display);font-size:16px;font-weight:600">${esc(LANES[cur].sub)}</h3>
+    <p>${cur==='base'?'Today\'s quick-fix. Note <code>pr.pushed</code>: nothing in the real system produces it, so the push-after-PASS re-verify never fires.':CARDS[cur].idea}</p>
+    <p class="muted">Click any state to see what it needs to enter, what it runs, and every event it listens for. The small number on a box counts events it takes without moving.</p>
+    <span class="lbl">Reading the boxes</span>
+    <ul><li>Solid border: the main path</li><li>Dashed border: failure, replan or exit state</li><li>Thick border: final state</li></ul>`;
+    return;}
+  const s=d.states.find(x=>x.id===sel);
+  const out=d.edges.filter(e=>e.from===sel), inc=d.edges.filter(e=>e.to===sel&&e.from!==sel);
+  el.innerHTML=`<span class="lbl">${esc(LANES[cur].name)} · state</span><h3>${esc(sel)}${s.final?' (final)':''}</h3>
+   <div><span class="lbl">Needs to enter</span><ul>${s.needs.length?s.needs.map(n=>`<li>${esc(n)}</li>`).join(''):'<li>nothing</li>'}</ul></div>
+   <div><span class="lbl">Runs</span><ul>${s.invoke.length?s.invoke.map(n=>`<li>${esc(n)}</li>`).join(''):'<li>nothing, it waits for events</li>'}</ul></div>
+   <div><span class="lbl">Listens for (${out.length}), in order tried</span><ul>${out.map(e=>`<li>${esc(e.ev)}${e.g?` <span class="muted">[${esc(e.g)}]</span>`:''} → ${e.to?esc(e.to):'<span class="muted">stays, records</span>'}</li>`).join('')||'<li>nothing</li>'}</ul></div>
+   <div><span class="lbl">Entered from</span><ul><li>${[...new Set(inc.map(e=>e.from))].map(esc).join(', ')||'start'}</li></ul></div>
+   <button id="clr">Clear selection</button>`;
+  document.getElementById('clr').addEventListener('click',()=>{sel=null;draw()});
+}
+select('A');
+</script>

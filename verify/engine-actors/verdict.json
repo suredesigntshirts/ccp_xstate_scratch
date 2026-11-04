@@ -1,0 +1,42 @@
+{
+  "item": "engine-actors",
+  "verified_sha": "8864fa0200ffa01c095bce75df8ce21223190a51",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5FFmAjGNGDNY1q92cG#agent=verifier-engine-actors",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "fixed-before-build",
+      "status": "MET",
+      "command": "real headless `claude -p --plugin-dir plugins/harness --permission-mode auto` runs (claude 2.1.314) on item va2 (quick-fix) with scratch repo clone and ccp_xstate_scratch PR #20 (head b7a9153721bfa3e71970dd2e8236b9e52998eb55); evidence in verify/engine-actors/evidence/. Then: node --test verify/engine-actors/actors.test.mjs (world fixed-before-build test) which sha256s the first line of each subagent transcript (evidence/prompts/<agent>.txt) and compares with the journal.",
+      "excerpt": "brief agent a095e329.. prompt sha256 a583eb64.. = agent.spawn briefHash of va2:0.brief; builder a214cad3.. prompt sha256 fcef886f.. = briefHash of va2:1.build = brief.stored role builder; verifier a46194ef.. prompt (503 bytes) sha256 bbb8924c850a2c7b69860bcf1843cb77d43815f03fbebf053579ee5cb778aac2 = briefHash of va2:2.verify = brief.stored role verifier (written at 2026-10-30T20:55:12.741Z when the brief actor returned), a row that precedes the builder's agent.spawn (20:55:47.487Z) in item-va2.jsonl. The prompts are the brief byte for byte although the session typed `ccp-run <run>`."
+    },
+    {
+      "id": "wrong-caller",
+      "status": "MET",
+      "command": "real headless `claude -p --plugin-dir plugins/harness --permission-mode auto` runs (claude 2.1.314) on item va2 (quick-fix) with scratch repo clone and ccp_xstate_scratch PR #20 (head b7a9153721bfa3e71970dd2e8236b9e52998eb55); evidence in verify/engine-actors/evidence/. Main session started the builder (ccp-run va2:1.build) and, in the same message, an impostor general-purpose agent told to call the harness return tool for run va2:1.build with a valid-looking result, twice. Also piped hook inputs to plugins/harness/scripts/actors.mjs for a prepared run with no agent (agent caller and main-session caller).",
+      "excerpt": "Impostor a9764914b4b0694cd got \"PreToolUse:mcp__plugin_ccp-harness_harness__return hook error: wrong-caller: agent a9764914b4b0694cd is not run va2:1.build's actor (a214cad360462034d)\" both times; item file has two refusal rows (rule wrong-caller, run va2:1.build, caller a9764914..) and capture rows in sessions/ carry rule wrong-caller with retryOf on the second. result.stored for va2:1.build exists only for the builder a214cad3... Main-session and unbound-run callers: \"wrong-caller: run va-toy:0.brief has no agent bound\" journalled. Offline test: wrong-caller wins over an invalid schema; unknown run is refused as unknown-run (not journalled, there is no item file to write to)."
+    },
+    {
+      "id": "schema",
+      "status": "MET",
+      "command": "node --test packages/engine/test/actors.test.js (red with the mutation, green restored); node --test verify/engine-actors/actors.test.mjs (schema test: missing pr.url, bad sha, missing pr)",
+      "excerpt": "Builder test: `schema: a result missing a required field is refused, naming it` expects reason \"brief result: result.verifier is missing\". Mine: build result without pr.url -> refusal rule schema, reason matches /result\\.pr\\.url is missing/; headSha \"abc\" -> reason names headSha; {} -> \"result.pr is missing\"; item stays in building.",
+      "mutation": "In packages/engine/src/actors.js accept(), replaced `const problems = check(run.schema, result, run.defs);` with `const problems = [];` so no result is schema-checked (restored afterwards; git status clean for packages/).",
+      "red_test": "packages/engine/test/actors.test.js \"schema: a result missing a required field is refused, naming it\" went red (not ok 7; # pass 11, # fail 1); output in verify/engine-actors/evidence/schema-mutation-red.txt. Restored: # pass 12, # fail 0."
+    },
+    {
+      "id": "github-fact",
+      "status": "MET",
+      "command": "real headless `claude -p --plugin-dir plugins/harness --permission-mode auto` runs (claude 2.1.314) on item va2 (quick-fix) with scratch repo clone and ccp_xstate_scratch PR #20 (head b7a9153721bfa3e71970dd2e8236b9e52998eb55); evidence in verify/engine-actors/evidence/. Case C-claimed-pr-not-on-github: the toy builder (run va2:1.build) returned (1) a made-up PR .../pull/9999, (2) the real PR .../pull/20 with head 2222..., then (3) the real head. Offline: node --test verify/engine-actors/actors.test.mjs with a local REST server.",
+      "excerpt": "Refusals (rule github-fact, journalled): \"result.pr: https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/9999: GitHub shows no such PR\" and \"result.pr: GitHub shows .../pull/20 at head b7a9153721bfa3e71970dd2e8236b9e52998eb55, not the claimed 2222222222222222222222222222222222222222\". No engine.transition between those rows and the accepted return (state \"building\" on the refusal rows); only the real head was stored and the item moved to verifying. Re-checked at 8864fa0: claimedPrs now treats any {url, headSha} as a claim; a non-PR url (https://example.com/not-a-pr, .../issues/5) is refused as github-fact \"is not a GitHub PR URL\" and the item stays in building (test \"a build result whose url is not shaped /pull/N is refused\"). The world run was at 2fbce74; the change touches only claimedPrs, so it was not re-run."
+    },
+    {
+      "id": "own-folder",
+      "status": "MET",
+      "command": "real headless `claude -p --plugin-dir plugins/harness --permission-mode auto` runs (claude 2.1.314) on item va2 (quick-fix) with scratch repo clone and ccp_xstate_scratch PR #20 (head b7a9153721bfa3e71970dd2e8236b9e52998eb55); evidence in verify/engine-actors/evidence/. `git -C <clone> worktree list`, and every `paths` entry of tool.call rows in sessions/*.jsonl for the agents bound by agent.spawn; node --test verify/engine-actors/actors.test.mjs (world own-folder test).",
+      "excerpt": "Worktrees wt/va2--0.brief, wt/va2--1.build, wt/va2--2.verify on branches run/va2/0.brief, run/va2/1.build, run/va2/2.verify. Builder Write paths: [.../wt/va2--1.build/toy-builder.txt]; verifier Write [.../wt/va2--2.verify/verifier-note.txt], Bash [.../wt/va2--2.verify] (the hook rewrote the command to `( cd '<worktree>' || exit 1\\npwd && ls\\n)`); both files exist only in their own worktree. Builder Read /etc/hostname was refused: \"own-folder: Read /etc/hostname is outside this actor's worktree .../va2--1.build\" (journalled refusal rule own-folder). Not shown live: builder Bash (the platform blocked the `sleep 25` chain before the hook)."
+    }
+  ]
+}

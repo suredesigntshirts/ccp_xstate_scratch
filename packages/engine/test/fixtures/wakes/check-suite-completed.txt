@@ -1,0 +1,6 @@
+<wake reason="external-event" current-time="2026-10-30T18:06:40Z">
+  <event source="github" kind="check_suite.completed" from="system" trust="relay">
+    <!-- No third-party check suite on the PR's head_sha is still running or failed. If you were waiting on CI, continue with the next step. Cancelled suites, suites with no runs, this App's own suites and legacy commit statuses are not covered; verify the PR's overall state before acting. -->
+    {"head_sha":"600ac9916db0ab7c1df36d42081bb49846a84d9f","pr":"suredesigntshirts/ccp_xstate#27"}
+  </event>
+</wake>

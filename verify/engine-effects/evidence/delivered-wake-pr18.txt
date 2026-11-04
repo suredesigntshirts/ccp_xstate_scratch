@@ -1,0 +1,6 @@
+<wake reason="external-event" current-time="2026-10-30T20:21:42Z">
+  <event source="github" kind="check_run.completed" from="system" trust="relay" untrusted-keys="check,title,summary,details_url">
+    <!-- The following CI check failed on the PR. -->
+    {"check":"test","check_run_id":124291498886,"conclusion":"failure","details_url":"https://github.com/suredesigntshirts/ccp_xstate_scratch/actions/runs/41122349075/job/124291498886","head_sha":"cd2adfb894be738dc3071dac9ac660b42f2caa0e","pr":"suredesigntshirts/ccp_xstate_scratch#18"}
+  </event>
+</wake>

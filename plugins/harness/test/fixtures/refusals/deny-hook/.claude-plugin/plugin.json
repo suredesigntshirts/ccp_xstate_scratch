@@ -1,0 +1,5 @@
+{
+  "name": "ccp-deny-probe",
+  "version": "0.0.1",
+  "description": "Test plugin for plan item obs-refusal-log: a PreToolUse hook that denies any Bash command containing ccp-refusal-probe, naming its rule, so a session can see a hook denial journalled as a refusal row."
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@ccp-xstate/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Loads a workflow file (workflows/*.json) into XState and steps it by pure transitions. Ported from ccp_machine PR #110.",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "xstate": "5.33.3"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

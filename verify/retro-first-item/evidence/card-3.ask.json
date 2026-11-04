@@ -1,0 +1,10 @@
+{
+  "effect": "fri-jsonl-lint:3.ask",
+  "ref": "cmsg_01VhYV3jhQ9s4qrrh2th12sN7uV3okzt9BP6mvgBKH4u9b",
+  "question": "Merge this PR at the verified commit?",
+  "choices": [
+    "approve",
+    "reject"
+  ],
+  "at": "2026-10-31T02:47:53.559Z"
+}

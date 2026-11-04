@@ -1,0 +1,77 @@
+files 4 calls 30 rows 56
+{
+ "/50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b/subagents/agent-a32eee84dcdd0da54.jsonl": {
+  "n": 7,
+  "missing": []
+ },
+ "/50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b/subagents/agent-a5b0609a3b289ff65.jsonl": {
+  "n": 9,
+  "missing": [
+   [
+    "toolu_01Uk6unHmuSVBg1wXicji7YL",
+    "Bash",
+    "<tool_use_error>Blocked: sleep 45 followed by: cd /root/fri-work/fri-jsonl-lint-2/worktrees/fri-jsonl-lint-2--1.build gh api repos/suredesigntshirts/c"
+   ]
+  ]
+ },
+ "/50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b/subagents/agent-adeb9664d02be73b6.jsonl": {
+  "n": 5,
+  "missing": []
+ },
+ "/50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b.jsonl": {
+  "n": 9,
+  "missing": []
+ }
+}
+rows w/o call [
+  'toolu_01TZzzCszSYhibsad1irKh41',
+  'toolu_01Gh6HZFkfPbonManoqvJmuu',
+  'toolu_019ydjDZeVX7JxR1gzXwiGvS',
+  'toolu_01Q7Acwtv29gUoqCjeu5bhBG',
+  'toolu_01SimU5CRyuLU2TYheP8ZCvU',
+  'toolu_01RDVYTfLqkxS8fxnsuqrERM',
+  'toolu_01PYQxW2vveHkzHhaEbshxiD',
+  'toolu_01QDMdM7LNdfsRTECQYtWzzF',
+  'toolu_01X7ZoYJAPdiCLhaDUKQQX5y',
+  'toolu_0187Eac4e4aSfmYty9r2L6Zj',
+  'toolu_01EY9XeuHr3JdTRCA7BjnLDw',
+  'toolu_012Er4gLtKpJdnZvmv1BFq2E',
+  'toolu_01NDJJ7uCQYeRxCyCBNjYLr1',
+  'toolu_01RX2GXjwsUDuqM44F9EfMUE',
+  'toolu_01A99m52T38JudLbgCRZySMk',
+  'toolu_01US1R22etHbiD3x8w4vdQCX',
+  'toolu_01VGqbgZjwfYoc6ur9BLyxNc',
+  'toolu_016esKHg7S6pFyUH4nYBQgM6',
+  'toolu_017KHtWBUGqCDtoyyB8zjfwQ',
+  'toolu_01NfjRrMwFVRDpCJVDyr8fV6',
+  'toolu_01WBeWSR3GaVUGPdKp3VCoVi',
+  'toolu_01VGd9q3RyeFeSKfRr8Hu4QR',
+  'toolu_01KVi8QyQaHuZGg9GauxQFUi',
+  'toolu_01BXktzNeLXvU4WyBcnrhch8',
+  'toolu_01Hmi3Wk9pmjwQhWDzdU6xKs',
+  'toolu_01P4JtT4uAiuMxnuWy59wYrp',
+  'toolu_01SKfgvhJDGJGDdQo4Yjtqkz'
+]
+{
+  Bash: 15,
+  SubagentHandback: 4,
+  ToolSearch: 4,
+  'mcp__plugin_ccp-harness_harness__return': 3,
+  Agent: 3,
+  SendMessage: 1
+}
+driver-session tool.call rows 29 not in logs []
+03:23:58 PROMPT You drive a run of the ccp_xstate engine on https://github.com/suredesigntshirts/ccp_machine_test/is
+03:24:02 Bash toolu_01MfxcL9nFKKYDdLuiGf9gSr {"command":"node \"/home/user/xs-run/packages/engine/bin/host.js\" start --item fri-jsonl-lint-2 --workflow qu
+03:24:07 Agent toolu_01GoDT7DuehJHr9bYEyjYMxh {"description":"Run brief actor","subagent_type":"general-purpose","prompt":"ccp-run fri-jsonl-lint-2:0.brief"
+03:24:41 Agent toolu_01HjHoMdaH69zmaT2hLWvgL7 {"description":"Run build actor","subagent_type":"general-purpose","prompt":"ccp-run fri-jsonl-lint-2:1.build"
+03:25:59 Agent toolu_017u628PN7MtLwB3H28KpKgz {"description":"Run verify actor","subagent_type":"general-purpose","prompt":"ccp-run fri-jsonl-lint-2:2.verif
+03:26:45 Bash toolu_01KEKbhrErXCoUw9zGeGmik3 {"command":"node \"/home/user/xs-run/packages/engine/bin/host.js\" show --item fri-jsonl-lint-2 --workflow qui
+03:28:12 PROMPT The verify agent for run fri-jsonl-lint-2:2.verify (agent id a32eee84dcdd0da54) handed back its repo
+03:28:14 ToolSearch toolu_019dV9P8fDVZHva33uxrDb2o {"query":"select:SendMessage","max_results":1}
+03:28:16 SendMessage toolu_01XfHxq293V2T6R5mezfPJmP {"to":"a32eee84dcdd0da54","summary":"Ask verify agent to call harness return tool","message":"You are the invo
+03:28:27 PROMPT <system-reminder> <tools-used-before-summary>SubagentHandback</tools-used-before-summary> </system-r
+03:28:27 PROMPT Another Claude session sent a message: <agent-message from="a32eee84dcdd0da54"> [Subagent hand-back]
+03:28:30 Bash toolu_018hzCX3u7PVoChcBv1DC1Gk {"command":"node \"/home/user/xs-run/packages/engine/bin/host.js\" show --item fri-jsonl-lint-2 --workflow qui
+18:12:26 PROMPT <wake reason="decision-chosen" current-time="2026-10-31T18:11:36Z">   <project id="chan_01VhYV3jhQ9s
+18:12:33 Bash toolu_018jEAwpGpTYmttQ3Hg5XzrJ {"command":"node \"/home/user/xs-run/packages/engine/bin/host.js\" show --item fri-jsonl-lint-2 --workflow qui

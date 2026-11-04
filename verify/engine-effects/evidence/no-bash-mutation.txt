@@ -1,0 +1,33 @@
+# mutation: packages/engine/src/effects/timer.js gains import { execSync } from 'node:child_process' and execSync('true') in start()
+diff --git a/packages/engine/src/effects/timer.js b/packages/engine/src/effects/timer.js
+index 02abd3d..b4a2fcc 100644
+--- a/packages/engine/src/effects/timer.js
++++ b/packages/engine/src/effects/timer.js
+@@ -1,3 +1,4 @@
++import { execSync } from 'node:child_process';
+ // The timer effects. The host fires a timer itself, from the first wake whose time passes its due time (wake.js), so
+ // a timer effect only makes sure such a wake comes: it asks the clock for a wake at the due time, keyed by the
+ // effect id. Cancelling asks the clock to drop it; the host has already forgotten the timer, so a late wake is stale.
+@@ -5,6 +6,7 @@
+ /** The timer handler over a clock: wakeAt?({ key, due }) -> { ref }. With no clock, the due time is the outcome. */
+ export const timer = ({ clock = {} } = {}) => ({
+   async start(effect) {
++    execSync('true');
+     if (!effect.due || Number.isNaN(Date.parse(effect.due))) throw new Error(`timer ${effect.timer} has no due time`);
+     const set = clock.wakeAt ? await clock.wakeAt({ key: effect.id, due: effect.due }) : null;
+     return { ref: set?.ref ?? `due ${effect.due}`, due: effect.due };
+
+ok 1 - prRef reads owner, repo and number from a PR URL, and nothing else
+ok 2 - merge-at-sha: the merge passes the verdict sha as expectedHeadSha, and the item ends done with the merge sha
+ok 3 - merge-at-sha: a push after the verdict makes the merge fail, the PR stays open, and the item steps back
+ok 4 - a merge with no PR URL or no verified sha never calls GitHub
+ok 5 - effects-acked-once: a host that stopped mid-merge asks GitHub, and does not merge again
+ok 6 - effects-acked-once: find() says merged at the verified head, or null when it never merged
+ok 7 - card: puts up a card keyed by the effect id and records its id and choices; the answer comes from the tap
+ok 8 - post: posts the text keyed by the effect id and finishes with the message id as output
+ok 9 - without a thread client, cards stay pending: the run handler leaves actors it has no effect for
+ok 10 - timer: asks the clock for a wake at the due time keyed by the effect id; cancel drops it
+ok 11 - timer: a building item journals its buildTimeout timer effect done, once
+not ok 12 - no-bash: across this suite, no effect ran a shell command (child_process and $.process record zero calls)
+# pass 11
+# fail 1

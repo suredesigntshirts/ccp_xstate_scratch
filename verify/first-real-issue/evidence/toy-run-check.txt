@@ -1,0 +1,17 @@
+== journal check: session 50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b, its agents, and merges on suredesigntshirts/ccp_machine_test since 2026-10-31T03:23:54.322Z
+Session: 30 tool calls in the event log, 29 tool.call rows in the journal.
+  0 missing from the journal.
+  0 rows whose call the event log doesn't have.
+  1 calls Claude Code answered without running, which no hook sees (not counted):
+    toolu_01Uk6unHmuSVBg1wXicji7YL  Bash
+GitHub: 1 merged PRs, 0 pr.merge rows, 1 host merge effects.
+  0 merges with no journal row.
+  0 merges not made by the host's merge effect (unverified).
+  0 pr.merge rows GitHub doesn't bear out.
+== engine.transition sources for fri-jsonl-lint-2
+0	applied	xstate.init	claude-code 50c0c74d-e2c4-4a77-b5c0-f0af0c48ba4b	start (the filing session)
+1	applied	xstate.done.actor.brief	harness return toolu_01Qj3jzn4CPoePtndZCCftra	completion (return hook)
+2	applied	xstate.done.actor.build	harness return toolu_015TSR28Vf39KqW79xAhb2Jm	completion (return hook)
+3	applied	xstate.done.actor.verify	harness return toolu_0158U2882zy8bzReGhYtCBJE	completion (return hook)
+4	applied	xstate.done.actor.ask	hearth cmsg_01VhYV3jhQ9s4qrrh2th12sN5ZCq8Jn4M2FLUuw1qxvKLG	wake (card tap)
+5	applied	xstate.done.actor.merge	engine fri-jsonl-lint-2:4.merge	completion (effect)

@@ -1,0 +1,104 @@
+[
+  {
+    "number": 11,
+    "title": "Probe: MCP merge tool response (obs-journal-vs-world)",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/11",
+    "updated_at": "2026-10-30T18:12:37Z",
+    "closed_at": "2026-10-30T18:12:37Z",
+    "merged_at": "2026-10-30T18:12:37Z",
+    "merge_commit_sha": "ec58ae8d47798a6184078e8d86c935b58f67bcd2",
+    "head": {
+      "ref": "probe/journal-check-mcp-merge",
+      "sha": "82edcc643dc5896b56fcbcb99c954a91c3e36b76"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  {
+    "number": 10,
+    "title": "Scratch: clean-room job catches a deleted plugin file (clean-room-install-test)",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/10",
+    "updated_at": "2026-10-30T16:59:37Z",
+    "closed_at": "2026-10-30T16:59:37Z",
+    "merged_at": null,
+    "merge_commit_sha": "223165397d671e54d8abf466dc7d183fbcbb02a9",
+    "head": {
+      "ref": "claude/project-thread-ru11h8",
+      "sha": "df7838ea9a7780a3d48fcf0fb4dae7398e2f3add"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  {
+    "number": 9,
+    "title": "verify2: plugin change",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/9",
+    "updated_at": "2026-10-30T16:39:41Z",
+    "closed_at": "2026-10-30T16:39:41Z",
+    "merged_at": "2026-10-30T16:39:41Z",
+    "merge_commit_sha": "e46df88ef466b8c7fe7034a831214d8cf7b6e417",
+    "head": {
+      "ref": "verify2/plugin",
+      "sha": "8af62340385153594cc19b7e320e96628c250f73"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  {
+    "number": 8,
+    "title": "verify2: non-plugin change",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/8",
+    "updated_at": "2026-10-30T16:39:19Z",
+    "closed_at": "2026-10-30T16:39:19Z",
+    "merged_at": "2026-10-30T16:39:19Z",
+    "merge_commit_sha": "87565a19e213b1313cba8672dc5c013dad2eed3a",
+    "head": {
+      "ref": "verify2/non-plugin",
+      "sha": "e430b52c64aa57ea89eed4cf5f727e93a472d905"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  {
+    "number": 7,
+    "title": "verify2: sync release.mjs",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/7",
+    "updated_at": "2026-10-30T16:38:41Z",
+    "closed_at": "2026-10-30T16:38:41Z",
+    "merged_at": "2026-10-30T16:38:41Z",
+    "merge_commit_sha": "3352b454da41e7dfa3699a676f82ce3d0e289894",
+    "head": {
+      "ref": "verify2/sync-release",
+      "sha": "4225dfa27d7652a8122c6dd31f625bf0f4bf8939"
+    },
+    "base": {
+      "ref": "main"
+    }
+  },
+  {
+    "number": 6,
+    "title": "verify: plugin change",
+    "state": "closed",
+    "html_url": "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/6",
+    "updated_at": "2026-10-30T12:20:40Z",
+    "closed_at": "2026-10-30T12:20:40Z",
+    "merged_at": "2026-10-30T12:20:40Z",
+    "merge_commit_sha": "662b2eb105eb523ef6e44a8bb9ae1a40392f7a5f",
+    "head": {
+      "ref": "verify/plugin",
+      "sha": "446994d1ef85e4c326111b0abaed9e8cf2dee1d5"
+    },
+    "base": {
+      "ref": "main"
+    }
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "item": "person-setup-sitting",
+  "verified_sha": "81c417a4158489c894b75962c49c6bd1fce19355",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5K3jj7jbjcGWeEbpwg#agent=verifier",
+    "model": "claude-opus-5-5"
+  },
+  "results": [
+    {
+      "id": "recorded",
+      "status": "MET",
+      "command": "Read plan/decisions/person-setup-sitting.md against plan/research/workflows.md 'Open questions for the person' (3 questions) and plan/decisions/waiting-for-person.md; cross-checked plan/items/env-bootstrap.md (outcome, after_landing); ran node plan/check.mjs (plan ok) and npm test (44 pass, 0 fail)",
+      "excerpt": "Rules: 'Rules placed: none yet.' (rule set comes from probe-platform-baseline, placed via env-bootstrap's paste). Product repo: 'Product repo for the first real item: not chosen.' Workflow questions: 1 'quick-fix only' (smallest flow with a separate verifier, Gall's Law), 2 'Describe it' (one message vs learning the schema; schema check keeps files valid), 3 'Only in the feature and long-build workflows' (quick-fix contract already frozen at filing). Each answer has a reason and is marked as the stand-in's choice, not the person's words. waiting-for-person.md carries 'Pick the product repo for the first real issue' and 'The setup sitting ... paste infra/cloud-environment/paste-me.sh ... That paste places the full v2 allow-rule set ... Pick the product repo in the same sitting', matching env-bootstrap's after_landing step."
+    }
+  ]
+}

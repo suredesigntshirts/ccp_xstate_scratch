@@ -1,0 +1,111 @@
+{
+  "shown": {
+    "status": "Up to date.",
+    "page-release": "0.1.16",
+    "release": "0.1.0",
+    "newest": "2026-10-31 04:10:34",
+    "refreshed": "2026-10-31 04:10:50",
+    "read": "106 rows in 2 files, 3 ms",
+    "tokens-total": "628,905 tokens",
+    "time-wall": "11m 21s",
+    "refusals-count": "1 refused",
+    "refusals-rules": "unknown-run ×1",
+    "asks-cards": "0 cards, 0 posts",
+    "asks-sub": "The person wrote 0 messages and tapped 0 cards; 0 cards still open; longest card wait 0s.",
+    "item-panel-hidden": false,
+    "h-item": "Item iv1",
+    "item-state": "replanning · 628,905 tokens",
+    "item-sub": "quick-fix, since 2026-10-31 04:10:34 · 1 build round · 5 transitions · waited on the person 6s",
+    "item-rows": [
+      [
+        "Issue",
+        "https://github.com/suredesigntshirts/ccp_xstate_scratch/issues/34"
+      ],
+      [
+        "PR",
+        "https://github.com/suredesigntshirts/ccp_xstate_scratch/pull/35 at 2ad78b6"
+      ],
+      [
+        "Verdict",
+        "PASS at 2ad78b6"
+      ],
+      [
+        "Merge",
+        "–"
+      ],
+      [
+        "Agents",
+        "404,456 tokens over 3 agents"
+      ],
+      [
+        "Driving sessions",
+        "224,449 tokens in 1 session"
+      ],
+      [
+        "Refusals",
+        "1"
+      ]
+    ],
+    "item-asks": [
+      [
+        "2026-10-31 04:10:28",
+        "standin",
+        "reject",
+        "6s"
+      ]
+    ]
+  },
+  "refreshes": [
+    {
+      "v": 1,
+      "id": "d52e2a11-5b3d-4dfc-9f08-a08b4d9622c0",
+      "at": "2026-10-31T04:10:50.605Z",
+      "kind": "page.refresh",
+      "session": "page-observe",
+      "agent": null,
+      "item": "obs-page",
+      "state": null,
+      "release": "0.1.16",
+      "source": {
+        "system": "artifact",
+        "ref": "https://observe.test/"
+      },
+      "payload": {
+        "page": "observe",
+        "ms": 14,
+        "rows": 106,
+        "files": 2,
+        "bad": 0,
+        "newestAt": "2026-10-31T04:10:34.299Z",
+        "scope": {},
+        "viewer": "viewer-1"
+      }
+    },
+    {
+      "v": 1,
+      "id": "567452ab-5e63-4346-8424-2aea8755a4db",
+      "at": "2026-10-31T04:10:50.728Z",
+      "kind": "page.refresh",
+      "session": "page-observe",
+      "agent": null,
+      "item": "obs-page",
+      "state": null,
+      "release": "0.1.16",
+      "source": {
+        "system": "artifact",
+        "ref": "https://observe.test/"
+      },
+      "payload": {
+        "page": "observe",
+        "ms": 3,
+        "rows": 106,
+        "files": 2,
+        "bad": 0,
+        "newestAt": "2026-10-31T04:10:34.299Z",
+        "scope": {},
+        "viewer": "viewer-1"
+      }
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,41 @@
+{
+  "mode": "stale",
+  "pr": "suredesigntshirts/ccp_xstate_scratch#17",
+  "commitA": "d55b81855377e671250a46dc9e8ca2c5f3243aa8",
+  "commitB": "61713183b578f13609511510e0380755911b6684",
+  "finalState": "replanning",
+  "mergeCalls": [
+    {
+      "args": {
+        "owner": "suredesigntshirts",
+        "repo": "ccp_xstate_scratch",
+        "pullNumber": 17,
+        "expectedHeadSha": "d55b81855377e671250a46dc9e8ca2c5f3243aa8",
+        "merge_method": "merge"
+      },
+      "at": "2026-10-30T20:19:06.242Z",
+      "result": {
+        "ok": false,
+        "status": 409,
+        "message": "Head branch was modified. Review and try the merge again."
+      }
+    }
+  ],
+  "prAfter": {
+    "state": "open",
+    "merged": false,
+    "head": "61713183b578f13609511510e0380755911b6684"
+  },
+  "mergeEffectRows": [
+    {
+      "phase": "start",
+      "reason": null,
+      "outcome": null
+    },
+    {
+      "phase": "failed",
+      "reason": "GitHub refused the merge of suredesigntshirts/ccp_xstate_scratch#17 at d55b81855377e671250a46dc9e8ca2c5f3243aa8: Head branch was modified. Review and try the merge again. (the PR's head is 61713183b578f13609511510e0380755911b6684)",
+      "outcome": null
+    }
+  ]
+}

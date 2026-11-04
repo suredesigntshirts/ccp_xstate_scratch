@@ -1,0 +1,23 @@
+# Tests and the plan check on every PR and on main. See docs/gates.md.
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: install xstate (the one runtime dependency, pinned in package-lock.json)
+        run: npm ci
+      - name: npm test (packages, plugins, scripts, verify)
+        run: npm test
+      - name: plan check
+        if: ${{ !cancelled() }}
+        run: node plan/check.mjs

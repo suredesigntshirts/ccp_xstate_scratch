@@ -1,0 +1,32 @@
+{
+ "session_id": "attention-fixture",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "mcp__hearthbot__request_decision",
+ "tool_input": {
+  "question": "How should PR #14 get its missing #110 journal?",
+  "options": [
+   {
+    "label": "Approve me running #110's demo",
+    "consequence": "I run ccp_machine's real headless demo here (about 45 s, a few cents of Haiku), commit its journal as a fixture, and the verifier replays it."
+   },
+   {
+    "label": "You run the demo yourself",
+    "consequence": "You run two commands on your machine and push journal.jsonl to ccp_machine; I take it from there."
+   },
+   {
+    "label": "Replan the check",
+    "consequence": "A plan-only replan drops the #110 replay check; #14 merges on its three passing checks, and engine-host proves replay later."
+   }
+  ],
+  "recommended": 0,
+  "reason": "It's the real proof the item asked for, it's fast, and the only thing stopping it is the missing approval."
+ },
+ "tool_response": [
+  {
+   "type": "text",
+   "text": "{\"message_id\":\"cmsg_01VhYV3jhQ9s4qrrh2th12sN7oo3Bm18DgfoRpQy3bR2XZ\",\"note\":\"Card posted in this thread. Keep working; end the turn with post_message or no_reply_needed as usual. The choice reaches you later as a wake. If the person answers in words instead of tapping, or the question stops mattering, close the card with close_decision (message_id below), naming the option you took.\"}"
+  }
+ ],
+ "tool_use_id": "toolu_card_fixture",
+ "duration_ms": 120
+}

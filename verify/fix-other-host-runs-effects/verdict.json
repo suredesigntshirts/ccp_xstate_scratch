@@ -1,0 +1,42 @@
+{
+  "item": "fix-other-host-runs-effects",
+  "verified_sha": "3ceaf95367d507a2e51f3ccfd554c93b28b44920",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5JEZ4uMcFhW1293jEZ#agent=verifier-fix-other-host",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "no-effects",
+      "status": "MET",
+      "command": "node --test verify/fix-other-host-runs-effects/two-hosts.test.mjs",
+      "excerpt": "ok 1 - a host of another session starts nothing and leaves the item file alone; the owner then runs the card once. Item owned by session-A with its ask card open (real handlers, hearth null); session-B host offered a check_run wake (outcome not-owner), an empty offer, and a fresh B host empty offer: counting run/stop/timer/cancel handlers recorded 0 starts, item file byte-identical, B session file holds only not-owner engine.transition rows; owner A then put the card up once (start, done rows by A)."
+    },
+    {
+      "id": "parity",
+      "status": "MET",
+      "command": "node --test packages/engine/test/parity/*.test.js (on Node 22 node --test packages/engine/test/parity/ fails with MODULE_NOT_FOUND, so the glob is used)",
+      "excerpt": "tests 30, pass 30, fail 0; ok 23-26 are the four C-two-hosts-one-item tests; cases.test.js passes; grep -c C-two-hosts packages/engine/test/parity/gaps.json = 0; verify/parity-cases/C-two-hosts-one-item.gap.test.mjs does not exist."
+    },
+    {
+      "id": "owner-runs",
+      "status": "MET",
+      "command": "sed -i '/if (!ownedHere(host)) return { rows, follow };/d' packages/engine/src/host.js; node --test packages/engine/test/parity/*.test.js; node --test verify/fix-other-host-runs-effects/two-hosts.test.mjs; git checkout packages/engine/src/host.js",
+      "excerpt": "With the check removed: parity pass 26 fail 4, not ok 23-26 (all four C-two-hosts-one-item tests, including the owner-runs test 24 and the bin/host.js test 26); the verifier test also went red (no run, stop, timer or cancel started by B). After git checkout the tree is clean outside verify/.",
+      "mutation": "removed the line \"if (!ownedHere(host)) return { rows, follow };\" from runEffects in packages/engine/src/host.js",
+      "red_test": "packages/engine/test/parity/C-two-hosts-one-item.test.js: 'the owner's host still runs its open card once, after another session's host woke first' (and the other three in that file); verify/fix-other-host-runs-effects/two-hosts.test.mjs"
+    },
+    {
+      "id": "mount",
+      "status": "MET",
+      "command": "in-process host (owner session_01KfkB5JEZ4uMcFhW1293jEZ) to awaitingMerge, card record written with recordCard; then node packages/engine/bin/host.js wake --item it-m --workflow quick-fix --root /mnt/project-files/fix-other-host-verify/run-1793532670/ --release 0.2.0 twice, stdin a UserPromptSubmit hook with session_id session_01KfkB5Ekpd8CBNkTNFKPdtn, then with the owner session id; root /mnt/project-files/fix-other-host-verify/run-1793532670/ under /mnt/project-files/fix-other-host-verify/",
+      "excerpt": "Item file items/it-m.jsonl had 14 rows, md5 d59f52de... before; after the other session wake still 14 rows with the same md5 (the card effect it-m:3.ask stayed pending, no card started, no sessions/ file since the scheduled wake carried no event). After the owner wake: 16 rows; the new rows are it-m:3.ask start and done, both by session_01KfkB5JEZ4uMcFhW1293jEZ, exactly once."
+    },
+    {
+      "id": "ci",
+      "status": "MET",
+      "command": "mcp__github__pull_request_read get_check_runs, owner suredesigntshirts, repo ccp_xstate, PR 62 (head 3ceaf95)",
+      "excerpt": "check run \"test\" (the ci workflow, .github/workflows/ci.yml) completed with conclusion success at 3ceaf95; the other check \"gates\" (verdict workflow) failed because no verdict existed yet."
+    }
+  ]
+}

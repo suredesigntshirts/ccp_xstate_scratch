@@ -1,0 +1,23 @@
+{
+  "item": "clean-room-install-test",
+  "verified_sha": "1cf8053047e1fab9688e593d7b2e0c321b3f26f6",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5JWpsPCbEiHJb1AV9X#agent=verifier-clean-room-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "summary": "Both Expect lines hold at 1cf8053 and CI is green apart from the verdict gate (no verdict at the head yet). ci run 41096516680 (test job 124203574083) success, clean-room run 41096516933 (job 124203575078) success, verdict run 41096516724 failure for lack of a verdict. Fix judged: for an install that is not itself a release (tag null) the release check passes when the commit contains the newest release, is unknown when git can't tell, and fails when it does not contain it; a tagged install fails on version for every contained value. Mutation 1: forcing the 'contained !== false' condition to true turned 'release: an older install fails unless it is an untagged commit that contains the release, or git cannot tell' (test 23) red. Mutation 2: dropping the '!f.plugin.tag' guard turned the same test red, so the tagged-install path, untested before, is now covered. Accepted weakening: a non-release install in a clone that can't compare is 'unknown' (6 of 7 checks, Not checked note) rather than failed. Local at 1cf8053: plugins/harness tests 25/25; npm test 152/152 also with GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1; plan ok; clean room hooks, claude -p (both 0.1.0, 7 of 7) and release mode (harness-v0.1.1, 7 of 7) pass. Scratch proof (run 41094393695) unchanged. Doubts: CI runs hooks without a model, claude -p only ran locally; I did not re-run a depth-1 clone at this head, but CI's shallow PR checkout is green.",
+  "results": [
+    {
+      "id": "green",
+      "status": "MET",
+      "command": "node scripts/clean-room/run.mjs --ref HEAD --session hooks; --session claude; no --ref; GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1 npm test; gh run list for PR branch at 1cf8053",
+      "excerpt": "Local at 1cf8053: hooks and claude modes 'ccp-harness 0.1.0: self-check passed (7 of 7 checks)', release mode 'ccp-harness 0.1.1 (harness-v0.1.1): self-check passed (7 of 7 checks)'; npm test 152/152 with no git identity. CI at 1cf8053: clean-room run 41096516933 success (job 124203575078), ci run 41096516680 success (test job 124203574083); verdict run failed only for lack of a verdict."
+    },
+    {
+      "id": "catches",
+      "status": "MET",
+      "command": "gh run view 41094393695 --repo suredesigntshirts/ccp_xstate_scratch --log (scratch PR 10); node --test verify/clean-room-install-test/clean-room.test.mjs; mutations on selfcheck.mjs release check",
+      "excerpt": "Scratch run 41094393695 unchanged: '### clean room: FAILED ... ccp-harness 0.1.2: self-check FAILED. The plugin ... is missing scripts/notice-behind.mjs (needed by hooks/hooks.json) ... ##[error]Process completed with exit code 1.' My 3 offline tests pass at 1cf8053 (npm test 152/152). Mutations (contained forced true; tag guard dropped) each turn test 23 red."
+    }
+  ]
+}

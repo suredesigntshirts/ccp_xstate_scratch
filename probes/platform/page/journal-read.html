@@ -1,0 +1,43 @@
+<title>Journal read probe</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--muted:#666;--ok:#17703a;--bad:#a12020;--line:#ddd}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161616;--fg:#eee;--muted:#999;--ok:#5fcf8a;--bad:#f07070;--line:#333}}
+:root[data-theme="dark"]{--bg:#161616;--fg:#eee;--muted:#999;--ok:#5fcf8a;--bad:#f07070;--line:#333}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;margin:0;padding:24px 16px;max-width:760px}
+h1{font-size:20px;margin:0 0 4px}p{color:var(--muted);margin:0 0 16px}
+pre{white-space:pre-wrap;word-break:break-word;border:1px solid var(--line);padding:12px;border-radius:6px;font-size:13px}
+.ok{color:var(--ok)}.bad{color:var(--bad)}button{font:inherit;padding:6px 14px}
+</style>
+<h1>Journal read probe</h1>
+<p>Plan item probe-platform-baseline, expect page-reads-journal. Reads <code>probes/platform/probe-journal.jsonl</code> from the project's Library through the files capability.</p>
+<button id="go">Read the probe journal</button>
+<pre id="out">Not run yet.</pre>
+<script>
+const out = document.getElementById('out')
+const PATH = 'probes/platform/probe-journal.jsonl'
+async function run() {
+  const lines = [`at ${new Date().toISOString()}`]
+  const files = await claude.use('files')
+  if (!files) { out.innerHTML = '<span class="bad">files capability: null (not served or not granted)</span>'; return }
+  try {
+    const listing = await files.list({ path: 'probes/platform' })
+    lines.push('list: ' + JSON.stringify(listing).slice(0, 600))
+    const r = await files.read(PATH)
+    const text = new TextDecoder().decode(r.bytes)
+    const rows = text.trim().split('\n').map(l => JSON.parse(l))
+    lines.push(`read: size ${r.size}, revision ${r.revision}, ${rows.length} JSONL rows parsed`)
+    lines.push('first row: ' + JSON.stringify(rows[0]).slice(0, 300))
+    out.innerHTML = '<span class="ok">READ OK</span>\n'
+  } catch (e) {
+    lines.push('error: ' + JSON.stringify({ code: e && e.code, message: e && e.message }))
+    out.innerHTML = '<span class="bad">READ FAILED</span>\n'
+  }
+  out.append(lines.join('\n'))
+  try {
+    const db = await claude.use('db')
+    if (db) await db.doc('results/' + Date.now()).set({ at: new Date().toISOString(), ok: out.textContent.startsWith('READ OK'), lines })
+  } catch (e) { out.append('\n(db record failed: ' + (e && e.code) + ')') }
+}
+document.getElementById('go').addEventListener('click', run)
+window.addEventListener('load', () => setTimeout(run, 500))
+</script>

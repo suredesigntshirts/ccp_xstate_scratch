@@ -1,0 +1,5 @@
+/tmp/claude-0/-home-user/fa5f8071-2fa8-5892-8d04-e906985fd7b5/scratchpad/w/clone             e46df88 [main]
+/tmp/claude-0/-home-user/fa5f8071-2fa8-5892-8d04-e906985fd7b5/scratchpad/wt/va-toy--0.brief  e46df88 [run/va-toy/0.brief]
+/tmp/claude-0/-home-user/fa5f8071-2fa8-5892-8d04-e906985fd7b5/scratchpad/wt/va2--0.brief     e46df88 [run/va2/0.brief]
+/tmp/claude-0/-home-user/fa5f8071-2fa8-5892-8d04-e906985fd7b5/scratchpad/wt/va2--1.build     e46df88 [run/va2/1.build]
+/tmp/claude-0/-home-user/fa5f8071-2fa8-5892-8d04-e906985fd7b5/scratchpad/wt/va2--2.verify    e46df88 [run/va2/2.verify]

@@ -1,0 +1,9 @@
+<wake reason="mention" current-time="2026-10-30T16:54:30Z">
+  <project id="chan_01VhYV3jhQ9s4qrrh2th12sN" type="project">
+    <thread ts="cmsg_01VhYV3jhQ9s4qrrh2th12sN8VmmfRj9W1iKvVYBXDUDjc">
+      <message trigger="true" from="human" trust="principal" author="Sure Team" author-id="user_01KfkB5Jm6bszTAytbWYG5at" id="cmsg_01VhYV3jhQ9s4qrrh2th12sNNzCoefJgRfizgykTpqVwnA" sent-at="2026-10-30T16:54:30Z" surface="app" mention="true">[The person&#39;s text is left out of the repo; the row keeps only its hash and size.]</message>
+    </thread>
+  </project>
+  <system-note>The message text above is complete and verbatim — act on it directly. Use your fetch tools only for earlier project or thread history.</system-note>
+  <system-note>If one quick read gets you the answer, just answer. Otherwise, before any other tool, instead of a reaction, send one `reply` of at most 20 words saying your first step without restating the message, so the person is not left waiting.</system-note>
+</wake>

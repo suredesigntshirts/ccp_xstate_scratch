@@ -1,0 +1,10 @@
+{
+  "name": "@ccp-xstate/harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The v2 Claude Code plugin. The setup script installs a released copy; it does nothing in a project until installed there. See README.md.",
+  "engines": {
+    "node": ">=22"
+  }
+}

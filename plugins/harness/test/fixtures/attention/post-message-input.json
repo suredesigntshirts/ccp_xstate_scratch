@@ -1,0 +1,16 @@
+{
+ "session_id": "attention-fixture",
+ "hook_event_name": "PostToolUse",
+ "tool_name": "mcp__hearthbot__post_message",
+ "tool_input": {
+  "text": "hi"
+ },
+ "tool_response": [
+  {
+   "type": "text",
+   "text": "{\"message_id\":\"cmsg_TEST\",\"thread_id\":\"cmsg_THREAD\"}"
+  }
+ ],
+ "tool_use_id": "toolu_014eyg1dxSoRxuzkPg6oZ542",
+ "duration_ms": 8
+}

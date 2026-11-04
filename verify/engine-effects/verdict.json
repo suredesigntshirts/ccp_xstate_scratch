@@ -1,0 +1,36 @@
+{
+  "item": "engine-effects",
+  "verified_sha": "3c7f8a78d68f8b4c14b9f2a8059e35d1cee5cf67",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5GevxmS2UeWzLu9LTL#agent=verifier-engine-effects",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "merge-at-sha",
+      "status": "MET",
+      "command": "node verify/engine-effects/world/merge-at-sha.mjs stale 17 verify/engine-effects-merge-stale2 <worktree> verify/engine-effects/evidence (world); node --test verify/engine-effects/merge-at-sha.test.mjs (offline check of the saved evidence and journal)",
+      "excerpt": "Scratch PR suredesigntshirts/ccp_xstate_scratch#17, real host + real REST client, stub brief/build/verify/ask actors. PASS verdict at A=d55b818; the ask stub pushed B=6171318 to the branch before the merge effect. Merge effect sent expectedHeadSha=A; GitHub answered 409 'Head branch was modified'; journal merge effect rows [start, failed] with reason naming A and the new head B; item stepped back to replanning; PR read back over REST: state open, merged false, head B. Control PR #15 (no push): same flow merged at A, rows [start, done], item done. (A first attempt on #14 had a stub bug that pushed many commits; aborted, closed unmerged, not used as evidence.)"
+    },
+    {
+      "id": "outside-merge",
+      "status": "MET",
+      "command": "node --test verify/engine-effects/outside-merge.test.mjs (runs packages/journal/bin/journal-check.js with --prs saved real GitHub responses)",
+      "excerpt": "Real scratch PRs: #15 merged by the host merge effect, #16 merged with the GitHub MCP merge tool, #14 closed unmerged. The check lists #16 under both 'merges not made by the host' and 'no journal row' and exits 1; #15 and #14 are not listed. With a pr.merge row bound to an item for #16, it leaves 'no journal row' but is still listed as outside the host (and --host exits 1). A failed merge effect row does not explain a merge; a done one does. 5 tests pass."
+    },
+    {
+      "id": "no-bash",
+      "status": "MET",
+      "command": "node --test packages/engine/test/effects.test.js (clean: 12 pass), then with effects mutated; output in verify/engine-effects/evidence/no-bash-mutation.txt",
+      "excerpt": "Clean code: 12 pass. Mutation 1 (recorded): execSync('true') in timer.js start -> test 12 'no-bash' red, listing the execSync call. Also tried and each went red then reverted: dynamic import('node:child_process').execFileSync in merge.js start, and globalThis.$.process('echo hi') in post.js start. git status clean of engine changes afterwards. Judgment: the wrapper patches the CJS child_process exports and syncBuiltinESMExports before the effects load, so static, dynamic and namespace imports are all caught, as is $.process. Not covered: process.binding/spawn_sync, Worker threads, native addons, or a module that captured child_process functions before the wrapper ran. Card and post are only run against fake hearth clients, and the merge path against a local fake server, in that suite.",
+      "mutation": "packages/engine/src/effects/timer.js: added import { execSync } from 'node:child_process' and execSync('true') at the top of start() (reverted; git status clean)",
+      "red_test": "packages/engine/test/effects.test.js: \"no-bash: across this suite, no effect ran a shell command (child_process and $.process record zero calls)\""
+    },
+    {
+      "id": "red-ci",
+      "status": "MET",
+      "command": "sh verify/engine-effects/world/red-ci-fetch.sh cd2adfb894be738dc3071dac9ac660b42f2caa0e (REST check-runs); node --test verify/engine-effects/red-ci.test.mjs",
+      "excerpt": "Scratch PR #18 with a failing test file; GitHub's real check run 'test' completed failure on head cd2adfb (REST saved in evidence/check-runs-pr18.json). An item in verifying for that head was offered the wake through inputsOfWake: state building, context.failure.check 'test' (conclusion failure, sha, details_url), builds 1, and the second build actor's input carried failure.check 'test'. Never reached merging. Another head or a green conclusion does not send it back. IMPORTANT: the main tests feed wake text REBUILT from the REST facts in the shape of check-run-failed.txt, not text delivered to my session. The platform also delivered a real wake for PR #18 to the builder/thread session; it was relayed to me by the coordinator (HTML comment shortened, evidence/delivered-wake-pr18.txt), I checked its facts equal REST's and it produces the same result in the last test."
+    }
+  ]
+}

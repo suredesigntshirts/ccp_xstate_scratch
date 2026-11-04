@@ -1,0 +1,15 @@
+{
+  "item": "engine-actor-returns",
+  "verified_sha": "c4d87a81dcc976ff5491776a04145b3c659e69ec",
+  "verifier": { "session": "https://claude.ai/code/session_01KfkB5GUeqgfhdQ3hcvUkHq#agent=verifier-actor-returns", "model": "claude-sonnet-5-5" },
+  "results": [
+    { "id": "sent-back", "status": "MET", "command": "node --test verify/engine-actor-returns/actor-returns.test.mjs",
+      "excerpt": "Real plugins/harness/scripts/actors.mjs: a bound agent with its run open is sent back once by either way of ending. SubagentStop gives {decision:'block'} and a PreToolUse of SubagentHandback is denied 'no-return: ...', each naming harness__return and run it-1:0.brief; the item stays in briefing. Unbound agents, and a handback or stop after the return was accepted, go through untouched. World: scratch item ar4's agent got the real deny 'PreToolUse:SubagentHandback hook error: no-return: ... harness__return ...' on its first SubagentHandback",
+      "mutation": "actors.js handback(): the 'if (!sentBackBefore(...)) return { deny }' guard replaced by 'if (false) return'; separately stopped(): 'if (handedBack) return fail' replaced by 'if (false) return fail'",
+      "red_test": "first mutation: tests 3 (handback path sent-back), 4, 5 and 7 red; second mutation: test 6 (stop after a recorded SubagentHandback result) red; both restored with git checkout" },
+    { "id": "fails-after", "status": "MET", "command": "node --test verify/engine-actor-returns/actor-returns.test.mjs",
+      "excerpt": "Second end fails the run: a second SubagentHandback goes through and writes failed.json, a refusal row rule no-return, and an engine.transition on xstate.error.actor.<invoke> that moves the item out of briefing; a stop after a deny (sent-back.json) fails the run with no second block, so once holds across both ways; a SubagentStop whose agent transcript tail is the real recorded SubagentHandback result (from run ar2) fails at once; stop_hook_active true after a block fails as before; a later return is denied already-failed. 10 tests pass" },
+    { "id": "real", "status": "MET", "command": "scripts/toy-run.sh run ar4 --issue https://github.com/suredesigntshirts/ccp_xstate_scratch/issues/33 --expect /tmp/ar-expect4.json (TOY_DIR=/mnt/project-files/toy-run-returns); node --test verify/engine-actor-returns/world.test.mjs",
+      "excerpt": "Issue 33 told every agent to end with SubagentHandback and never call the return tool. The brief agent's first SubagentHandback was denied by the hook (no-return, with the return instruction); it handed back again unchanged; the hook let that one through and journalled refusal rule no-return (tool SubagentHandback) and engine.transition ar4#1 xstate.error.actor.brief, source harness 'stop a3e04a1...', from briefing to replanning, outcome applied. No hearth/person source in the journal; the driver stopped at the replanning ask. Before the fix (ar2 at 51eced2) the same shape left the item in briefing. Not shown in the world: an agent that calls the return tool after the deny, and a plain-final-message stop. Scratch issues 29, 31, 32, 33 and PR 30 closed, nothing merged" }
+  ]
+}

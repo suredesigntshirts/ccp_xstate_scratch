@@ -1,0 +1,104 @@
+TAP version 13
+# Subtest: a state that invokes an agent actor prepares its run: brief, folder, worktree named by item and run, brief.stored
+ok 1 - a state that invokes an agent actor prepares its run: brief, folder, worktree named by item and run, brief.stored
+  ---
+  duration_ms: 164.497288
+  type: 'test'
+  ...
+# Subtest: the Agent call gets the brief as its prompt, once: a second start of the run, or an unknown run, is refused
+ok 2 - the Agent call gets the brief as its prompt, once: a second start of the run, or an unknown run, is refused
+  ---
+  duration_ms: 138.78404
+  type: 'test'
+  ...
+# Subtest: SubagentStart binds the agent its Agent call started, journals agent.spawn with item, state and briefHash
+ok 3 - SubagentStart binds the agent its Agent call started, journals agent.spawn with item, state and briefHash
+  ---
+  duration_ms: 158.136742
+  type: 'test'
+  ...
+# Subtest: SubagentStart finds the session's one started run; with several starting at once, the agent binds at its first call
+ok 4 - SubagentStart finds the session's one started run; with several starting at once, the agent binds at its first call
+  ---
+  duration_ms: 319.857969
+  type: 'test'
+  ...
+# Subtest: an agent SubagentStart could not bind is bound from its meta.json at its first tool call, and told its run
+ok 5 - an agent SubagentStart could not bind is bound from its meta.json at its first tool call, and told its run
+  ---
+  duration_ms: 153.010166
+  type: 'test'
+  ...
+# Subtest: wrong-caller: a return from any agent but the run's, or from the main session, is refused and journalled
+ok 6 - wrong-caller: a return from any agent but the run's, or from the main session, is refused and journalled
+  ---
+  duration_ms: 143.228342
+  type: 'test'
+  ...
+# Subtest: schema: a result missing a required field is refused, naming it
+not ok 7 - schema: a result missing a required field is refused, naming it
+  ---
+  duration_ms: 140.69433
+  type: 'test'
+  location: '/home/user/ccp_xstate/packages/engine/test/actors.test.js:141:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly deep-equal:
+    + actual - expected
+    
+    + undefined
+    - {
+    -   reason: 'brief result: result.verifier is missing',
+    -   rule: 'schema'
+    - }
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+    rule: 'schema'
+    reason: 'brief result: result.verifier is missing'
+  operator: 'deepStrictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///home/user/ccp_xstate/packages/engine/test/actors.test.js:145:10)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: an accepted brief fixes both briefs before any build, moves the item to building and prepares the build run
+ok 8 - an accepted brief fixes both briefs before any build, moves the item to building and prepares the build run
+  ---
+  duration_ms: 169.787637
+  type: 'test'
+  ...
+# Subtest: a host restored later still offers an accepted result it was not handed
+ok 9 - a host restored later still offers an accepted result it was not handed
+  ---
+  duration_ms: 149.7975
+  type: 'test'
+  ...
+# Subtest: github-fact: a claimed PR GitHub doesn't show, or shows at another head, is refused and the item stays in building
+ok 10 - github-fact: a claimed PR GitHub doesn't show, or shows at another head, is refused and the item stays in building
+  ---
+  duration_ms: 245.877833
+  type: 'test'
+  ...
+# Subtest: own-folder: a bound agent's shell runs from its worktree, and file tools outside it are refused
+ok 11 - own-folder: a bound agent's shell runs from its worktree, and file tools outside it are refused
+  ---
+  duration_ms: 0.911256
+  type: 'test'
+  ...
+# Subtest: the return tool is known under its plugin prefix and its bare name only
+ok 12 - the return tool is known under its plugin prefix and its bare name only
+  ---
+  duration_ms: 0.340203
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 11
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1964.659688

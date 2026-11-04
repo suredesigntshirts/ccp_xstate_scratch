@@ -1,0 +1,48 @@
+{
+  "item": "engine-host",
+  "verified_sha": "dce98c88b1beec345c80952c68f6933ab31c05fb",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5HsRaH5LqFzSrzABpr#agent=verifier-engine-host",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "duplicate",
+      "status": "MET",
+      "command": "node --test verify/engine-host/host.test.mjs",
+      "excerpt": "duplicate (a): same wake twice in one hook and again after restart -> outcomes [applied, duplicate], then [duplicate]; one side effect, run effect rows [start, done]. duplicate (b): real child process exits 9 mid-effect after side effect logged; two restarts without find() never repeat it (rows [start, unknown]); with find() it completes with 0 new starts. Mutating host.js to skip the duplicate check turned my test 'duplicate (a)' red. Re-run at dce98c8. Re-checked at dce98c8: diff 85bad14..dce98c8 changes only plugins/harness/test/capture.test.mjs (cheap test subtracts a bare node start from the median, ~16-18 ms here; p95 <= 200 ms stays absolute); no engine or plugin code changed; npm test 286 pass / 0 fail, engine-host and engine tests all green."
+    },
+    {
+      "id": "stale",
+      "status": "MET",
+      "command": "node --test verify/engine-host/host.test.mjs",
+      "excerpt": "After a pr.pushed re-entered verifying, the old run's PASS completion (live host and restored host, no-run, forged run id) gave outcome 'stale', transition null, reason 'run ... is not in flight'; snapshot hash unchanged; the current run's completion still applied (awaitingMerge). Re-run at dce98c8. Re-checked at dce98c8: diff 85bad14..dce98c8 changes only plugins/harness/test/capture.test.mjs (cheap test subtracts a bare node start from the median, ~16-18 ms here; p95 <= 200 ms stays absolute); no engine or plugin code changed; npm test 286 pass / 0 fail, engine-host and engine tests all green."
+    },
+    {
+      "id": "refused-effect",
+      "status": "MET",
+      "command": "node --test verify/engine-host/host.test.mjs",
+      "excerpt": "Build handler returned refused{rule:'auto-mode: Self-Modification'}: one engine.effect row phase=refused with that rule, state replanning with failure naming the rule; builds counter stayed 1 across 3 restored hosts and a re-offer. A thrown error is also run once and steps back. Re-run at dce98c8. Re-checked at dce98c8: diff 85bad14..dce98c8 changes only plugins/harness/test/capture.test.mjs (cheap test subtracts a bare node start from the median, ~16-18 ms here; p95 <= 200 ms stays absolute); no engine or plugin code changed; npm test 286 pass / 0 fail, engine-host and engine tests all green."
+    },
+    {
+      "id": "replay",
+      "status": "MET",
+      "command": "node --test packages/engine/test/host.test.js (clean), then with host.js mutated",
+      "excerpt": "At dce98c8: builder test 'replaying an item's journal rebuilds its snapshot exactly' green on clean code (restored hash == live hash == last journalled hash); my replay test also compares hashes. With the mutation 4 of 10 host tests went red, including this one. Re-checked at dce98c8: diff 85bad14..dce98c8 changes only plugins/harness/test/capture.test.mjs (cheap test subtracts a bare node start from the median, ~16-18 ms here; p95 <= 200 ms stays absolute); no engine or plugin code changed; npm test 286 pass / 0 fail, engine-host and engine tests all green.",
+      "mutation": "packages/engine/src/host.js restore(): appended .slice(0, -1) to the sorted applied-transition list so the last applied row is not replayed (reverted afterwards; git diff clean)",
+      "red_test": "packages/engine/test/host.test.js: \"replaying an item's journal rebuilds its snapshot exactly\""
+    },
+    {
+      "id": "no-agent-events",
+      "status": "MET",
+      "command": "node --test verify/engine-host/plugin-tools.test.mjs verify/engine-host/forge.test.mjs; node verify/engine-host/forge-probe.mjs",
+      "excerpt": "At dce98c8. Plugin registers no MCP server, tool, agent or command (one skill, hooks only; nothing references the host), so there is no tool to call with forged sources. Entry points: bin/host.js wake now reads only a UserPromptSubmit prompt or ReadNotifications notifications with origin github_webhook. 7 forge tests pass: output of Bash/Read/WebFetch/Write/Task/mcp__x__ReadNotifications carrying a perfect wake with current-time 2099 changes nothing (forge-probe: state building -> building, no results); other origins (agent_message, send_later, case/space variants, missing) and other hook events ignored; current-time 2099/9999/garbage never makes a timer due (capped at host clock); wake quoted mid-line, indented, or inside an <agent-message> hand-back (the platform really indents those, per the capture fixture) is not read; wake/event/system-note/task-notification markup inside a GitHub JSON field adds no event. JUDGMENT CALL, residual: an agent with a shell can still run `node packages/engine/bin/host.js wake` with a UserPromptSubmit-shaped stdin it types, and gets a github-sourced event (and can type any session_id); verified by hand. I read the Expect as covering what the platform and plugin give an agent, not a hand-typed command, because the same shell can append journal rows directly (ledger L-same-account-everywhere, accepted in plan/README.md). Not covered: the ReadNotifications result shape {notifications:[{origin,content}]} is the builder's assumption, no real capture exists in the repo; if it is wrong, real GitHub wakes read that way are dropped (fails closed). Also: a GitHub field containing the literal text </event> makes that event vanish with no row (forge.test.mjs FINDING test). Re-checked at dce98c8: diff 85bad14..dce98c8 changes only plugins/harness/test/capture.test.mjs (cheap test subtracts a bare node start from the median, ~16-18 ms here; p95 <= 200 ms stays absolute); no engine or plugin code changed; npm test 286 pass / 0 fail, engine-host and engine tests all green."
+    },
+    {
+      "id": "one-owner",
+      "status": "MET",
+      "command": "two real `claude -p --session-id` runs on /mnt/project-files/engine-host-verify/run1; A ran host.js start via Bash, B got the check_run wake as its prompt and a UserPromptSubmit hook (--settings) ran host.js wake with B's real session_id",
+      "excerpt": "At dce98c8, run2: A (c2c8d9c3) host.js start -> applied, owner c2c8d9c3. B (6d936a41), real claude -p with --session-id, got the check_run wake as its prompt and a UserPromptSubmit hook ran host.js wake with B's session_id -> 'not-owner', reason 'own-1 is owned by c2c8d9c3-...'. Refusal row is in sessions/6d936a41-....jsonl; items/own-1.jsonl has 1 row, none from B. Copies in verify/engine-host/one-owner-evidence/. Engine code unchanged since the run; engine diff 85bad14..dce98c8 is empty."
+    }
+  ]
+}

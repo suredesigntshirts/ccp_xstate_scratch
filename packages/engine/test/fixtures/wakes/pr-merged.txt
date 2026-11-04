@@ -1,0 +1,6 @@
+<wake reason="external-event" current-time="2026-10-30T19:27:48Z">
+  <event source="github" kind="pull_request.closed" from="system" trust="relay">
+    <!-- The PR has been merged. You no longer need to watch this PR — this session has been automatically unsubscribed from its activity. Treat this as the final outcome: do not reopen this PR or open a new PR for the same change unless the user explicitly asks you to. -->
+    {"outcome":"merged","pr":"suredesigntshirts/ccp_xstate#27"}
+  </event>
+</wake>

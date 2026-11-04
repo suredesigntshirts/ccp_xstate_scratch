@@ -1,0 +1,51 @@
+{
+  "item": "obs-live-capture",
+  "verified_sha": "b95097ec346104bc34f2e4de3c4cf453f2d8f37b",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5HGCWKXZyinsGeEAUT#agent=verifier-cheap-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "complete",
+      "status": "MET",
+      "command": "node --test verify/obs-live-capture/capture.test.mjs (8 pass at b95097e; full npm test 202/202; node plan/check.mjs ok); fixture recorded by claude -p 2.1.314, truth from the transcripts",
+      "excerpt": "Re-run at b95097e: one tool.call per call that ran, none extra (7 of 7; the blocked 8th fires no hook). Three fresh live runs (claude -p --permission-mode auto, 1 subagent that hands back): tool.call rows Bash(sub), SubagentHandback(sub), Agent, Bash(parent) = one per call each time.",
+      "mutation": "plugins/harness/scripts/capture-rows.mjs toolCall(): returned no rows when tool_name is Read (redone at b95097e, reverted with git checkout)",
+      "red_test": "builder \"complete: the handlers make the expected rows...\" and verify \"complete: one tool.call per tool call that ran, none extra\" went red (9 failures across both files)"
+    },
+    {
+      "id": "attributed",
+      "status": "MET",
+      "command": "node --test verify/obs-live-capture/capture.test.mjs (8 pass at b95097e; full npm test 202/202; node plan/check.mjs ok); 3 fresh live claude -p sessions in a temp CCP_HARNESS_DIR",
+      "excerpt": "Live tool.call agents: subagent Bash and SubagentHandback carry the subagent agentId (af8a226b..., a39371e0..., a59a5c11...), the parent Agent and Bash carry null, in all 3 runs. Fixture test compares every row with the transcript it came from."
+    },
+    {
+      "id": "no-content",
+      "status": "MET",
+      "command": "node --test verify/obs-live-capture/capture.test.mjs (8 pass at b95097e; full npm test 202/202; node plan/check.mjs ok); live journals read",
+      "excerpt": "Fixture test: secret sk_test_VERIFY_8f3a91c2d7 is in no row and no blob; rows hold inputHash/inputBytes only. Live: tool.call payloads hold tool, inputHash, inputBytes, ms, ok only."
+    },
+    {
+      "id": "blobs",
+      "status": "MET",
+      "command": "node --test verify/obs-live-capture/capture.test.mjs (8 pass at b95097e; full npm test 202/202; node plan/check.mjs ok); live: sha256 of the subagent transcript SubagentHandback message vs agent.finish.resultHash, result.stored.hash and blobs/<hash>",
+      "excerpt": "3 live runs: hand-back \"done7\"/\"done8\"/\"done9\"; resultHash = result.stored.hash = sha256 of it, and the blob file content equals it. agent.finish tokens equal the sum of the final per-message usage in the subagent transcript read afterwards (output 103, 103, 128; input 4), so the early exit lost neither the answer nor the last tokens. Fixture test: brief and answer blobs match, stored once. New verify test replays the real hook with the hand-back call and result appended 120 ms after the hook starts: result.stored/resultHash/output tokens still present. Caveat: live agent.spawn.briefHash is null (documented); brief.stored carries the link."
+    },
+    {
+      "id": "cheap",
+      "status": "MET",
+      "command": "node --test verify/obs-live-capture/capture.test.mjs (8 pass at b95097e; full npm test 202/202; node plan/check.mjs ok); test \"cheap (fixture run): median hook.run ms minus a bare node start <= 50 ms, raw p95 <= 200 ms\" x3; live SubagentStop hook.run ms",
+      "excerpt": "Fixture: hook median 40/39/39 ms, bare node 23/22/22, adds 17/17/17 (n=14); raw p95 50/63/44 ms (was 188-196 at 550417f, the SubagentStop 150 ms quiet wait). Live SubagentStop hook.run: 79, 94, 91 ms (268 ms on the old path, seen in 4 live runs where the subagent did not hand back and the quiet wait ran). Judged MET: both the decision-reading median and the 200 ms p95 hold with wide margin.",
+      "mutation": "plugins/harness/scripts/capture.mjs: 120 ms busy-wait at start-up (at b95097e), reverted with git checkout",
+      "red_test": "builder \"cheap: hook.run rows...\" and verify \"cheap (fixture run)...\" went red"
+    },
+    {
+      "id": "live",
+      "status": "MET",
+      "command": "claude -p --permission-mode auto --plugin-dir plugins/harness --allowedTools Bash(echo:*) Bash(sleep:*) Agent, cwd and CCP_HARNESS_DIR in a temp folder; grep -c tool.call on the session file every 1 s while it ran; then compared each tool.call row.at with the tool_result timestamp in the transcripts under ~/.claude/projects (3 runs)",
+      "excerpt": "Poll counts rose while the process was running (e.g. 0..0,1,1,3,3,4,4: the 4 s sleep spanned the 3->4 step; run 8: 0,1,1,3,...,4). Each row.at was 54-108 ms after its tool_result timestamp (Bash 54/55/57, Agent 71/84/74, SubagentHandback 108/69/84, parent Bash 60/54/81), far under 2 s. Not run: a session in the v2 project and list_events; transcript timestamps stand in, as before."
+    }
+  ],
+  "summary": "Re-verified at b95097e (SubagentStop early settle). handedBack review: it returns true only when the transcript's last line is a user tool_result whose tool_use_id equals a SubagentHandback tool_use in the 64 KB tail; Claude Code writes that result after the hand-back assistant line (which carries the final usage), so the answer and last tokens are already in the file; a tail it cannot parse, a hand-back too big for the tail, or an agent that never hands back falls to the old 150 ms quiet wait, so failures are slow, not lossy. Live 3 of 3: result and tokens exact, SubagentStop 79-94 ms. Mutations of handedBack: always-true went red in the builder test only, ignoring the id match survived everything; I added a verify test (id mismatch and a hand-back appended 120 ms late through the real hook) that turns both red. Doubts: the early exit is exercised live only under --permission-mode auto (the SubagentHandback tool exists only in auto mode on 2.1.314); hand-back not exercised when the hand-back assistant line is split across several lines of one message; live is headless, not the v2 project."
+}

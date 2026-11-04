@@ -1,0 +1,1 @@
+{ "name": "platform-probe", "version": "0.1.0", "description": "Throwaway probe for plan item probe-platform-baseline: logs wakes, spawns, MCP calls, refusals and hook budgets to out/probe-log.jsonl" }

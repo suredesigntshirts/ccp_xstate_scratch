@@ -1,0 +1,28 @@
+{
+  "item": "retro-first-item",
+  "verified_sha": "5607e3bfde295a742f5decf7ec7e154377227427",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5GUeqgfhdQ3hcvUkHq#agent=verifier-retro",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "numbers",
+      "status": "MET",
+      "command": "cp -r the journal to a temp dir; node packages/journal/bin/derive.js time --journal <copy>; recomputed turn.usage and last agent.finish per agent; node --test verify/retro-first-item/retro.test.mjs",
+      "excerpt": "Recomputed before reading the retro: tokens 833,859 (driver 345,938 + brief 104,284 + build 238,472 + verify 145,165; brief agent has two cumulative finish rows, last one taken, summing both gives +76,459 = 9%); derive time: wall 198481 ms, working 196191, wake 638, rebuild 1494, unknown 158, person 0, ci 0; agent time 28.152+79.223+46.325 = 153.7 s; rounds 1 build, 1 verify PASS, 0 rework; 27 tool.call rows; 0 refusal rows; 1 person ask (3.ask card, merge). All equal the retro's figures. GitHub: PR #103 head 6823559, merged 03:03:38Z as b74bddb, CI success on head and merge. Thread-side claims (2 refusals, 16 min wait) are outside the item journal and were not checkable. 4 tests pass."
+    },
+    {
+      "id": "spliced",
+      "status": "MET",
+      "command": "node plan/check.mjs; git diff origin/main...HEAD -- plan/ledger plan/decisions",
+      "excerpt": "plan ok (8 stages, 37 items, 84 ledger rows). Findings 1-5 have rows L-standin-gap, L-real-run-reuses-toy, L-allow-rules-per-repo (process.md), L-item-view-spans-sessions, L-agent-finish-twice (observability.md), and the allow rule is in waiting-for-person.md. Finding 6 says it is evidence on L-build-for-next-real-item, but that row was not edited and does not cite the retro (minor gap: the lesson already has its row, only the pointer is missing)."
+    },
+    {
+      "id": "widen-ordered",
+      "status": "MET",
+      "command": "grep -l '\"stage\": \"s4b-widen\"' plan/items/*.md; git diff origin/main...HEAD -- plan/items; node plan/check.mjs",
+      "excerpt": "s4b-widen items: engine-item-views (draft; why cites retro findings 2 and 3), wf-schema, wf-fragments, wf-catalogue (status parked, why starts 'Parked by retro-first-item (finding 6)' with the reason). engine-cards-standin is no longer in s4b-widen (moved by replan PR #47) and its why cites finding 1. plan ok."
+    }
+  ]
+}

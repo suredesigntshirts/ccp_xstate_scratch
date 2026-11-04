@@ -1,0 +1,39 @@
+{
+  "item": "obs-time-and-rework",
+  "verified_sha": "6eba9cfa5e1f21b4983adeb5073987b248b4582d",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5FH5nbx6F4NvSjT2hP#agent=verifier-obs-time-and-rework",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "time",
+      "status": "MET",
+      "command": "node --test packages/journal/test/derive-time.test.js (5 tests, incl. the 10-minute idle gap fixture inserted into a real session; they assert working + person + ci + wake + rebuild + unknown == wallMs)",
+      "excerpt": "Builder tests 5 pass. The 10-minute gap ended by a person wake is labelled person, never working; a wake without a reason and a turn that never closed give unknown; a SessionStart in the gap splits off rebuild. Read the code: gaps are only what is left after merging turn, tool, hook and subagent spans, so no gap can be working. One weak spot: labelling a gap that no wake ends (the \"no wake ends this gap\" branch) as person instead of unknown is not caught by any test (mutation survived), though the other unknown paths are tested.",
+      "mutation": "packages/journal/src/derive/time.js sessionTime: a turn busy span extended to the end of the session (busy.push(clip(turnStart, to))) so idle gaps count as working (reverted with git checkout); also the reasonless-wake gap labelled person, and every wake reason labelled person",
+      "red_test": "derive-time.test.js 'a 10-minute idle gap ended by a person wake is waiting on the person, never working', 'each wake reason picks its waiting kind; a wake with no reason makes the gap unknown', 'a SessionStart inside the gap splits its tail off as rebuild' and 'a turn that never closed...' went red (4 of 5); the other two mutations turned 'each wake reason picks its waiting kind...' red"
+    },
+    {
+      "id": "rework",
+      "status": "MET",
+      "command": "Read PRs #14, #28 and #31 straight from GitHub REST (pulls/N/commits, commits/<sha>/check-runs; NODE_USE_ENV_PROXY=1, no token), counted by hand and by my own counter in verify/obs-time-and-rework/verifier.test.mjs (raw responses saved in verify/obs-time-and-rework/fixtures/pr-N.json), then NODE_USE_ENV_PROXY=1 node packages/journal/bin/derive.js rework --repo suredesigntshirts/ccp_xstate --pr 14 (and 28, 31) live; node --test verify/obs-time-and-rework/verifier.test.mjs",
+      "excerpt": "GitHub vs derived, identical for all three. #14: 8 commits all with CI runs = 8 pushes; 7 red pushes, 10 red runs (gates failed on 7, test on 3 more), rounds 7 (the red merge commit 2b588a3 with 2 parents stays in its round). #28: 7 commits, the first two have no check runs and are not pushes, so 5 pushes; 4 red pushes, 11 red runs, rounds 4 (the final green merge of main stays in the round of the red cc29269). #31: 3 pushes, 1 red (gates), 1 red run, rounds 2 (the green merge after green adds none). Live derive.js output matched {pushes, redPushes, redRuns, rounds}: #14 8/7/10/7, #28 5/4/11/4, #31 3/1/1/2. Definitions (decision file) are a reasonable reading: a round is a fix-and-retry cycle, red = any failing check, merge commits do not start a round. Caveats: a commit pushed together with a later one has no CI and is invisible, so rounds can undercount versus raw commits (#28 has 7 commits, 4 rounds); #14 shows 7 red pushes but 7 rounds, not 8, because of the merge rule; both are stated in the decision. Mutation check on my own test: making merge commits start a round turns the #14 and #28 tests red. ccp_machine #72 not checked (REST blocked, moved to waiting-for-person by the replan, as the task states)."
+    },
+    {
+      "id": "overhead",
+      "status": "MET",
+      "command": "node --test packages/journal/test/derive-overhead.test.js (3 tests); read packages/journal/src/derive/overhead.js and harness-paths.json",
+      "excerpt": "Builder tests 3 pass: with the shipped config this repo is harness, a product repo is product, a session with no PR is unattributed; changing the config moves the split. Code reads config.harness globs applied to <owner>/<repo>/<path> and splits a session tokens by changed-line share.",
+      "mutation": "packages/journal/src/derive/overhead.js isHarness: the config ignored (a hard-coded glob list in place of config.harness); second mutation: the harness test inverted in overhead() (reverted with git checkout)",
+      "red_test": "derive-overhead.test.js 'with the shipped config, this repo is harness, a product repo is product, a session with no PR is unattributed' and 'changing the config moves the split' went red under both mutations"
+    },
+    {
+      "id": "tripwire",
+      "status": "MET",
+      "command": "node --test verify/obs-time-and-rework/verifier.test.mjs (my own tests, case C-second-fail-replans: a FAIL, a rebuild, a second FAIL, then a third round; through the real `derive.js rework --facts <f> --plan <dir> --append <tmp journal> --session verifier --release 1.0.0`, run repeatedly)",
+      "excerpt": "Two rounds (at the limit 2): no tripwire row in the temp journal. Three rounds: exactly one tripwire row {pr 900, rounds 3, limit 2} and 6 ci.result rows. The same run again: no second tripwire, no duplicate ci.result rows. A fourth round at the same limit: still one row. With an item head step_back.max_rounds 3: 3 rounds no row, 4 rounds one row with limit 3; the limit then lowered to 2 gives a second row for that new limit ([3,2]). Two PRs past the limit get one row each; without --append nothing is written. All 7 tests in the file pass. Mutation on the builder code: dropping the `fired.has(key)` dedup in rework.js tripwires() turned the C-second-fail-replans test red (reverted)."
+    }
+  ],
+  "summary": "npm test at 6eba9cf plus my verify/obs-time-and-rework tests: 241 pass, 1 fail, the known timing test \"cheap (fixture run)\" (load noise). plan/check.mjs ok. Defects: none blocking. Notes: (1) an untested branch in time.js (a gap no wake ends labelled unknown); (2) rework counts depend on check runs existing, so a push whose CI never started is invisible (documented in the decision); (3) ci.result row ids come from the check run id, so a run that is re-run under the same id with a new conclusion is not refreshed on a later --append (it is deduped by id) - not hit by real data here."
+}

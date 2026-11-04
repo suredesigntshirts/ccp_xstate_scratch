@@ -1,0 +1,54 @@
+{
+  "item": "own-1",
+  "owner": "c2c8d9c3-78e8-494a-99b9-564f6dec3fbf",
+  "state": "briefing",
+  "results": [
+    {
+      "outcome": "not-owner",
+      "reason": "own-1 is owned by c2c8d9c3-78e8-494a-99b9-564f6dec3fbf",
+      "event": "github.check_run.completed",
+      "source": {
+        "system": "github",
+        "ref": "check_run.completed 41dc1725182ffcb5"
+      }
+    }
+  ],
+  "pending": {
+    "effects": [
+      {
+        "id": "own-1:0.brief",
+        "type": "run",
+        "invoke": "brief",
+        "actor": "brief",
+        "input": {
+          "issue": {
+            "url": "https://github.com/o/r/issues/1",
+            "expect": [
+              "x"
+            ]
+          },
+          "why": null
+        },
+        "transition": "own-1#0"
+      }
+    ],
+    "runs": [
+      {
+        "id": "own-1:0.brief",
+        "type": "run",
+        "invoke": "brief",
+        "actor": "brief",
+        "input": {
+          "issue": {
+            "url": "https://github.com/o/r/issues/1",
+            "expect": [
+              "x"
+            ]
+          },
+          "why": null
+        }
+      }
+    ],
+    "timers": []
+  }
+}

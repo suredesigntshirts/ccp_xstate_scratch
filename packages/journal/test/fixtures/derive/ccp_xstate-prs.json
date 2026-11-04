@@ -1,0 +1,1364 @@
+[
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 14,
+    "head": "claude/project-thread-1xvw2m",
+    "merged": true,
+    "item": "wf-quick-fix",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5HZRbfGRGcZb4ar2mX"
+    ],
+    "files": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "changes": 2
+      },
+      {
+        "path": ".gitignore",
+        "changes": 1
+      },
+      {
+        "path": "CLAUDE.md",
+        "changes": 3
+      },
+      {
+        "path": "docs/layout.md",
+        "changes": 4
+      },
+      {
+        "path": "package-lock.json",
+        "changes": 63
+      },
+      {
+        "path": "packages/engine/package.json",
+        "changes": 19
+      },
+      {
+        "path": "packages/engine/src/index.js",
+        "changes": 9
+      },
+      {
+        "path": "packages/engine/src/schema.js",
+        "changes": 18
+      },
+      {
+        "path": "packages/engine/src/spec.js",
+        "changes": 161
+      },
+      {
+        "path": "packages/engine/test/cases/C-missing-expect-fails-closed.test.js",
+        "changes": 23
+      },
+      {
+        "path": "packages/engine/test/cases/C-push-after-pass.test.js",
+        "changes": 27
+      },
+      {
+        "path": "packages/engine/test/cases/C-second-fail-replans.test.js",
+        "changes": 34
+      },
+      {
+        "path": "packages/engine/test/cases/C-verdict-on-old-head.test.js",
+        "changes": 26
+      },
+      {
+        "path": "packages/engine/test/fixtures/110-demo/README.md",
+        "changes": 7
+      },
+      {
+        "path": "packages/engine/test/fixtures/110-demo/journal.jsonl",
+        "changes": 6
+      },
+      {
+        "path": "packages/engine/test/flow.js",
+        "changes": 41
+      },
+      {
+        "path": "packages/engine/test/guards.test.js",
+        "changes": 49
+      },
+      {
+        "path": "packages/engine/test/replay.test.js",
+        "changes": 30
+      },
+      {
+        "path": "packages/engine/test/workflow.test.js",
+        "changes": 50
+      },
+      {
+        "path": "plan/decisions/2026-10-30-wf-quick-fix.md",
+        "changes": 32
+      },
+      {
+        "path": "plan/items/wf-quick-fix.md",
+        "changes": 2
+      },
+      {
+        "path": "verify/wf-quick-fix/cases.test.mjs",
+        "changes": 101
+      },
+      {
+        "path": "verify/wf-quick-fix/replays-110.test.mjs",
+        "changes": 33
+      },
+      {
+        "path": "verify/wf-quick-fix/verdict.json",
+        "changes": 34
+      },
+      {
+        "path": "workflows/quick-fix.json",
+        "changes": 160
+      }
+    ],
+    "commits": [
+      {
+        "sha": "50d7d645f3af62e4ef1c0e4bce41b342e6dfbd90",
+        "parents": 1,
+        "at": "2026-10-30T10:33:31Z",
+        "checkRuns": [
+          {
+            "id": 124015664657,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:33:52Z",
+            "completedAt": "2026-10-30T10:34:05Z"
+          },
+          {
+            "id": 124015664540,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:33:52Z",
+            "completedAt": "2026-10-30T10:33:57Z"
+          }
+        ]
+      },
+      {
+        "sha": "dc29f796cab00bd2e53873ac24b2c7b90c77bae0",
+        "parents": 1,
+        "at": "2026-10-30T10:35:47Z",
+        "checkRuns": [
+          {
+            "id": 124016509261,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:35:58Z",
+            "completedAt": "2026-10-30T10:36:07Z"
+          },
+          {
+            "id": 124016508706,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:35:58Z",
+            "completedAt": "2026-10-30T10:36:04Z"
+          }
+        ]
+      },
+      {
+        "sha": "fc5e45a2702cb21be912a982a4c128f3fc44a92a",
+        "parents": 1,
+        "at": "2026-10-30T10:36:13Z",
+        "checkRuns": [
+          {
+            "id": 124016680504,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:36:23Z",
+            "completedAt": "2026-10-30T10:36:28Z"
+          },
+          {
+            "id": 124016680159,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:36:23Z",
+            "completedAt": "2026-10-30T10:36:31Z"
+          }
+        ]
+      },
+      {
+        "sha": "88aabeaecae8c136b729783b8ce85d274f076fa6",
+        "parents": 1,
+        "at": "2026-10-30T10:36:36Z",
+        "checkRuns": [
+          {
+            "id": 124016848807,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:36:48Z",
+            "completedAt": "2026-10-30T10:37:00Z"
+          },
+          {
+            "id": 124016848538,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:36:48Z",
+            "completedAt": "2026-10-30T10:36:54Z"
+          }
+        ]
+      },
+      {
+        "sha": "adecd2315f74eb6817ba6495f6829795f5e3609d",
+        "parents": 1,
+        "at": "2026-10-30T16:55:58Z",
+        "checkRuns": [
+          {
+            "id": 124196048538,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:56:10Z",
+            "completedAt": "2026-10-30T16:56:17Z"
+          },
+          {
+            "id": 124196048336,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:56:09Z",
+            "completedAt": "2026-10-30T16:56:17Z"
+          }
+        ]
+      },
+      {
+        "sha": "2b588a3e75d4dca7aae302e1dd2c82622e180f35",
+        "parents": 2,
+        "at": "2026-10-30T16:56:10Z",
+        "checkRuns": [
+          {
+            "id": 124196331638,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:56:43Z",
+            "completedAt": "2026-10-30T16:56:49Z"
+          },
+          {
+            "id": 124196328549,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:56:42Z",
+            "completedAt": "2026-10-30T16:56:48Z"
+          }
+        ]
+      },
+      {
+        "sha": "99b0e74150dd7de76daf5ce4430a867bdd2bfc8e",
+        "parents": 1,
+        "at": "2026-10-30T16:56:40Z",
+        "checkRuns": [
+          {
+            "id": 124196518913,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:57:05Z",
+            "completedAt": "2026-10-30T16:57:22Z"
+          },
+          {
+            "id": 124196518305,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:57:05Z",
+            "completedAt": "2026-10-30T16:57:11Z"
+          }
+        ]
+      },
+      {
+        "sha": "eed459f74d282b56500b2a6fa33b84deea463195",
+        "parents": 1,
+        "at": "2026-10-30T16:57:51Z",
+        "checkRuns": [
+          {
+            "id": 124198889989,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T17:01:43Z",
+            "completedAt": "2026-10-30T17:01:51Z"
+          },
+          {
+            "id": 124196996561,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:58:02Z",
+            "completedAt": "2026-10-30T16:58:20Z"
+          },
+          {
+            "id": 124196996558,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:58:01Z",
+            "completedAt": "2026-10-30T16:58:10Z"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 19,
+    "head": "claude/project-thread-6b7of4",
+    "merged": true,
+    "item": "self-update-by-version",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5JPJv6zwE7Yjrmanu9"
+    ],
+    "files": [
+      {
+        "path": ".github/workflows/release.yml",
+        "changes": 33
+      },
+      {
+        "path": "CLAUDE.md",
+        "changes": 1
+      },
+      {
+        "path": "docs/gates.md",
+        "changes": 8
+      },
+      {
+        "path": "docs/journal.md",
+        "changes": 8
+      },
+      {
+        "path": "infra/cloud-environment/README.md",
+        "changes": 3
+      },
+      {
+        "path": "infra/cloud-environment/setup.sh",
+        "changes": 66
+      },
+      {
+        "path": "plan/decisions/2026-10-30-self-update-by-version.md",
+        "changes": 34
+      },
+      {
+        "path": "plan/items/self-update-by-version.md",
+        "changes": 2
+      },
+      {
+        "path": "plugins/harness/README.md",
+        "changes": 25
+      },
+      {
+        "path": "plugins/harness/hooks/hooks.json",
+        "changes": 13
+      },
+      {
+        "path": "plugins/harness/scripts/fingerprint.mjs",
+        "changes": 9
+      },
+      {
+        "path": "plugins/harness/scripts/host.mjs",
+        "changes": 9
+      },
+      {
+        "path": "plugins/harness/scripts/notice-behind.mjs",
+        "changes": 47
+      },
+      {
+        "path": "plugins/harness/scripts/selfcheck.mjs",
+        "changes": 2
+      },
+      {
+        "path": "plugins/harness/scripts/session-start.mjs",
+        "changes": 10
+      },
+      {
+        "path": "plugins/harness/test/helpers.mjs",
+        "changes": 12
+      },
+      {
+        "path": "plugins/harness/test/notice-behind.test.mjs",
+        "changes": 90
+      },
+      {
+        "path": "scripts/release/release.mjs",
+        "changes": 167
+      },
+      {
+        "path": "scripts/release/test/release.test.mjs",
+        "changes": 169
+      },
+      {
+        "path": "test/setup-release.test.mjs",
+        "changes": 142
+      },
+      {
+        "path": "verify/self-update-by-version/no-self-edit.test.mjs",
+        "changes": 197
+      },
+      {
+        "path": "verify/self-update-by-version/verdict.json",
+        "changes": 31
+      }
+    ],
+    "commits": [
+      {
+        "sha": "e5c293c9613db5b727690ebe99be91146c8e567e",
+        "parents": 1,
+        "at": "2026-10-30T12:18:43Z",
+        "checkRuns": [
+          {
+            "id": 124058220045,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T12:19:04Z",
+            "completedAt": "2026-10-30T12:19:15Z"
+          },
+          {
+            "id": 124058219948,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T12:19:04Z",
+            "completedAt": "2026-10-30T12:19:09Z"
+          }
+        ]
+      },
+      {
+        "sha": "488ce9167b010d98463c75474228e4f2073ba5ac",
+        "parents": 1,
+        "at": "2026-10-30T12:19:10Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "49d7a1956fb744ab24bf5c4fb1b59ac667621334",
+        "parents": 1,
+        "at": "2026-10-30T12:22:35Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "a43c5d6f1870e652fed1963432bd833ca5c8e2f6",
+        "parents": 2,
+        "at": "2026-10-30T16:29:33Z",
+        "checkRuns": [
+          {
+            "id": 124186124837,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:36:45Z",
+            "completedAt": "2026-10-30T16:36:51Z"
+          },
+          {
+            "id": 124186121901,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:36:43Z",
+            "completedAt": "2026-10-30T16:36:56Z"
+          }
+        ]
+      },
+      {
+        "sha": "93aa97e08279b6167ea510d23c9fc382406fae71",
+        "parents": 1,
+        "at": "2026-10-30T16:36:48Z",
+        "checkRuns": [
+          {
+            "id": 124186354347,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:37:10Z",
+            "completedAt": "2026-10-30T16:37:19Z"
+          },
+          {
+            "id": 124186351764,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:37:10Z",
+            "completedAt": "2026-10-30T16:37:23Z"
+          }
+        ]
+      },
+      {
+        "sha": "278e45d9ff1769c1af40f90a3a099591f7538b00",
+        "parents": 2,
+        "at": "2026-10-30T16:37:11Z",
+        "checkRuns": [
+          {
+            "id": 124186541294,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T16:37:33Z",
+            "completedAt": "2026-10-30T16:37:41Z"
+          },
+          {
+            "id": 124186540617,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:37:32Z",
+            "completedAt": "2026-10-30T16:37:44Z"
+          }
+        ]
+      },
+      {
+        "sha": "eea2734dda2a8cf99d1b70f54dd062859b6a2b93",
+        "parents": 1,
+        "at": "2026-10-30T16:41:11Z",
+        "checkRuns": [
+          {
+            "id": 124188515342,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:41:23Z",
+            "completedAt": "2026-10-30T16:41:37Z"
+          },
+          {
+            "id": 124188514693,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T16:41:23Z",
+            "completedAt": "2026-10-30T16:41:29Z"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 28,
+    "head": "claude/project-thread-zl4vt3",
+    "merged": true,
+    "item": "obs-live-capture",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5JqKM7EU4b9iF9dFTx"
+    ],
+    "files": [
+      {
+        "path": "docs/journal.md",
+        "changes": 23
+      },
+      {
+        "path": "packages/journal/src/kinds.js",
+        "changes": 1
+      },
+      {
+        "path": "plan/decisions/2026-10-30-capture-by-hooks.md",
+        "changes": 42
+      },
+      {
+        "path": "plan/items/obs-live-capture.md",
+        "changes": 2
+      },
+      {
+        "path": "plugins/harness/README.md",
+        "changes": 18
+      },
+      {
+        "path": "plugins/harness/hooks/hooks.json",
+        "changes": 65
+      },
+      {
+        "path": "plugins/harness/scripts/capture-rows.mjs",
+        "changes": 248
+      },
+      {
+        "path": "plugins/harness/scripts/capture.mjs",
+        "changes": 107
+      },
+      {
+        "path": "plugins/harness/scripts/install.mjs",
+        "changes": 3
+      },
+      {
+        "path": "plugins/harness/test/capture-fixture.mjs",
+        "changes": 17
+      },
+      {
+        "path": "plugins/harness/test/capture.test.mjs",
+        "changes": 164
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/events.jsonl",
+        "changes": 17
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/expected.json",
+        "changes": 191
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/make.mjs",
+        "changes": 37
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/session.jsonl",
+        "changes": 8
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/session/subagents/agent-aa2c1a5a260bb1ed5.jsonl",
+        "changes": 6
+      },
+      {
+        "path": "plugins/harness/test/fixtures/capture/session/subagents/agent-aa2c1a5a260bb1ed5.meta.json",
+        "changes": 1
+      },
+      {
+        "path": "verify/obs-live-capture/capture.test.mjs",
+        "changes": 151
+      },
+      {
+        "path": "verify/obs-live-capture/fixture/events.jsonl",
+        "changes": 22
+      },
+      {
+        "path": "verify/obs-live-capture/fixture/make.mjs",
+        "changes": 27
+      },
+      {
+        "path": "verify/obs-live-capture/fixture/session.jsonl",
+        "changes": 19
+      },
+      {
+        "path": "verify/obs-live-capture/fixture/session/subagents/agent-ac494d5ec29b99e44.jsonl",
+        "changes": 6
+      },
+      {
+        "path": "verify/obs-live-capture/fixture/session/subagents/agent-ac494d5ec29b99e44.meta.json",
+        "changes": 1
+      },
+      {
+        "path": "verify/obs-live-capture/verdict.json",
+        "changes": 51
+      }
+    ],
+    "commits": [
+      {
+        "sha": "7854f8e5cc093a4ba270ab7c94fc2a24c4be5c05",
+        "parents": 1,
+        "at": "2026-10-30T17:11:51Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "96c624f2a3fa357a3bd32b1952661e5f67501757",
+        "parents": 1,
+        "at": "2026-10-30T17:14:55Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "2cc1a1e291466c7c178f82cbdace03b32f358b9a",
+        "parents": 1,
+        "at": "2026-10-30T17:15:20Z",
+        "checkRuns": [
+          {
+            "id": 124206051720,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:15:45Z",
+            "completedAt": "2026-10-30T17:15:51Z"
+          },
+          {
+            "id": 124206051585,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:15:45Z",
+            "completedAt": "2026-10-30T17:16:00Z"
+          },
+          {
+            "id": 124206051526,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:15:45Z",
+            "completedAt": "2026-10-30T17:15:53Z"
+          }
+        ]
+      },
+      {
+        "sha": "acf91e30352513e59a2ae54203b868c00654e3f3",
+        "parents": 1,
+        "at": "2026-10-30T17:22:44Z",
+        "checkRuns": [
+          {
+            "id": 124209744830,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:22:53Z",
+            "completedAt": "2026-10-30T17:22:59Z"
+          },
+          {
+            "id": 124209744234,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:22:53Z",
+            "completedAt": "2026-10-30T17:23:12Z"
+          },
+          {
+            "id": 124209744203,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:22:53Z",
+            "completedAt": "2026-10-30T17:22:59Z"
+          }
+        ]
+      },
+      {
+        "sha": "5cfc9415f16afc0449e61d6094f77d37c40ca22b",
+        "parents": 1,
+        "at": "2026-10-30T17:28:12Z",
+        "checkRuns": [
+          {
+            "id": 124212499145,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:28:23Z",
+            "completedAt": "2026-10-30T17:28:43Z"
+          },
+          {
+            "id": 124212498842,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:28:22Z",
+            "completedAt": "2026-10-30T17:28:30Z"
+          },
+          {
+            "id": 124212498493,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:28:22Z",
+            "completedAt": "2026-10-30T17:28:28Z"
+          }
+        ]
+      },
+      {
+        "sha": "cc292699a61372f28af78cf7033fc5d0e87a2779",
+        "parents": 1,
+        "at": "2026-10-30T17:44:56Z",
+        "checkRuns": [
+          {
+            "id": 124218713769,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:45:07Z",
+            "completedAt": "2026-10-30T17:46:40Z"
+          },
+          {
+            "id": 124218713678,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T17:45:07Z",
+            "completedAt": "2026-10-30T17:48:46Z"
+          },
+          {
+            "id": 124218713653,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T17:45:07Z",
+            "completedAt": "2026-10-30T17:48:05Z"
+          }
+        ]
+      },
+      {
+        "sha": "43f44edc367baa998233909d14470b4d52954428",
+        "parents": 2,
+        "at": "2026-10-30T18:01:32Z",
+        "checkRuns": [
+          {
+            "id": 124225735807,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:02:08Z",
+            "completedAt": "2026-10-30T18:02:18Z"
+          },
+          {
+            "id": 124225735341,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:02:08Z",
+            "completedAt": "2026-10-30T18:02:39Z"
+          },
+          {
+            "id": 124225735225,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:02:08Z",
+            "completedAt": "2026-10-30T18:02:15Z"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 29,
+    "head": "claude/project-thread-d9ic5e",
+    "merged": true,
+    "item": "obs-refusal-log",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5JvsUrP3k7vsSnQySR"
+    ],
+    "files": [
+      {
+        "path": "docs/journal.md",
+        "changes": 38
+      },
+      {
+        "path": "plan/decisions/2026-10-30-refusal-capture.md",
+        "changes": 35
+      },
+      {
+        "path": "plan/items/obs-refusal-log.md",
+        "changes": 2
+      },
+      {
+        "path": "plugins/harness/README.md",
+        "changes": 12
+      },
+      {
+        "path": "plugins/harness/hooks/hooks.json",
+        "changes": 13
+      },
+      {
+        "path": "plugins/harness/scripts/capture-rows.mjs",
+        "changes": 111
+      },
+      {
+        "path": "plugins/harness/scripts/capture.mjs",
+        "changes": 34
+      },
+      {
+        "path": "plugins/harness/test/fixtures/refusals/deny-hook/.claude-plugin/plugin.json",
+        "changes": 5
+      },
+      {
+        "path": "plugins/harness/test/fixtures/refusals/deny-hook/hooks/deny.mjs",
+        "changes": 15
+      },
+      {
+        "path": "plugins/harness/test/fixtures/refusals/deny-hook/hooks/hooks.json",
+        "changes": 16
+      },
+      {
+        "path": "plugins/harness/test/fixtures/refusals/hook-and-permission.jsonl",
+        "changes": 21
+      },
+      {
+        "path": "plugins/harness/test/refusal.test.mjs",
+        "changes": 143
+      },
+      {
+        "path": "verify/obs-refusal-log/refusal.test.mjs",
+        "changes": 66
+      },
+      {
+        "path": "verify/obs-refusal-log/verdict.json",
+        "changes": 39
+      }
+    ],
+    "commits": [
+      {
+        "sha": "d1bc85bdebce3d33349803b3167883ecdea0eaa5",
+        "parents": 1,
+        "at": "2026-10-30T18:16:22Z",
+        "checkRuns": [
+          {
+            "id": 124234232490,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T18:16:47Z",
+            "completedAt": "2026-10-30T18:16:53Z"
+          },
+          {
+            "id": 124234232475,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T18:16:47Z",
+            "completedAt": "2026-10-30T18:17:03Z"
+          },
+          {
+            "id": 124234232265,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:16:47Z",
+            "completedAt": "2026-10-30T18:16:52Z"
+          }
+        ]
+      },
+      {
+        "sha": "bf23934cf34ea0113ad570594016504d4d846283",
+        "parents": 1,
+        "at": "2026-10-30T18:16:58Z",
+        "checkRuns": [
+          {
+            "id": 124234452682,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T18:17:11Z",
+            "completedAt": "2026-10-30T18:17:30Z"
+          },
+          {
+            "id": 124234451111,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:17:11Z",
+            "completedAt": "2026-10-30T18:17:17Z"
+          },
+          {
+            "id": 124234450973,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T18:17:11Z",
+            "completedAt": "2026-10-30T18:17:16Z"
+          }
+        ]
+      },
+      {
+        "sha": "d0c2c90ddad0b1f73ee29138bdc01c9b05fb4157",
+        "parents": 1,
+        "at": "2026-10-30T18:19:21Z",
+        "checkRuns": [
+          {
+            "id": 124235659966,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:19:32Z",
+            "completedAt": "2026-10-30T18:19:39Z"
+          },
+          {
+            "id": 124235656816,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T18:19:32Z",
+            "completedAt": "2026-10-30T18:19:39Z"
+          },
+          {
+            "id": 124235656550,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:19:31Z",
+            "completedAt": "2026-10-30T18:19:52Z"
+          }
+        ]
+      },
+      {
+        "sha": "6f7050d9b18301c879d9fa9ed425e1936e371b47",
+        "parents": 1,
+        "at": "2026-10-30T18:21:14Z",
+        "checkRuns": [
+          {
+            "id": 124236627759,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:21:26Z",
+            "completedAt": "2026-10-30T18:21:52Z"
+          },
+          {
+            "id": 124236627164,
+            "name": "clean-room",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:21:26Z",
+            "completedAt": "2026-10-30T18:21:33Z"
+          },
+          {
+            "id": 124236627127,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T18:21:25Z",
+            "completedAt": "2026-10-30T18:21:32Z"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 13,
+    "head": "claude/project-thread-we6vlp",
+    "merged": true,
+    "item": "probe-platform-baseline",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5H6FUZmFpLCzfpm38G",
+      "session_01KfkB5Jbh4RoEmcomPSUqAU"
+    ],
+    "files": [
+      {
+        "path": "plan/decisions/2026-10-30-probe-platform-baseline-calls.md",
+        "changes": 18
+      },
+      {
+        "path": "plan/decisions/2026-10-30-setup-script-vs-sessionstart.md",
+        "changes": 31
+      },
+      {
+        "path": "plan/decisions/waiting-for-person.md",
+        "changes": 2
+      },
+      {
+        "path": "plan/research/platform-baseline.md",
+        "changes": 116
+      },
+      {
+        "path": "probes/platform/.claude-plugin/plugin.json",
+        "changes": 1
+      },
+      {
+        "path": "probes/platform/.gitignore",
+        "changes": 1
+      },
+      {
+        "path": "probes/platform/README.md",
+        "changes": 30
+      },
+      {
+        "path": "probes/platform/fixtures/refusals/2026-10-30-exfil-scouting-outer.json",
+        "changes": 11
+      },
+      {
+        "path": "probes/platform/fixtures/refusals/2026-10-30-outer-debug-log-excerpt.txt",
+        "changes": 26
+      },
+      {
+        "path": "probes/platform/fixtures/refusals/2026-10-30-self-modification-live-mod-and-hook.jsonl",
+        "changes": 2
+      },
+      {
+        "path": "probes/platform/fixtures/refusals/2026-10-30-self-modification-outer.json",
+        "changes": 11
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-depth-rerun.txt",
+        "changes": 6
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-page-read-results.json",
+        "changes": 10
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-rerun-depth.txt",
+        "changes": 48
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-rerun-env-manager-excerpt.jsonl",
+        "changes": 2
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-rerun-live-thread.jsonl",
+        "changes": 35
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-rerun-setup.log",
+        "changes": 3
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-rerun-user-settings.json",
+        "changes": 17
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-results.jsonl",
+        "changes": 4
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-run-3-self-edit-git-log.txt",
+        "changes": 23
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-run-6-configured-timeouts.jsonl",
+        "changes": 10
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-runs-1-2.jsonl",
+        "changes": 104
+      },
+      {
+        "path": "probes/platform/fixtures/runs/2026-10-30-runs-3-5.jsonl",
+        "changes": 80
+      },
+      {
+        "path": "probes/platform/fixtures/runs/live-thread.jsonl",
+        "changes": 54
+      },
+      {
+        "path": "probes/platform/fixtures/runs/run-6-settings.json",
+        "changes": 1
+      },
+      {
+        "path": "probes/platform/fixtures/wakes/2026-10-30-pr-event-wake.json",
+        "changes": 64
+      },
+      {
+        "path": "probes/platform/fixtures/wakes/2026-10-30-rerun-pr-event-wake.json",
+        "changes": 108
+      },
+      {
+        "path": "probes/platform/fixtures/wakes/2026-10-30-rerun-send-later-wake.json",
+        "changes": 51
+      },
+      {
+        "path": "probes/platform/fixtures/wakes/2026-10-30-send-later-wake.json",
+        "changes": 11
+      },
+      {
+        "path": "probes/platform/hooks/hooks.json",
+        "changes": 17
+      },
+      {
+        "path": "probes/platform/hooks/register.ts",
+        "changes": 118
+      },
+      {
+        "path": "probes/platform/page/journal-read.html",
+        "changes": 43
+      },
+      {
+        "path": "probes/platform/scripts/capture-hook.sh",
+        "changes": 6
+      },
+      {
+        "path": "probes/platform/scripts/slow-hook.sh",
+        "changes": 10
+      },
+      {
+        "path": "verify/probe-platform-baseline/verdict.json",
+        "changes": 77
+      }
+    ],
+    "commits": [
+      {
+        "sha": "4239dac8caa8ad3714d873116c4e46797ef8ca11",
+        "parents": 1,
+        "at": "2026-10-30T10:23:56Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "3d93d487f54886930f55dabb6deebce3e91015e2",
+        "parents": 1,
+        "at": "2026-10-30T10:27:04Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "81f317bba8546d3c2725ce425ce38a9353f6b34e",
+        "parents": 1,
+        "at": "2026-10-30T10:28:28Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "ae58ed108d5b594257f8cfc867bc37298236a351",
+        "parents": 1,
+        "at": "2026-10-30T11:35:23Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "6306a3a75196039c121f09482b07db3e64a66cde",
+        "parents": 1,
+        "at": "2026-10-30T11:41:11Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "0e5a96d59851a415c51ff91af7359278f9e11b24",
+        "parents": 1,
+        "at": "2026-10-30T11:47:14Z",
+        "checkRuns": []
+      },
+      {
+        "sha": "b0bf87945c8676c676b69cb1328b08ad29ae4c2b",
+        "parents": 2,
+        "at": "2026-10-30T11:47:56Z",
+        "checkRuns": [
+          {
+            "id": 124045739504,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T11:48:21Z",
+            "completedAt": "2026-10-30T11:48:26Z"
+          },
+          {
+            "id": 124045667725,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T11:48:10Z",
+            "completedAt": "2026-10-30T11:48:16Z"
+          },
+          {
+            "id": 124045667534,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T11:48:10Z",
+            "completedAt": "2026-10-30T11:48:16Z"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "repo": "suredesigntshirts/ccp_xstate",
+    "number": 11,
+    "head": "claude/project-thread-9ndbr3",
+    "merged": true,
+    "item": "journal-schema",
+    "labels": [],
+    "sessions": [
+      "session_01KfkB5HB2DWmc15z3nAswfG"
+    ],
+    "files": [
+      {
+        "path": "CLAUDE.md",
+        "changes": 4
+      },
+      {
+        "path": "docs/journal.md",
+        "changes": 82
+      },
+      {
+        "path": "packages/journal/package.json",
+        "changes": 17
+      },
+      {
+        "path": "packages/journal/schema/row.schema.json",
+        "changes": 99
+      },
+      {
+        "path": "packages/journal/src/index.js",
+        "changes": 181
+      },
+      {
+        "path": "packages/journal/src/kinds.js",
+        "changes": 18
+      },
+      {
+        "path": "packages/journal/src/validate.js",
+        "changes": 44
+      },
+      {
+        "path": "packages/journal/test/append.test.js",
+        "changes": 80
+      },
+      {
+        "path": "packages/journal/test/no-scan.test.js",
+        "changes": 40
+      },
+      {
+        "path": "packages/journal/test/read.test.js",
+        "changes": 79
+      },
+      {
+        "path": "packages/journal/test/schema.test.js",
+        "changes": 77
+      },
+      {
+        "path": "packages/journal/test/two-writers.test.js",
+        "changes": 32
+      },
+      {
+        "path": "plan/decisions/2026-10-30-journal-schema.md",
+        "changes": 28
+      },
+      {
+        "path": "plan/items/journal-schema.md",
+        "changes": 2
+      },
+      {
+        "path": "verify/journal-schema/journal.test.mjs",
+        "changes": 88
+      },
+      {
+        "path": "verify/journal-schema/verdict.json",
+        "changes": 21
+      },
+      {
+        "path": "verify/journal-schema/writer.mjs",
+        "changes": 14
+      }
+    ],
+    "commits": [
+      {
+        "sha": "9af49cef555027622aa0bb2efcd332130ccda3bd",
+        "parents": 1,
+        "at": "2026-10-30T10:21:35Z",
+        "checkRuns": [
+          {
+            "id": 124010798550,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:21:55Z",
+            "completedAt": "2026-10-30T10:22:02Z"
+          },
+          {
+            "id": 124010798271,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "failure",
+            "startedAt": "2026-10-30T10:21:55Z",
+            "completedAt": "2026-10-30T10:22:02Z"
+          }
+        ]
+      },
+      {
+        "sha": "01348796407c6be6d7bb1b46366602d463977ff0",
+        "parents": 1,
+        "at": "2026-10-30T10:23:35Z",
+        "checkRuns": [
+          {
+            "id": 124011541117,
+            "name": "test",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:23:45Z",
+            "completedAt": "2026-10-30T10:23:54Z"
+          },
+          {
+            "id": 124011541040,
+            "name": "gates",
+            "status": "completed",
+            "conclusion": "success",
+            "startedAt": "2026-10-30T10:23:46Z",
+            "completedAt": "2026-10-30T10:23:53Z"
+          }
+        ]
+      }
+    ]
+  }
+]

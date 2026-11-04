@@ -1,0 +1,8 @@
+{
+  "about": "Cases in plan/cases/ the engine does not meet yet, each with the live plan item that will meet it (plan/decisions/2026-11-01-parity-cases-gaps.md). That item adds the case's parity test here and removes its entry.",
+  "gaps": [
+    { "case": "C-builder-cannot-change-own-workflow", "item": "fix-workflow-pinned", "why": "the host loads the workflow named on each call and pins no workflow or file hash at filing" },
+    { "case": "C-finish-closes-waits", "item": "fix-finish-closes-waits", "why": "no handler carries out the stop effect, so a left card stays up, and quick-fix takes no event for its PR merged by another path" },
+    { "case": "C-waiting-does-not-stall", "item": "fix-waiting-wake", "why": "awaitingMerge and replanning set no timer, so no wake is scheduled for an item waiting on a card" }
+  ]
+}

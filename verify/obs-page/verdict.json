@@ -1,0 +1,25 @@
+{
+  "item": "obs-page",
+  "verified_sha": "62f024cb026858fae460f7eb19866586624542c9",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5HFZpZ9ir2MUSRSrbZ#agent=verifier-obs-page",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "answers",
+      "status": "MET",
+      "command": "node --test plugins/harness/pages/observe/test/data.test.mjs (11 tests); read data.js against packages/journal/src/derive/time.js and attention.js",
+      "excerpt": "11 of 11 pass at 62f024c (page release 0.1.9). data.js timeByKind returns time() totals unchanged (wallMs, workingMs, the four waitingMs kinds, unknownMs) and asks() sums attention() days and returns its cards and flags, so both are the derived views by construction; tokensByAgent counts turn.usage (main) and agent.finish (per subagent) the same rows overhead.js uses; refusals carry rule, tool and a retried/not-retried state. The bundled script in observe.html is checked against the module by test 10.",
+      "mutation": "data.js tokensByAgent: skip agent.finish rows (the subagent tokens dropped); re-run at 62f024c with the first mutation only. Reverted with git checkout",
+      "red_test": "'tokens by agent: the main turn and the subagent, summed as the rows give them' (and the stale-bundle test) went red (first mutation, re-run at 62f024c; second mutation's red tests as verified at 1d2190e)"
+    },
+    {
+      "id": "live",
+      "status": "MET",
+      "command": "Artifact read of https://claude.ai/artifact/GEVcccpqcToRUb7EhTG4B3 (page and index.html saved, compared to observe.html); ArtifactData list collection refresh; copy of /mnt/project-files/harness/journal plus one tool.call row of mine; node plugins/harness/pages/observe/test/browser-check.mjs <copy> (Chromium); node --test verify/obs-page/live.test.mjs",
+      "excerpt": "Re-verified at 62f024c after the merge of main and the rebuild as release 0.1.9. Published page (version 1793387924-bcc0): its index.html contains observe.html byte for byte, PAGE_RELEASE is 0.1.9; the stored declaration was unchanged at the first read (db, files on project chan_01VhYV3jhQ9s4qrrh2th12sN, user). ArtifactData list of refresh: empty (no real viewer yet; the person's step). Browser run on a fresh copy of the real journal (14 files, 42 rows + my appended row = 43): page read \"43 rows in 14 files\", page release 0.1.9, journal release 0.1.9, newest row 19:19:10 = my row's at (journal's own newest was 19:17:39); two page.refresh rows (load, Refresh) with ms 10 and 4, rows 43, files 14, bad 0, release 0.1.9. Hand counts by my own counter in live.test.mjs (no data.js import; wall clock via the time view): rows 43, wall clock 4h 20m, tokens 0, refusals 0, cards 0, all match. With the builder fixture rows added as a 15th file: page 69 rows, 156,184 tokens, 1 refused, 1 card, 4h 46m, equal to my counts. The real journal still holds no token, refusal or card rows. Caveat: the browser run uses a stand-in for claude.ai files and db, so it proves page behaviour and the built file, not a real viewer grant or a real store write. 4 tests in verify/obs-page/live.test.mjs pass."
+    }
+  ],
+  "summary": "Both Expects MET at 1d2190e. Defects: none blocking. Notes: (1) the real project journal currently holds no turn.usage, agent.finish, refusal or card rows, so on it the token, refusal and card numbers are all zero; the matching of non-zero numbers rests on the builder's fixture added to the copy. (2) Not proven from here: a real viewer's files grant and a real page.refresh row in the page store (the refresh collection is empty). (3) The published page title is set via a <title> in the body, which the platform keeps; harmless."
+}

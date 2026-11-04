@@ -1,0 +1,28 @@
+{
+  "item": "engine-toy-run",
+  "verified_sha": "3a60e56851aa3562cc02434efaaf15ba855e9b5a",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5G5WZ2a4nbgkACrBxp#agent=verifier-engine-toy-run",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "merged",
+      "status": "MET",
+      "command": "scripts/toy-run.sh run toy-v1 (fresh scratch issue #25, run by the verifier before reading the builder's report); the person tapped approve on the merge card; scripts/toy-run.sh tap toy-v1 /mnt/project-files/toy-run/wakes/toy-v1-tap.txt; then `gh api repos/suredesigntshirts/ccp_xstate_scratch/pulls/26`, `scripts/toy-run.sh check toy-v1` (journal-check.js --host), and node --test verify/engine-toy-run/toy-run.test.mjs (offline, evidence in verify/engine-toy-run/evidence/).",
+      "excerpt": "GitHub REST: PR #26 state closed, merged true, merged_at 2026-10-31T02:24:58Z, head.sha 7bd0dc6c0d4b57d5e1872512404cef116e684bbb, merge_commit_sha bcbf16dadb037352422963dbecccde038eb220c4, body 'Closes .../issues/25'. The verify run's verdict (engine.transition seq 3, xstate.done.actor.verify) is PASS at sha 7bd0dc6c... = the PR head. Journal: engine.effect toy-v1:4.merge phase done, outcome {number 26, head 7bd0dc6c..., sha bcbf16da...}, source engine. journal-check: 'GitHub: 1 merged PRs, 0 pr.merge rows, 1 host merge effects. 0 merges with no journal row. 0 merges not made by the host's merge effect (unverified). 0 pr.merge rows GitHub doesn't bear out.' The run reached awaitingMerge on its own with an open ask run and merged only after the person's tap (card cmsg_01VhYV3j...WQWq, option A, 02:24:22Z); the merge ran 02:24:56Z in the driver's resumed turn through the host's merge effect, with no agent-sent lifecycle event."
+    },
+    {
+      "id": "complete",
+      "status": "MET",
+      "command": "own script (/tmp/claude-0/verifier/cmp.mjs, same logic as the committed test): collect every tool_use block from ~/.claude/projects/-root-toy-run-toy-v1-repo/4a54715a-....jsonl (driver, both turns including the resumed tap turn) and its three subagents/agent-*.jsonl, compare by tool_use id and tool name with the tool.call rows of journal/sessions/4a54715a-....jsonl; also scripts/toy-run.sh check toy-v1; node --test verify/engine-toy-run/toy-run.test.mjs.",
+      "excerpt": "transcripts 4, transcriptCalls 25 (driver 6, brief agent 6, builder 9, verifier 4), journalRows 25, missing [], extra [], toolMismatch 0. Driver calls: Bash start, 3 Agent, Bash show, and after the tap prompt one Bash (toolu_011G5GU5on4LGT6E8Sg1mwUX, 02:25:05Z) which is journalled. journal-check: 'Session: 25 tool calls in the event log, 25 tool.call rows in the journal. 0 missing from the journal. 0 rows whose call the event log doesn't have.'"
+    },
+    {
+      "id": "sources",
+      "status": "MET",
+      "command": "node query of the engine.transition rows of verify/engine-toy-run/evidence/item-toy-v1.jsonl (also printed by `scripts/toy-run.sh check toy-v1`); node --test verify/engine-toy-run/toy-run.test.mjs.",
+      "excerpt": "6 rows: seq0 xstate.init claude-code 4a54715a-... ; seq1 done.actor.brief harness return toolu_01GLVL2X...; seq2 done.actor.build harness return toolu_01PEC4ZA...; seq3 done.actor.verify harness return toolu_01SqnQa5...; seq4 done.actor.ask hearth cmsg_01VhYV3jhQ9s4qrrh2th12sNBT3tuZcMNfPfiXXuv7WQWq (card tap; equals items/toy-v1/cards/3.ask.json ref and the person.tap row's cardId, option A); seq5 done.actor.merge engine toy-v1:4.merge (effect completion). No GitHub or timer transition occurred (the build timeout was scheduled and cancelled, never fired). Seq 0: judged MET with a stated caveat. It is the one row that is not literally a wake, completion or timer: it is the driver session's own `host.js start`, that is, the filing of the item (source claude-code, ref = the driver's session id, which the test pins to the row's session). It is not an agent claiming progress, it carries the issue input, and engine-host decided that the filing session is the start's source. Read strictly, the Expect line has a one-row exception for filing; every transition after the filing is a wake or a completion."
+    }
+  ]
+}

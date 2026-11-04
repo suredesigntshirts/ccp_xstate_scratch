@@ -1,0 +1,324 @@
+<title>Harness Observe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a control strip (scope, refresh, freshness), then four answer panels in a two-column grid that stacks on phones. */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --fg: #1b2230; --muted: #5b6577; --line: #dde1e8;
+  --accent: #2f5fb3; --warn: #a35a00; --bad: #b3261e; --ok: #1f7a4a;
+  --bar-work: #2f5fb3; --bar-person: #a35a00; --bar-ci: #6b4fb3; --bar-wake: #3d8f8a; --bar-rebuild: #8a8f99; --bar-unknown: #c9ced6;
+  --body: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161d; --panel: #1a2029; --fg: #e4e8ef; --muted: #98a2b3; --line: #2c3440;
+  --accent: #7ea6ef; --warn: #e3a453; --bad: #f08a80; --ok: #6cc796;
+  --bar-work: #7ea6ef; --bar-person: #e3a453; --bar-ci: #ab95ef; --bar-wake: #6cc0ba; --bar-rebuild: #8a93a3; --bar-unknown: #3a4350;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12161d; --panel: #1a2029; --fg: #e4e8ef; --muted: #98a2b3; --line: #2c3440;
+  --accent: #7ea6ef; --warn: #e3a453; --bad: #f08a80; --ok: #6cc796;
+  --bar-work: #7ea6ef; --bar-person: #e3a453; --bar-ci: #ab95ef; --bar-wake: #6cc0ba; --bar-rebuild: #8a93a3; --bar-unknown: #3a4350;
+  color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }
+h1 { font-size: 1.35rem; margin: 0; text-wrap: balance; }
+h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+.strip { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.strip label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: .85rem; }
+select, button { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; max-width: 100%; }
+button { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .6; cursor: progress; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.fresh { display: flex; flex-wrap: wrap; gap: 6px 16px; font: .8rem var(--mono); color: var(--muted); }
+.fresh b { color: var(--fg); font-weight: 600; }
+.status { font-size: .9rem; color: var(--muted); }
+.status.err { color: var(--bad); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.big { font: 600 1.6rem var(--mono); font-variant-numeric: tabular-nums; }
+.sub { color: var(--muted); font-size: .85rem; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+th, td { text-align: left; padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 400; }
+th.n { text-align: right; }
+td.n { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+code { font: .8rem var(--mono); }
+.bar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--bar-unknown); margin: 10px 0; }
+.bar span { display: block; height: 100%; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.chip { display: inline-block; font-size: .75rem; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); }
+.chip.bad { color: var(--bad); border-color: var(--bad); }
+.chip.warn { color: var(--warn); border-color: var(--warn); }
+.chip.ok { color: var(--ok); border-color: var(--ok); }
+.empty { color: var(--muted); font-style: italic; }
+</style>
+
+<div class="wrap">
+  <div class="strip">
+    <h1>Where the time, tokens and refusals went</h1>
+  </div>
+  <div class="strip">
+    <label for="scope">Show <select id="scope"><option value="">Everything in the journal</option></select></label>
+    <button id="refresh" type="button">Refresh</button>
+    <span id="status" class="status">Press Refresh to read the journal.</span>
+  </div>
+  <div class="fresh" id="fresh">
+    <span>Page release <b id="page-release"></b></span>
+    <span>Journal release <b id="release">–</b></span>
+    <span>Newest row <b id="newest">–</b></span>
+    <span>Refreshed <b id="refreshed">–</b></span>
+    <span>Read <b id="read">–</b></span>
+  </div>
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-item" id="item-panel" hidden>
+      <h2 id="h-item">Item</h2>
+      <div class="big" id="item-state">–</div>
+      <div class="sub" id="item-sub"></div>
+      <div class="scroll"><table id="item"><tbody></tbody></table></div>
+      <div class="scroll"><table id="item-asks"><thead><tr><th>Card posted (UTC)</th><th>Answered by</th><th>Choice</th><th class="n">Wait</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-tokens">
+      <h2 id="h-tokens">Tokens by agent</h2>
+      <div class="big" id="tokens-total">–</div>
+      <div class="sub" id="tokens-split"></div>
+      <div class="scroll"><table id="tokens"><thead><tr><th>Session</th><th>Agent</th><th class="n">Input</th><th class="n">Output</th><th class="n">Cache read</th><th class="n">Cache write</th><th class="n">Total</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-time">
+      <h2 id="h-time">Time by kind</h2>
+      <div class="big" id="time-wall">–</div>
+      <div class="sub">wall-clock time between each session's first and last row</div>
+      <div class="bar" id="time-bar"></div>
+      <div class="scroll"><table id="time"><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-refusals">
+      <h2 id="h-refusals">What was refused, and why</h2>
+      <div class="big" id="refusals-count">–</div>
+      <div class="sub" id="refusals-rules"></div>
+      <div class="scroll"><table id="refusals"><thead><tr><th>When (UTC)</th><th>Rule</th><th>Tool</th><th>By</th><th>Then</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-asks">
+      <h2 id="h-asks">What was asked of the person</h2>
+      <div class="big" id="asks-cards">–</div>
+      <div class="sub" id="asks-sub"></div>
+      <div class="scroll"><table id="asks"><thead><tr><th>Card posted (UTC)</th><th>Thread</th><th>Answer</th><th class="n">Wait</th></tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="panel" aria-labelledby="h-refreshes">
+      <h2 id="h-refreshes">Recent refreshes</h2>
+      <div class="sub" id="refresh-note">Each refresh is recorded as a page.refresh row in this page's own store.</div>
+      <div class="scroll"><table id="refreshes"><thead><tr><th>When (UTC)</th><th class="n">Took</th><th class="n">Rows</th><th class="n">Files</th><th>Newest row</th></tr></thead><tbody></tbody></table></div>
+    </section>
+  </div>
+</div>
+
+<!--DATA-->
+<script>
+(() => {
+  const D = window.ObserveData;
+  const PROJECT_JOURNAL = ['harness', 'journal'];
+  const $ = (id) => document.getElementById(id);
+  const state = { rows: [], files: 0, bad: 0 };
+  $('page-release').textContent = D.PAGE_RELEASE;
+
+  const fmtN = (n) => n.toLocaleString('en-US');
+  const fmtMs = (ms) => {
+    if (!ms) return '0s';
+    const s = Math.round(ms / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return h ? `${h}h ${m}m` : m ? `${m}m ${r}s` : `${r}s`;
+  };
+  const many = (n, one, more = `${one}s`) => `${fmtN(n)} ${n === 1 ? one : more}`;
+  const utc = (iso) => iso ? iso.replace('T', ' ').slice(0, 19) : '–';
+  const short = (id) => id ? (id.length > 18 ? `…${id.slice(-10)}` : id) : '–';
+  const cell = (text, cls) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; return td; };
+  const rowOf = (cells) => { const tr = document.createElement('tr'); cells.forEach((c) => tr.append(c)); return tr; };
+  const fill = (id, rows, empty, cols) => {
+    const body = $(id).tBodies[0];
+    body.replaceChildren(...rows);
+    if (!rows.length) { const td = cell(empty, 'empty'); td.colSpan = cols; body.append(rowOf([td])); }
+  };
+
+  function scopeOf() {
+    const v = $('scope').value;
+    if (!v) return {};
+    const [k, ...rest] = v.split(':');
+    return { [k]: rest.join(':') };
+  }
+
+  function fillScopes() {
+    const keep = $('scope').value;
+    const { days, threads, sessions, items } = D.scopes(state.rows);
+    const opts = [new Option('Everything in the journal', '')];
+    for (const [label, key, list] of [['Item', 'item', items], ['Day', 'day', days], ['Thread', 'thread', threads], ['Session', 'session', sessions]]) {
+      const g = document.createElement('optgroup');
+      g.label = label;
+      list.forEach((x) => g.append(new Option(`${label} ${key === 'day' || key === 'item' ? x : short(x)}`, `${key}:${x}`)));
+      if (list.length) opts.push(g);
+    }
+    $('scope').replaceChildren(...opts);
+    $('scope').value = [...$('scope').querySelectorAll('option')].some((o) => o.value === keep) ? keep : '';
+  }
+
+  const TIME_KINDS = [['workingMs', 'Working', 'work'], ['person', 'Waiting on the person', 'person'], ['ci', 'Waiting on CI', 'ci'], ['wake', 'Waiting on another wake', 'wake'], ['rebuild', 'Container rebuild', 'rebuild'], ['unknownMs', 'Unknown', 'unknown']];
+
+  function render() {
+    const v = D.observe(state.rows, scopeOf());
+    $('release').textContent = v.freshness.release ?? '–';
+    $('newest').textContent = utc(v.freshness.newestAt);
+
+    // The item view (plan item engine-item-views): only when the scope is an item.
+    $('item-panel').hidden = !v.item;
+    if (v.item) {
+      const it = v.item;
+      $('h-item').textContent = `Item ${it.item}`;
+      $('item-state').textContent = `${typeof it.state === 'string' ? it.state : JSON.stringify(it.state)} · ${fmtN(it.tokens.total.total)} tokens`;
+      $('item-sub').textContent = `${it.workflow ?? 'unknown workflow'}, since ${utc(it.since)} · ${many(it.rounds, 'build round')} · ${many(it.transitions, 'transition')} · waited on the person ${fmtMs(it.personWaitMs)}`;
+      const h = it.handles;
+      fill('item', [
+        ['Issue', h.issue ?? '–'],
+        ['PR', h.pr ? `${h.pr.url} at ${h.pr.headSha?.slice(0, 7) ?? '?'}` : '–'],
+        ['Verdict', h.verdict ? `${h.verdict.result} at ${h.verdict.sha?.slice(0, 7) ?? '?'}` : '–'],
+        ['Merge', h.merge ? h.merge.sha.slice(0, 7) : '–'],
+        ['Agents', `${fmtN(it.tokens.agents.total)} tokens over ${many(it.tokens.agentCount, 'agent')}`],
+        ['Driving sessions', `${fmtN(it.tokens.sessions.total)} tokens in ${many(it.tokens.sessionIds.length, 'session')}`],
+        ['Refusals', fmtN(it.refusals)],
+      ].map(([k, x]) => rowOf([cell(k), cell(x)])), 'Nothing recorded for this item.', 2);
+      fill('item-asks', it.asks.map((a) => rowOf([cell(utc(a.postedAt)), cell(a.open ? 'open' : (a.by ?? '–')), cell(a.choice ?? '–'), cell(fmtMs(a.waitMs), 'n')])), 'The item asked the person nothing.', 4);
+    }
+
+    const t = v.tokens;
+    $('tokens-total').textContent = `${fmtN(t.total.total)} tokens`;
+    const sub = t.agents.filter((a) => a.agent).reduce((s, a) => s + a.total, 0);
+    $('tokens-split').textContent = `${fmtN(t.total.total - sub)} in main sessions, ${fmtN(sub)} in subagents; input, output and cache counted alike`;
+    fill('tokens', t.agents.map((a) => rowOf([cell(short(a.session)), cell(a.agent ? `${a.type ?? 'agent'} ${short(a.agent)}` : 'main'),
+      cell(fmtN(a.input), 'n'), cell(fmtN(a.output), 'n'), cell(fmtN(a.cacheRead), 'n'), cell(fmtN(a.cacheCreation), 'n'), cell(fmtN(a.total), 'n')])), 'No turn or subagent token rows in this scope.', 7);
+
+    const tm = v.time;
+    $('time-wall').textContent = fmtMs(tm.wallMs);
+    const bar = $('time-bar');
+    bar.replaceChildren(...TIME_KINDS.filter(([k]) => tm[k] > 0).map(([k, label, c]) => {
+      const s = document.createElement('span');
+      s.style.width = `${(100 * tm[k]) / (tm.wallMs || 1)}%`;
+      s.style.background = `var(--bar-${c})`;
+      s.title = `${label}: ${fmtMs(tm[k])}`;
+      return s;
+    }));
+    fill('time', TIME_KINDS.map(([k, label, c]) => {
+      const name = cell(label);
+      const key = document.createElement('span'); key.className = 'key'; key.style.background = `var(--bar-${c})`;
+      name.prepend(key);
+      return rowOf([name, cell(fmtMs(tm[k]), 'n'), cell(tm.wallMs ? `${Math.round((100 * tm[k]) / tm.wallMs)}%` : '–', 'n')]);
+    }), '', 3);
+
+    const r = v.refusals;
+    $('refusals-count').textContent = `${r.count} refused`;
+    $('refusals-rules').textContent = Object.entries(r.byRule).map(([k, n]) => `${k} ×${n}`).join(', ') || 'Nothing was refused in this scope.';
+    fill('refusals', r.list.map((x) => {
+      const then = cell(''); const chip = document.createElement('span');
+      chip.className = `chip ${x.then === 'retried, ran' ? 'ok' : x.then === 'not retried' ? 'warn' : 'bad'}`; chip.textContent = x.then; then.append(chip);
+      return rowOf([cell(utc(x.at)), cell(x.rule ?? 'unknown'), cell(x.tool ?? '–'), cell(`${x.source ?? '?'}${x.agent ? ' in a subagent' : ''}`), then]);
+    }), 'No refusals in this scope.', 5);
+
+    const a = v.asks;
+    $('asks-cards').textContent = `${many(a.cards, 'card')}, ${many(a.posts, 'post')}`;
+    $('asks-sub').textContent = `The person wrote ${many(a.messages, 'message')} and tapped ${many(a.taps, 'card')}; ${many(a.open, 'card')} still open; longest card wait ${fmtMs(a.waits.maxMs)}${a.flags.length ? `; ${many(a.flags.length, 'hour')} over the message caps` : ''}.`;
+    fill('asks', a.list.slice().reverse().map((c) => rowOf([cell(utc(c.postedAt)), cell(short(c.thread)), cell(c.tappedAt ? `option ${c.option ?? c.optionIndex}` : 'open'), cell(c.waitMs === null ? '–' : fmtMs(c.waitMs), 'n')])),
+      'No cards were put in front of the person in this scope.', 4);
+  }
+
+  // The journal root under the project's files: harness/journal, found by listing, since paths are passed back verbatim.
+  async function findDir(files, parent, name) {
+    let cursor;
+    do {
+      const page = await files.list({ ...(parent ? { path: parent } : {}), ...(cursor ? { cursor } : {}) });
+      const hit = page.entries.find((e) => e.isDirectory && e.path.replace(/\/$/, '').split('/').pop() === name);
+      if (hit) return hit.path;
+      cursor = page.cursor;
+    } while (cursor);
+    return null;
+  }
+
+  async function readText(files, path) {
+    const chunks = [];
+    let offset = 0, size = Infinity, revision = null;
+    while (offset < size) {
+      const res = await files.read(path, { offset });
+      if (revision && res.revision !== revision) return readText(files, path);
+      revision = res.revision; size = res.size;
+      chunks.push(res.bytes); offset += res.bytes.length;
+      if (!res.bytes.length) break;
+    }
+    const all = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+    let at = 0; for (const c of chunks) { all.set(c, at); at += c.length; }
+    return new TextDecoder().decode(all);
+  }
+
+  async function readJournal(files) {
+    let dir = null;
+    for (const name of PROJECT_JOURNAL) { dir = await findDir(files, dir, name); if (!dir) throw Object.assign(new Error('no harness/journal folder in the project files'), { code: 'not_found' }); }
+    const paths = [];
+    let cursor;
+    do {
+      const page = await files.list({ path: dir, recursive: true, ...(cursor ? { cursor } : {}) });
+      paths.push(...page.entries.filter((e) => !e.isDirectory && e.path.endsWith('.jsonl')).map((e) => e.path));
+      cursor = page.cursor;
+    } while (cursor);
+    const rows = [], bad = [];
+    for (const p of paths) {
+      const out = D.parseJournal(await readText(files, p), p);
+      rows.push(...out.rows); bad.push(...out.bad);
+    }
+    return { rows, bad, files: paths.length };
+  }
+
+  async function recordRefresh(row) {
+    const db = await claude.use('db');
+    if (!db) { $('refresh-note').textContent = 'This view cannot record refreshes (the page store is unavailable).'; return; }
+    try { await db.collection('refresh').doc(row.id).set(row); } catch (err) { $('refresh-note').textContent = `The refresh was not recorded: ${err.message ?? err.code}.`; }
+    try {
+      const snap = await db.collection('refresh').orderBy('at', 'desc').limit(8).get();
+      const list = (snap.docs ?? snap).map((d) => (typeof d.data === 'function' ? d.data() : d));
+      fill('refreshes', list.map((x) => rowOf([cell(utc(x.at)), cell(`${x.payload.ms} ms`, 'n'), cell(fmtN(x.payload.rows), 'n'), cell(String(x.payload.files), 'n'), cell(utc(x.payload.newestAt))])), 'No refreshes recorded yet.', 5);
+    } catch { /* the list is a convenience; the row above is what counts */ }
+  }
+
+  async function refresh() {
+    const btn = $('refresh');
+    btn.disabled = true;
+    $('status').className = 'status';
+    $('status').textContent = 'Reading the journal…';
+    const started = performance.now();
+    try {
+      const files = await claude.use('files');
+      if (!files) throw Object.assign(new Error('this view cannot read the project files'), { code: 'unavailable' });
+      const out = await readJournal(files);
+      Object.assign(state, { rows: out.rows, files: out.files, bad: out.bad.length });
+      fillScopes();
+      render();
+      const ms = Math.round(performance.now() - started);
+      const at = new Date().toISOString();
+      $('refreshed').textContent = utc(at);
+      $('read').textContent = `${fmtN(out.rows.length)} rows in ${out.files} files${out.bad.length ? `, ${out.bad.length} unreadable lines` : ''}, ${ms} ms`;
+      $('status').textContent = 'Up to date.';
+      const user = await claude.use('user');
+      const viewer = user && typeof user.id === 'function' ? await user.id().catch(() => null) : null;
+      await recordRefresh(D.refreshRow({ id: crypto.randomUUID(), at, url: location.href.split('#')[0], ms, rows: out.rows.length, files: out.files, bad: out.bad.length,
+        newestAt: D.freshness(out.rows).newestAt, release: D.PAGE_RELEASE, scope: scopeOf(), viewer }));
+    } catch (err) {
+      $('status').className = 'status err';
+      $('status').textContent = err.code === 'not_granted' ? 'Reading the project files was not allowed, so the page has nothing to show. Allow it from the page\'s Permissions menu.'
+        : err.code === 'not_found' ? `The journal was not found (${err.message}). Is the harness installed in this project?`
+        : `The journal could not be read: ${err.message ?? err.code}. Press Refresh to try again.`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('refresh').addEventListener('click', refresh);
+  $('scope').addEventListener('change', render);
+  render();
+  // One read once the page has loaded; after that, only the Refresh button reads. No timers run while nobody looks.
+  window.addEventListener('load', () => setTimeout(refresh, 0), { once: true });
+})();
+</script>

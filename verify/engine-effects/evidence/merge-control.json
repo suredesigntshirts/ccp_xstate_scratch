@@ -1,0 +1,46 @@
+{
+  "mode": "control",
+  "pr": "suredesigntshirts/ccp_xstate_scratch#15",
+  "commitA": "ea7cfe3df68c4e6388ef962aef71c26c8ebd95e0",
+  "commitB": null,
+  "finalState": "done",
+  "mergeCalls": [
+    {
+      "args": {
+        "owner": "suredesigntshirts",
+        "repo": "ccp_xstate_scratch",
+        "pullNumber": 15,
+        "expectedHeadSha": "ea7cfe3df68c4e6388ef962aef71c26c8ebd95e0",
+        "merge_method": "merge"
+      },
+      "at": "2026-10-30T20:19:16.074Z",
+      "result": {
+        "ok": true,
+        "sha": "8c90f38a4dcd09024390efb3439277e6f92020c7"
+      }
+    }
+  ],
+  "prAfter": {
+    "state": "closed",
+    "merged": true,
+    "head": "ea7cfe3df68c4e6388ef962aef71c26c8ebd95e0"
+  },
+  "mergeEffectRows": [
+    {
+      "phase": "start",
+      "reason": null,
+      "outcome": null
+    },
+    {
+      "phase": "done",
+      "reason": null,
+      "outcome": {
+        "ref": "suredesigntshirts/ccp_xstate_scratch#15",
+        "repo": "suredesigntshirts/ccp_xstate_scratch",
+        "number": 15,
+        "head": "ea7cfe3df68c4e6388ef962aef71c26c8ebd95e0",
+        "sha": "8c90f38a4dcd09024390efb3439277e6f92020c7"
+      }
+    }
+  ]
+}

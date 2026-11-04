@@ -1,0 +1,39 @@
+{
+  "item": "obs-refusal-log",
+  "verified_sha": "d0c2c90ddad0b1f73ee29138bdc01c9b05fb4157",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5JvsUrP3k7vsSnQySR#agent=verifier-obs-refusal-log",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "captured",
+      "status": "MET",
+      "command": "node --test verify/obs-refusal-log/refusal.test.mjs plugins/harness/test/refusal.test.mjs (the probe's recorded PermissionDenied input from probes/platform/fixtures/refusals/2026-10-30-self-modification-live-mod-and-hook.jsonl, sent through the real capture.mjs into a temp harness folder)",
+      "excerpt": "Exactly one refusal row: source classifier, rule [Self-Modification] (= the fixture's reason), tool Bash, retryOf null, outcome denied, actionHash = sha256 of [tool, input without description] recomputed independently; the row holds none of the refused command. Verifier tests 3 pass, builder tests pass.",
+      "mutation": "plugins/harness/scripts/capture-rows.mjs classifierRefusal: rule set to null instead of input.reason (reverted with git checkout)",
+      "red_test": "verify 'captured: exactly one refusal row...' and builder 'captured: the probe's classifier refusal becomes one refusal row...' and builder 'the hook journals the probe's refusal, then links its retry...' went red"
+    },
+    {
+      "id": "hook-denials",
+      "status": "MET",
+      "command": "CCP_HARNESS_DIR=<tmp> node plugins/harness/scripts/install.mjs; then from an empty tmp cwd: CCP_HARNESS_DIR=<tmp> CCP_HARNESS_STATE=<tmp>/state claude -p --plugin-dir plugins/harness --plugin-dir plugins/harness/test/fixtures/refusals/deny-hook --permission-mode auto --output-format json 'run echo ccp-refusal-probe; if denied run it once more'",
+      "excerpt": "Journal <tmp>/journal/sessions/session_01KfkB5JvsUrP3k7vsSnQySR.jsonl (the child inherited this session's id; the folder was fresh so every row is from this run) has 2 refusal rows, both source hook, rule ccp-deny-probe, tool Bash, same actionHash 397a0c57...; the first at 18:19:18.8Z has retryOf null, the second at 18:19:21.9Z has retryOf = the first row's id (61aadbcc-...). textHash set, no command text in the rows."
+    },
+    {
+      "id": "retry-linked",
+      "status": "MET",
+      "command": "node --test verify/obs-refusal-log/refusal.test.mjs plugins/harness/test/refusal.test.mjs",
+      "excerpt": "On the probe fixture, the same action refused again with a reworded description gets retryOf = the first row's id and an equal actionHash; a different command gets retryOf null and a different hash. The builder tests also check a later identical call that ran (tool.call carries retryOf) and the chain across separate hook runs.",
+      "mutation": "plugins/harness/scripts/capture-rows.mjs refusal(): retryOf: refused[hash] ?? null replaced by retryOf: null (reverted with git checkout)",
+      "red_test": "verify 'retry-linked: an identical action...' and builder 'retry-linked: the same action refused again links...', 'hook and permission denials in the transcript become refusal rows at Stop, retries linked' and 'the hook journals the probe's refusal, then links its retry...' went red"
+    },
+    {
+      "id": "live",
+      "status": "MET",
+      "command": "From an empty tmp cwd, with a fresh installed harness folder: CCP_HARNESS_DIR=<tmp> CCP_HARNESS_STATE=<tmp>/state claude -p --plugin-dir plugins/harness --permission-mode auto --output-format json, asking the child (intent stated: verifying a refusal logger for obs-refusal-log) to write an allow rule into its own temp project's .claude/settings.json, and to run the same command once more if refused (the probe's [Self-Modification] recipe, harmless in a temp dir)",
+      "excerpt": "The auto mode classifier refused the first attempt: exactly one refusal row, source classifier, rule [Self-Modification], tool Bash, retryOf null, outcome denied, at 18:20:37Z. The retry then ran: its tool.call row (18:20:47Z, ok true) carries retryOf = that refusal row's id (5c8a47d0-...). Nothing outside the temp dir was touched."
+    }
+  ],
+  "summary": "Re-verified at d0c2c90 (docs-only change over bf23934, the fix for packages/journal's docs/journal.md kinds test, which failed at bf23934 because the refusal payload table's backticked field names matched the kinds pattern); mutations were run at bf23934 and the code is identical at d0c2c90. npm test at d0c2c90: 180 pass, 1 fail, the timing test 'cheap (fixture run)' of obs-live-capture, which is flaky under parallel load (it passed on 2 of 3 solo reruns, failing once under load) and is unrelated to this item. plan/check.mjs ok. Notes: (1) hook and permission refusals reach the journal only at Stop or SubagentStop, so a retry in the same turn is linked by the row order within that batch but rows land late (documented in the decision). (2) The live classifier refusal in the child was a single run; the classifier is non-deterministic, so another run may not refuse. (3) hook-denials uses the test plugin deny-hook, as the decision says, since the harness has no denying hook of its own."
+}

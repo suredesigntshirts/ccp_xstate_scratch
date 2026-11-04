@@ -1,0 +1,10 @@
+{
+  "why": "Paths whose changes count as harness work in the overhead view (packages/journal/src/derive/overhead.js). Each glob is <owner>/<repo>/<path>; everything else is product.",
+  "harness": [
+    "suredesigntshirts/ccp_xstate/**",
+    "suredesigntshirts/ccp_xstate_scratch/**",
+    "*/*/.claude/**",
+    "*/*/CLAUDE.md",
+    "*/*/.github/workflows/**"
+  ]
+}

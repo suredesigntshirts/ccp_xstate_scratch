@@ -1,0 +1,31 @@
+{
+  "item": "obs-journal-vs-world",
+  "verified_sha": "cfaa1dd3e52754ccfa426185cd98e44c1ea7672c",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5F9TeBvMo2hCK7htuG#agent=verifier-obs-journal-vs-world",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "session-diff",
+      "status": "MET",
+      "command": "Installed the harness in a fresh folder (install.mjs), ran CLAUDE_CODE_REMOTE_SESSION_ID= claude -p \"<echo, ls, Read, Agent+Bash prompt>\" --plugin-dir plugins/harness --allowedTools ...; then node packages/journal/bin/journal-check.js --journal <session journal> --events ~/.claude/projects/<dir>/<id>.jsonl (subagents/ read too); deleted one tool.call row in a copy and re-ran. Recorded in verify/obs-journal-vs-world/fixture/ and replayed by node --test verify/obs-journal-vs-world/journal-check.test.mjs (also with the transcript reshaped as a list_events page).",
+      "excerpt": "Live: \"Session: 5 tool calls in the event log, 5 tool.call rows in the journal. 0 missing from the journal. 0 rows whose call the event log does not have.\" exit 0 (Bash x2 plus one Bash in the subagent, Read, Agent; ground truth is 5 tool_use ids in the parent and subagent transcripts). Copy without the Read row: \"1 missing from the journal: toolu_01BJc8o4RobZU7tdjVJeqXf7 Read\", exit 1. The test deletes each of the 5 rows in turn (subagent Bash included) in both event shapes: exactly that one call is listed each time; an invented row is listed as unfound; an empty journal lists all 5. Against this thread own transcript (harness 0.1.0, no capture, 0 tool.call rows): 61 calls, 60 missing, 1 pending (the check itself), which is true. A real mcp list_events page was fetched but is too large to save by hand from tool output, so the list_events shape is tested on a reshaped copy of the real transcript, matching the shape seen in the real page."
+    },
+    {
+      "id": "merge-diff",
+      "status": "MET",
+      "command": "node --test packages/journal/test/check.test.js verify/obs-journal-vs-world/journal-check.test.mjs (recorded GitHub closed-PR responses via --prs)",
+      "excerpt": "With no pr.merge rows, merged PRs #11 and #12 are listed (exit 1) and the closed-unmerged #10 is not; a pr.merge row for #12 leaves only #11; a row with a wrong sha is listed as not borne out; --since after the merge hides it. Builder test \"merge-diff: a PR merged on GitHub with no journal row is listed\" passes unmutated.",
+      "mutation": "packages/journal/src/check.js checkMerges: unexplained = merged.filter((p) => !byKey.has(mergeKey(p.repo, p.number)) && !p.sha), so merged PRs with a merge sha are never listed; reverted afterwards",
+      "red_test": "builder \"merge-diff: a PR merged on GitHub with no journal row is listed\" and \"the command: reports, exits 1 on a gap, and records a journal.check row with the counts\" went red (2 fail); verify tests \"real-merge / merge-diff ...\" (2) also red"
+    },
+    {
+      "id": "real-merge",
+      "status": "MET",
+      "command": "MCP create_branch/push_files/create_pull_request made suredesigntshirts/ccp_xstate_scratch#12; curl -X PUT -H \"Content-Type: application/json\" .../pulls/12/merge -d {merge_method:squash}; then node packages/journal/bin/journal-check.js --journal <empty journal> --repo suredesigntshirts/ccp_xstate_scratch --since 2026-10-30T18:18:10Z (live, no --prs); same with a journal holding a pr.merge row",
+      "excerpt": "Before merging: \"0 merged PRs\" exit 0. After merge (GitHub: merged true, sha 659abad0...): \"1 merged PRs, 0 pr.merge rows. 1 merges with no journal row: suredesigntshirts/ccp_xstate_scratch#12 merged 2026-10-30T18:19:18Z head 6f032afd... merge 659abad0...\" exit 1. With a pr.merge row (number 12, sha 659abad0...): \"0 merges with no journal row. 0 pr.merge rows GitHub does not bear out\" exit 0. With a wrong-sha row: \"GitHub merged it as 659abad..., the row says 000...\" exit 1. Real GitHub responses saved to fixture/scratch-closed-prs.json and replayed offline by the verify test."
+    }
+  ],
+  "summary": "All three MET. Doubts: (1) list_events shape only exercised on a reshaped transcript, not a saved real page; (2) the pr.merge row in the opposite check was written by hand with append(), so capture of pr.merge was not exercised live; (3) thread session has no capture, so the session-diff world proof is a headless claude -p session (obs-live-capture precedent); (4) scratch PR #12 stays merged and will keep being listed for any journal without a row."
+}

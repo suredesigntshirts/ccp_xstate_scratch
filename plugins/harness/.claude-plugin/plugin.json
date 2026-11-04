@@ -1,0 +1,8 @@
+{
+  "name": "ccp-harness",
+  "version": "0.1.0",
+  "description": "The ccp_xstate v2 harness. In a project that installed it, every session starts by journalling a fingerprint and a short self-check. Elsewhere it does nothing.",
+  "author": {
+    "name": "suredesigntshirts"
+  }
+}

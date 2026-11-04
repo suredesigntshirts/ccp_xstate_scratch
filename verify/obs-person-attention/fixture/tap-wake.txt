@@ -1,0 +1,12 @@
+<wake reason="decision-chosen" current-time="2026-10-30T16:54:27Z">
+  <project id="chan_01VhYV3jhQ9s4qrrh2th12sN" type="project">
+    <thread ts="cmsg_01VhYV3jhQ9s4qrrh2th12sN8VmmfRj9W1iKvVYBXDUDjc">
+      <message trigger="true" from="human" trust="principal" author-id="user_01KfkB5Jm6bszTAytbWYG5at" sent-at="2026-10-30T16:54:27Z">Chose &#34;Approve me running #110&#39;s demo&#34; on the decision card asking &#34;How should PR #14 get its missing #110 journal?&#34;</message>
+    </thread>
+  </project>
+  <system-note>decision_id=cmsg_01VhYV3jhQ9s4qrrh2th12sN7oo3Bm18DgfoRpQy3bR2XZ</system-note>
+  <system-note>option=A</system-note>
+  <system-note>option_index=0</system-note>
+  <system-note>actor_account_id=user_01KfkB5Jm6bszTAytbWYG5at</system-note>
+  <system-note>A member answered your decision card in the app by tapping option A; the card is now closed. The platform verified the tap came from that member&#39;s own client and wrote the trigger message as their own: it records the tap, and its wording (the option&#39;s label and the card&#39;s question) is the card&#39;s text as the member read it, not text they typed. It is their answer to that question, with the standing of a reply written here, and answers nothing the card did not ask. Say in one line what you will do next; if nothing follows from it, no chat reply is needed.</system-note>
+</wake>

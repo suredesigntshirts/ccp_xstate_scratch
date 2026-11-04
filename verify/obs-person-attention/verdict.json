@@ -1,0 +1,39 @@
+{
+  "item": "obs-person-attention",
+  "verified_sha": "38290b14d11ca66bf1edbdc9ec2807064464a737",
+  "verifier": {
+    "session": "https://claude.ai/code/session_01KfkB5HZRbfGRGcZb4ar2mX#agent=verifier-obs-person-attention-2",
+    "model": "claude-sonnet-5-5"
+  },
+  "results": [
+    {
+      "id": "rows",
+      "status": "MET",
+      "command": "node --test verify/obs-person-attention/person.test.mjs verify/obs-person-attention/rows-real.test.mjs (real hook plugins/harness/scripts/capture.mjs after install.mjs, temp CCP_HARNESS_DIR/CCP_HARNESS_STATE, CLAUDE_CODE_REMOTE_SESSION_ID empty). Fixture: the real decision-chosen tap wake from session_01KfkB5HZRbfGRGcZb4ar2mX (16:54:27Z) and the mention wake after it, text replaced by a placeholder.",
+      "excerpt": "Rerun at the merged head: 9 verifier tests pass. Message wake, request_decision call, tap wake gave exactly 1 person.message, 1 card.posted and 1 person.tap, card and tap linked by the same card id (source.ref equal), the tap wake made no person.message, no row holds the person's text, attention() joins them into one card with the tap time. New merge test: a PermissionDenied refusal row, person.message, card.posted and person.tap all come out of the same hook and session, so obs-refusal-log's changes did not break the person rows. Full npm test at this sha: 221 pass, 0 fail. Caveat unchanged: a card's thread comes from the last wake the session saw."
+    },
+    {
+      "id": "wait",
+      "status": "MET",
+      "command": "node --test plugins/harness/test/person.test.mjs packages/journal/test/attention.test.js verify/obs-person-attention/person.test.mjs; then mutated attention.js",
+      "excerpt": "Unmutated 18 of 18 pass. With the wait broken, 5 tests go red; file restored (git status clean).",
+      "mutation": "packages/journal/src/derive/attention.js line 62: card.waitMs = Date.parse(card.tappedAt) - Date.parse(card.postedAt) + 1000",
+      "red_test": "attention.test.js 'wait: a card waits from its post to its tap' (also 'counts: per day and per thread...', 'attentionOf reads every journal file under a root', person.test.mjs 'the hook journals message, card and tap linked by the card id, with the card wait from post to tap', verify 'rows: the attention view links the three by card id; wait = ...')"
+    },
+    {
+      "id": "caps",
+      "status": "MET",
+      "command": "same run; two mutations, each restored",
+      "excerpt": "Both mutations turned the caps test red (17 pass, 1 fail each); restored afterwards.",
+      "mutation": "packages/journal/src/derive/attention.js: (1) over: posts > caps.thread changed to >=; (2) CAPS.thread 20 changed to 25",
+      "red_test": "attention.test.js 'caps: an hour with more than 20 posts in one thread is flagged, 20 is not' (red under both)"
+    },
+    {
+      "id": "rows-real",
+      "status": "MET",
+      "command": "mcp__hearthbot__read_thread on cmsg_01VhYV3jhQ9s4qrrh2th12sN8VmmfRj9W1iKvVYBXDUDjc (oldest first, full bodies, 2 pages, has_more false); mcp__claude-code-remote__list_events on session_01KfkB5HZRbfGRGcZb4ar2mX kinds [user], paged back to the start (has_more false, 205 user-kind events, 20 carrying a <wake>); each of the 20 wake prompts run through plugins/harness/scripts/capture.mjs in a temp harness; sets compared by message id and card id. Committed as fixture/rows-real.json (ids, times, hashes only) and rows-real.test.mjs.",
+      "excerpt": "read_thread: 6 messages by the person (author_name Sure Team, 11:32, 16:15, 16:17, 16:18, 16:28, 16:54:30Z) and 1 tap (card ...7oo3Bm18..., option_index 0, 16:54:27Z; it shows in read_thread as an agent-authored activity message, tool decide, decision_id, chosen_by the person). Hook output: 6 person.message rows with 6 distinct message ids and 1 person.tap row with that card id; the sets are identical, nothing missing on either side. Each message appeared on exactly one wake (no duplicates). The other 13 wake-bearing prompts (spawn, project-activity, external-event GitHub checks, relayed coordinator) made no person rows, correctly, and the spawn wake's <cited author=\"user\"> copies of two earlier person messages made none. Notes: the 11:32 and 16:15 wakes were not in saved files (read inline) and were rebuilt by the verifier from the list_events output with the text replaced by a placeholder; the other prompts were the saved bytes. The earlier relayed person messages from the pre-thread project chat (10:07, 10:13) are not in this thread and, by design, make no rows."
+    }
+  ],
+  "summary": "All four Expect ids MET at 38290b1. rows-real now has real data: 6 person messages and 1 tap in read_thread equal the 6 person.message and 1 person.tap rows the real hook makes from the thread session's recorded wakes. The live check that a released install journals these as they happen stays an after_landing item."
+}

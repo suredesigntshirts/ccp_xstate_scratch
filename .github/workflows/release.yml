@@ -1,0 +1,33 @@
+# Makes a harness release on every push to main that changes what sessions run (plugins/harness, packages/journal):
+# an annotated tag harness-v<x.y.z>, higher than every earlier release. This is the optional path: the merging thread
+# pushes the same release as a branch release/harness-v<x.y.z> (the git proxy drops tag pushes from threads), and
+# Actions minutes may be used up. Whichever runs second sees the first and makes nothing.
+# scripts/release/release.mjs holds the rules; plan item self-update-by-version the reasons.
+name: release
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: tag a release when the push changed the plugin
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          node scripts/release/release.mjs tag --push > row.json
+          echo '### release' >> "$GITHUB_STEP_SUMMARY"
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"
+          cat row.json >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
