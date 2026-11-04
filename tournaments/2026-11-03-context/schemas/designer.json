@@ -1,0 +1,57 @@
+{
+  "type": "object",
+  "properties": {
+    "designFile": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "primitives": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "kept",
+              "new",
+              "changed",
+              "removed"
+            ]
+          },
+          "usedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "status"
+        ]
+      }
+    },
+    "interpreterChanges": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "designFile",
+    "summary",
+    "primitives",
+    "interpreterChanges"
+  ]
+}

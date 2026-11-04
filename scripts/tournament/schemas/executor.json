@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "properties": {
+    "workdir": { "type": "string" },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "fail", "not-attempted"] },
+          "command": { "type": "string" },
+          "evidence": { "type": "string" }
+        },
+        "required": ["id", "status"]
+      }
+    },
+    "deviations": { "type": "array", "items": { "type": "string" } },
+    "honesty": { "type": "string", "description": "what is reasoned but not executed" }
+  },
+  "required": ["workdir", "checks", "deviations", "honesty"]
+}

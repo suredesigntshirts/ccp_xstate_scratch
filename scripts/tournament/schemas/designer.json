@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "properties": {
+    "designFile": { "type": "string" },
+    "summary": { "type": "string" },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": { "name": { "type": "string" }, "kind": { "type": "string" }, "status": { "type": "string" } },
+        "required": ["name", "status"]
+      }
+    }
+  },
+  "required": ["designFile", "summary"]
+}
