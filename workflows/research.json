@@ -1,0 +1,150 @@
+{
+  "id": "research",
+  "description": "A question to a verified, published report. Three researchers run in parallel; each region ends whether its researcher answers, errors or times out, so the join cannot hang. Sources count only as the host fetched them; the report is verified by digest and published only after a tap.",
+  "initial": "framing",
+  "context": {
+    "question": null, "why": null, "briefs": null, "rounds": 0,
+    "answers": { "q1": null, "q2": null, "q3": null }, "errors": { "q1": null, "q2": null, "q3": null },
+    "report": null, "verdict": null, "decision": null, "published": null, "failure": null
+  },
+  "output": { "question": "context.question", "report": "context.report", "verdict": "context.verdict", "published": "context.published" },
+  "states": {
+    "framing": {
+      "meta": { "needs": ["hasQuestion"] },
+      "invoke": {
+        "id": "brief", "src": "brief",
+        "input": { "question": "context.question", "why": "context.why" },
+        "onDone": { "target": "researching", "actions": [{ "type": "set", "params": { "briefs": "event.output" } }] },
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+      }
+    },
+    "researching": {
+      "type": "parallel",
+      "meta": { "needs": ["hasBriefs"] },
+      "states": {
+        "r1": { "initial": "running", "states": {
+          "running": {
+            "invoke": { "id": "r1", "src": "research", "input": { "brief": "context.briefs.q1", "question": "context.question" },
+              "onDone": { "target": "ended", "actions": [{ "type": "set", "params": { "answers.q1": "event.output" } }] },
+              "onError": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q1": "event.error" } }] } },
+            "after": { "researchTimeout": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q1": { "value": "timed out" } } }] } }
+          },
+          "ended": { "type": "final" } } },
+        "r2": { "initial": "running", "states": {
+          "running": {
+            "invoke": { "id": "r2", "src": "research", "input": { "brief": "context.briefs.q2", "question": "context.question" },
+              "onDone": { "target": "ended", "actions": [{ "type": "set", "params": { "answers.q2": "event.output" } }] },
+              "onError": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q2": "event.error" } }] } },
+            "after": { "researchTimeout": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q2": { "value": "timed out" } } }] } }
+          },
+          "ended": { "type": "final" } } },
+        "r3": { "initial": "running", "states": {
+          "running": {
+            "invoke": { "id": "r3", "src": "research", "input": { "brief": "context.briefs.q3", "question": "context.question" },
+              "onDone": { "target": "ended", "actions": [{ "type": "set", "params": { "answers.q3": "event.output" } }] },
+              "onError": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q3": "event.error" } }] } },
+            "after": { "researchTimeout": { "target": "ended", "actions": [{ "type": "set", "params": { "errors.q3": { "value": "timed out" } } }] } }
+          },
+          "ended": { "type": "final" } } }
+      },
+      "onDone": [
+        { "target": "synthesizing", "guard": "answered1" },
+        { "target": "synthesizing", "guard": "answered2" },
+        { "target": "synthesizing", "guard": "answered3" },
+        { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": { "value": { "kind": "no-answers" } } } }] }
+      ]
+    },
+    "synthesizing": {
+      "meta": { "needs": ["hasBriefs", "roundsLeft"] },
+      "invoke": {
+        "id": "synthesize", "src": "synthesize",
+        "input": { "brief": "context.briefs.synthesizer", "question": "context.question", "answers": "context.answers", "errors": "context.errors", "verdict": "context.verdict" },
+        "onDone": { "target": "verifying", "actions": [{ "type": "set", "params": { "report": "event.output", "verdict": { "value": null } } }, { "type": "inc", "params": "rounds" }] },
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+      }
+    },
+    "verifying": {
+      "meta": { "needs": ["hasReport"] },
+      "invoke": {
+        "id": "verify", "src": "verify",
+        "input": { "expect": "context.question.expect", "brief": "context.briefs.verifier", "subject": "context.report.attested.digest", "sources": "context.report.attested.sources" },
+        "onDone": [
+          { "target": "awaitingPublish", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "synthesizing", "guard": "failed", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
+          { "target": "replanning", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] }
+        ],
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+      }
+    },
+    "awaitingPublish": {
+      "meta": { "needs": ["reportVerified"] },
+      "invoke": {
+        "id": "ask", "src": "ask",
+        "input": { "question": { "value": "Publish this verified report?" }, "choices": { "value": ["publish", "reject"] }, "report": "context.report.report", "verdict": "context.verdict" },
+        "onDone": [
+          { "target": "publishing", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
+          { "target": "replanning", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+        ],
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+      }
+    },
+    "publishing": {
+      "meta": { "needs": ["reportVerified", "publishApproved"] },
+      "invoke": {
+        "id": "post", "src": "post",
+        "input": { "text": "context.report.report" },
+        "onDone": { "target": "done", "actions": [{ "type": "set", "params": { "published": "event.output" } }] },
+        "onError": { "target": "replanning", "actions": [{ "type": "set", "params": { "failure": "event.error" } }] }
+      }
+    },
+    "replanning": {
+      "invoke": {
+        "id": "ask", "src": "ask",
+        "input": { "question": { "value": "This research stalled. Replan it with a written five whys, or drop it?" }, "choices": { "value": ["replan", "drop"] }, "verdict": "context.verdict", "failure": "context.failure", "errors": "context.errors" },
+        "onDone": [
+          { "target": "framing", "guard": "replan", "actions": [{ "type": "set", "params": { "why": "event.output.why", "rounds": { "value": 0 }, "answers": { "value": { "q1": null, "q2": null, "q3": null } }, "errors": { "value": { "q1": null, "q2": null, "q3": null } }, "report": { "value": null }, "verdict": { "value": null }, "decision": { "value": null }, "failure": { "value": null } } }] },
+          { "target": "dropped", "guard": "drop", "actions": [{ "type": "set", "params": { "decision": "event.output" } }] },
+          { "target": "replanning", "reenter": true, "actions": [{ "type": "set", "params": { "decision": "event.output" } }] }
+        ],
+        "onError": "dropped"
+      }
+    },
+    "done": { "type": "final", "meta": { "needs": ["reportVerified", "publishApproved", "isPublished"] } },
+    "dropped": { "type": "final" }
+  },
+  "meta": {
+    "guards": {
+      "hasQuestion": ["context.question.text", "context.question.expect"],
+      "hasBriefs": ["context.briefs.q1", "context.briefs.q2", "context.briefs.q3", "context.briefs.synthesizer", "context.briefs.verifier"],
+      "answered1": ["context.answers.q1.attested.sources"],
+      "answered2": ["context.answers.q2.attested.sources"],
+      "answered3": ["context.answers.q3.attested.sources"],
+      "roundsLeft": [{ "path": "context.rounds", "below": 2 }],
+      "hasReport": ["context.report.attested.digest", "context.report.attested.sources"],
+      "failed": [{ "path": "context.verdict.result", "is": "FAIL" }],
+      "reportVerified": [{ "path": "context.verdict.result", "is": "PASS" }, { "path": "context.verdict.attested.subject", "same": "context.report.attested.digest" }],
+      "publishApproved": [{ "path": "context.decision.choice", "is": "publish" }],
+      "isPublished": ["context.published.ref"],
+      "replan": [{ "path": "event.output.choice", "is": "replan" }, "event.output.why"],
+      "drop": [{ "path": "event.output.choice", "is": "drop" }]
+    },
+    "delays": { "researchTimeout": 3600000 },
+    "input": {
+      "type": "object", "required": ["question"],
+      "properties": { "question": { "type": "object", "required": ["text", "expect"], "properties": { "text": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } } }
+    },
+    "events": {},
+    "actors": {
+      "brief": { "type": "object", "required": ["q1", "q2", "q3", "synthesizer", "verifier"], "properties": { "q1": { "type": "string", "minLength": 1 }, "q2": { "type": "string", "minLength": 1 }, "q3": { "type": "string", "minLength": 1 }, "synthesizer": { "type": "string", "minLength": 1 }, "verifier": { "type": "string", "minLength": 1 } } },
+      "research": { "type": "object", "required": ["answer", "sources", "attested"], "properties": { "answer": { "type": "string", "minLength": 1 }, "sources": { "$ref": "#sources" }, "attested": { "$ref": "#attested" } } },
+      "synthesize": { "type": "object", "required": ["report", "sources", "attested"], "properties": { "report": { "type": "string", "minLength": 1 }, "sources": { "$ref": "#sources" }, "attested": { "$ref": "#attested" } } },
+      "verify": { "type": "object", "required": ["result", "report", "attested"], "properties": { "result": { "enum": ["PASS", "FAIL"] }, "report": { "type": "string", "minLength": 1 }, "attested": { "$ref": "#attested" } } },
+      "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
+      "post": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string", "minLength": 1 } } }
+    },
+    "schemas": {
+      "sources": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["url", "quote"], "properties": { "url": { "type": "string", "pattern": "^https://" }, "quote": { "type": "string", "minLength": 1 } } } },
+      "attested": { "type": "object", "required": ["run", "digest"], "properties": { "run": { "type": "string" }, "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" } } }
+    }
+  }
+}

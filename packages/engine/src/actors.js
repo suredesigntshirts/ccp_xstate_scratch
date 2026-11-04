@@ -15,10 +15,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFile
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { append } from '../../journal/src/index.js';
 import { check } from './schema.js';
-import { prRef } from './effects/merge.js';
+import { attest, laneBranch, intoBranch } from './attest.js';
 
-/** The actors that are agents. Others (merge, ask, post) are host effects (effects/index.js). */
+/** The actors that are host effects (effects/index.js); every other actor a spec declares is an agent. */
+export const HOST_EFFECTS = Object.freeze(['merge', 'ask', 'post']);
+/** quick-fix's agents, kept for callers that name them; a spec's agents are agentsOf(spec). */
 export const AGENTS = Object.freeze(['brief', 'build', 'verify']);
+/** The agents of a spec: the actors in its meta.actors that are not host effects. */
+export const agentsOf = (spec) => Object.keys(spec?.meta?.actors ?? {}).filter((name) => !HOST_EFFECTS.includes(name));
 
 /** The prompt the session gives the Agent tool to start a run; the hook replaces it with the run's brief. */
 export const MARKER = /^\s*ccp-run\s+(\S+)\s*$/;
@@ -94,18 +98,36 @@ function journal(root, run, row) {
 
 // ---- The run handler: the host calls it when a state invokes an agent actor
 
-// What the agent is told besides its brief: its run, its worktree and how to return. It reaches the agent as the
-// SubagentStart hook's added context, so the prompt stays the brief alone and hashes to what was fixed before.
-function contextOf(run) {
-  const { brief, ...input } = run.input ?? {};
-  return [
-    `ccp-harness run ${run.run} (item ${run.item}, actor ${run.actor}).`,
-    `Your worktree is ${run.worktree}, on branch ${run.branch}. Work only there: the harness refuses file tools outside it and runs your shell commands from it.`,
-    `When you are done, call the harness return tool (its name ends in harness__return; load it with ToolSearch if it is deferred) with`,
-    `{ "run": "${run.run}", "result": <your result> }. The result must match this JSON Schema: ${JSON.stringify(run.schema)}${Object.keys(run.defs).length ? ` (with $ref into ${JSON.stringify(run.defs)})` : ''}.`,
-    `Only the agent this run started may return its result, and a claimed PR must be on GitHub at the claimed head.`,
-    Object.keys(input).length ? `Your input: ${JSON.stringify(input)}` : ''
-  ].filter(Boolean).join('\n');
+// What the agent is told besides its brief (design C, section 4.2). It reaches the agent as the SubagentStart hook's
+// added context, so the prompt stays the brief alone and hashes to what was fixed before. Each line appears only when
+// its input key is present, so no line is specific to a workflow.
+const withoutAttested = (schema) => {
+  if (!schema || typeof schema !== 'object') return schema;
+  const { attested: _, ...properties } = schema.properties ?? {};
+  return { ...schema, ...(schema.required ? { required: schema.required.filter((k) => k !== 'attested') } : {}), ...(schema.properties ? { properties } : {}) };
+};
+export function contextOf(run) {
+  const { brief, subject, lane, ...input } = run.input ?? {};
+  const has = (k) => run.input && Object.prototype.hasOwnProperty.call(run.input, k) && run.input[k] != null;
+  const schema = withoutAttested(run.schema);
+  const lines = [`ccp-harness run ${run.run} (item ${run.item}, actor ${run.actor}).`];
+  if (has('lane')) {
+    lines.push(`Your worktree is ${run.worktree}, on branch ${run.branch}. Commit and push only to ${run.branch}, and open or update exactly one pull request from ${run.branch} into ${run.into}. When you return, the host reads that pull request from GitHub: its head, base, branch and changed files are what count, not what you report.`);
+  }
+  if (/^[0-9a-f]{40}$/.test(String(subject ?? ''))) {
+    lines.push(`Your worktree is checked out at ${subject}, the commit you are judging. Do not check out, pull, commit or reset anything. When you return, the host reads your worktree's HEAD, and your verdict counts only for that commit.`);
+  } else if (/^[0-9a-f]{64}$/.test(String(subject ?? ''))) {
+    lines.push(`What you are judging is the file .ccp/subject (sha256 ${subject}). The sources the host fetched are in .ccp/blobs/<digest>, listed in your input. Judge only against those files, and don't fetch other copies: a claim not supported by a file there is unsupported.`);
+  }
+  if (has('expect')) {
+    lines.push(`Grade against the expect lines in your input exactly as given. They were fixed when the item was filed. Don't read them from the issue on GitHub, even if it now says something else.`);
+  }
+  if (run.schema?.properties?.sources) {
+    lines.push(`Cite every source as { "url", "quote" }, with the quote copied word for word from the page at url. The host fetches each url itself and refuses your result if a quote isn't on the page.`);
+  }
+  lines.push(`When you are done, call the harness return tool (its name ends in harness__return) with { "run": "${run.run}", "result": <your result> }. The result must match ${JSON.stringify(schema)}${Object.keys(run.defs ?? {}).length ? ` (with $ref into ${JSON.stringify(run.defs)})` : ''}. Don't include an "attested" field: the host writes it, and a result that carries one is refused. Only the agent this run started may return.`);
+  if (Object.keys(input).length) lines.push(`Your input: ${JSON.stringify(input)}`);
+  return lines.join('\n');
 }
 
 // The brief an actor with no brief in its input gets (quick-fix's brief actor): written from its input alone.
@@ -118,9 +140,9 @@ const writtenBrief = (actor, input) =>
  * `worktrees` the folder they go in. start() prepares the run and returns its outcome: { ref: the run, briefHash,
  * folder, worktree, branch, spawn: { tool, prompt } }. The run stays open until accept() hands back its result.
  */
-export function actors({ host, repo = process.cwd(), worktrees = join(dirname(resolve(repo)), 'ccp-actors'), names = AGENTS }) {
+export function actors({ host, repo = process.cwd(), worktrees = join(dirname(resolve(repo)), 'ccp-actors'), names = agentsOf(host.spec), defaultBranch = 'main' }) {
   const handler = {
-    start: (effect) => prepare({ host, effect, repo, worktrees }),
+    start: (effect) => prepare({ host, effect, repo, worktrees, defaultBranch }),
     // A host that stopped after the start row asks the run folder: prepared means it happened.
     find: (effect) => {
       const run = loadRun(host.root, effect.id);
@@ -140,7 +162,7 @@ const outcomeOf = (run) => ({
 });
 
 /** Write the run's folder, brief and worktree, and journal the brief. Returns the run effect's outcome. */
-export function prepare({ host, effect, repo, worktrees }) {
+export function prepare({ host, effect, repo, worktrees, defaultBranch = 'main' }) {
   const { root, item, spec } = host;
   const r = runOf(effect.id);
   if (!r || r.item !== item) throw new Error(`run ${effect.id} is not a run of ${item}`);
@@ -149,12 +171,52 @@ export function prepare({ host, effect, repo, worktrees }) {
   if (existing) return outcomeOf(existing);
 
   const brief = typeof effect.input?.brief === 'string' && effect.input.brief ? effect.input.brief : writtenBrief(effect.actor, effect.input);
-  const branch = `run/${safe(item)}/${safe(r.name)}`;
+  const input = effect.input ?? {};
+  const git = (...args) => execFileSync('git', ['-C', resolve(repo), ...args], { stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
+  const has = (ref) => { try { git('rev-parse', '--verify', '-q', ref); return true; } catch { return false; } };
   const worktree = join(resolve(worktrees), `${safe(item)}--${safe(r.name)}`);
-  if (!existsSync(worktree)) {
-    mkdirSync(dirname(worktree), { recursive: true });
-    execFileSync('git', ['-C', resolve(repo), 'worktree', 'add', '-q', '-B', branch, worktree, 'HEAD'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  let branch = `run/${safe(item)}/${safe(r.name)}`;
+  let into = defaultBranch;
+  const fresh = !existsSync(worktree);
+  if (fresh) mkdirSync(dirname(worktree), { recursive: true });
+  if (input.lane != null) {
+    // A lane: the only branch this run may push, made from its own tip, else its base, else the default branch.
+    branch = laneBranch(item, input.lane);
+    into = intoBranch(item, input.into, defaultBranch);
+    git('fetch', '-q', 'origin');
+    if (input.into != null && !has(`origin/${into}`)) {
+      git('push', '-q', 'origin', `origin/${defaultBranch}:refs/heads/${into}`);
+      git('fetch', '-q', 'origin');
+    }
+    const start = has(`origin/${branch}`) ? `origin/${branch}` : has(`origin/${into}`) ? `origin/${into}` : `origin/${defaultBranch}`;
+    // A lane is reused by the next build of the same attempt, while the last build's (finished) worktree still has
+    // it checked out, which git refuses: detach that worktree first (executor's deviation, not in the design).
+    if (fresh) {
+      const holders = git('worktree', 'list', '--porcelain').split('\n\n')
+        .filter((block) => block.split('\n').includes(`branch refs/heads/${branch}`))
+        .map((block) => block.split('\n')[0].replace(/^worktree /, ''));
+      for (const holder of holders) execFileSync('git', ['-C', holder, 'checkout', '-q', '--detach'], { stdio: ['ignore', 'pipe', 'pipe'] });
+      git('worktree', 'add', '-q', '-B', branch, worktree, start);
+    }
+  } else if (/^[0-9a-f]{40}$/.test(String(input.subject ?? ''))) {
+    // A commit subject: checked out detached, and measured again at return.
+    if (!has(`${input.subject}^{commit}`)) git('fetch', '-q', 'origin', input.subject);
+    branch = null;
+    if (fresh) git('worktree', 'add', '-q', '--detach', worktree, input.subject);
+  } else if (fresh) {
+    git('worktree', 'add', '-q', '-B', branch, worktree, 'HEAD');
   }
+  // A digest subject, and every digest the input names, materialized from blobs/.
+  const copyBlob = (digest, to) => {
+    const from = join(root, 'blobs', digest);
+    if (!existsSync(from)) throw new Error(`blobs/${digest} is not in the journal root`);
+    mkdirSync(dirname(to), { recursive: true });
+    writeFileSync(to, readFileSync(from));
+  };
+  if (/^[0-9a-f]{64}$/.test(String(input.subject ?? ''))) copyBlob(input.subject, join(worktree, '.ccp', 'subject'));
+  const digests = (v) => (!v || typeof v !== 'object') ? [] : Object.entries(v).flatMap(([k, x]) =>
+    (k === 'digest' && typeof x === 'string' && /^[0-9a-f]{64}$/.test(x)) ? [x] : digests(x));
+  for (const d of digests(input)) copyBlob(d, join(worktree, '.ccp', 'blobs', d));
   const run = {
     run: effect.id,
     item,
@@ -173,6 +235,7 @@ export function prepare({ host, effect, repo, worktrees }) {
     worktrees: resolve(worktrees),
     worktree,
     branch,
+    into,
     briefHash: sha256(brief)
   };
   run.context = contextOf(run);
@@ -314,7 +377,7 @@ export function confine({ worktree, tool, input }) {
  * claimed head. `github` is a client from effects/github.js ({ pull }). Returns { accepted: { run, hash } } or
  * { refused: { rule, reason } }; both are journalled in the item's file.
  */
-export async function accept({ root, caller, run: runId, result, toolUseId, github, session = null }) {
+export async function accept({ root, caller, run: runId, result, toolUseId, github, session = null, observe = {}, protectedPaths }) {
   const run = loadRun(root, runId);
   if (!run) return { refused: { rule: 'unknown-run', reason: `no prepared run ${JSON.stringify(runId ?? null)}` } };
   const refuse = (rule, reason) => {
@@ -335,26 +398,27 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
   if (existsSync(join(dir, 'result.json'))) return refuse('already-returned', `run ${run.run} already returned its result`);
   if (existsSync(join(dir, 'failed.json'))) return refuse('already-failed', `run ${run.run} failed: its actor stopped without returning`);
 
-  const problems = check(run.schema, result, run.defs);
+  // The host's own measurements: the worktree's HEAD, the PR as GitHub has it, its files, and the sources' pages.
+  const seen = {
+    head: async (worktree) => execFileSync('git', ['-C', worktree, 'rev-parse', 'HEAD'], { stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim(),
+    pull: (ref) => { if (!github?.pull) throw new Error('no GitHub client'); return github.pull(ref); },
+    files: (ref) => { if (!github?.files) throw new Error('no GitHub client'); return github.files(ref); },
+    fetch: (url) => { if (!github?.fetch) throw new Error('no fetch client'); return github.fetch(url); },
+    ...observe
+  };
+  const stamped = await attest({
+    run: { run: run.run, actor: run.actor, item: run.item, input: run.input, worktree: run.worktree, branch: run.branch, into: run.into },
+    result, observe: seen, store: (text) => storeBlob(root, text).hash, ...(protectedPaths ? { protectedPaths } : {})
+  });
+  if (stamped.refused) return refuse(stamped.refused.rule, stamped.refused.reason);
+  const output = stamped.output;
+
+  const problems = check(run.schema, output, run.defs);
   if (problems.length) return refuse('schema', `${run.actor} result: ${problems.join('; ').replaceAll('$', 'result')}`);
 
-  for (const { path, pr } of claimedPrs(result)) {
-    const ref = prRef(pr.url);
-    if (!ref) return refuse('github-fact', `${path}.url ${JSON.stringify(pr.url)} is not a GitHub PR URL`);
-    let now;
-    try {
-      now = await github.pull(ref);
-    } catch (error) {
-      const why = error.status === 404 ? 'GitHub shows no such PR' : `GitHub could not be read (${error.message})`;
-      return refuse('github-fact', `${path}: ${pr.url}: ${why}`);
-    }
-    if (now?.head?.sha !== pr.headSha) return refuse('github-fact', `${path}: GitHub shows ${pr.url} at head ${now?.head?.sha ?? 'none'}, not the claimed ${pr.headSha}`);
-    if (pr.branch && now?.head?.ref !== pr.branch) return refuse('github-fact', `${path}: GitHub shows ${pr.url} on branch ${now?.head?.ref}, not the claimed ${pr.branch}`);
-  }
-
-  const text = JSON.stringify(result);
-  const { hash, bytes } = storeBlob(root, text);
-  if (!writeOnce(join(dir, 'result.json'), { result, hash, caller, toolUseId, at: new Date().toISOString() })) {
+  const hash = output.attested.digest;
+  const bytes = Buffer.byteLength(JSON.stringify(result));
+  if (!writeOnce(join(dir, 'result.json'), { result: output, hash, caller, toolUseId, at: new Date().toISOString() })) {
     return refuse('already-returned', `run ${run.run} already returned its result`);
   }
   journal(root, run, {
@@ -372,14 +436,6 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
     }
   }
   return { accepted: { run: run.run, hash } };
-}
-
-// Every { url, headSha } object in a result: a claim of a PR at a head, `pr` at the top (quick-fix's build) or anywhere
-// below. A url that isn't a GitHub PR's is still a claim, and is refused for it, so no shape of url skips GitHub.
-function claimedPrs(value, path = 'result') {
-  if (!value || typeof value !== 'object') return [];
-  const here = typeof value.url === 'string' && typeof value.headSha === 'string' ? [{ path, pr: value }] : [];
-  return [...here, ...Object.entries(value).flatMap(([k, v]) => claimedPrs(v, `${path}.${k}`))];
 }
 
 // An agent ending with its run still open (plan item engine-actor-returns) is sent back once to call the return tool;
@@ -450,7 +506,7 @@ export function stopped({ root, agentId, again = false, handedBack = false, sess
 export function resultsOf(host) {
   const inputs = [];
   for (const run of host.runs.values()) {
-    if (!AGENTS.includes(run.actor)) continue;
+    if (HOST_EFFECTS.includes(run.actor)) continue;
     const got = readJson(join(runDir(host.root, run.id), 'result.json'));
     const failed = !got && readJson(join(runDir(host.root, run.id), 'failed.json'));
     if (failed) {
@@ -477,8 +533,8 @@ export async function deliver({ root, run: runId, github = null, workflow = null
   if (!run) return { error: `no prepared run ${runId}` };
   const { repo, worktrees } = run;
   try {
-    const [{ restore, offer }, { handlers }, { loadWorkflow }] = await Promise.all([import('./host.js'), import('./effects/index.js'), import('./index.js')]);
-    const spec = workflow ?? loadWorkflow(run.workflow);
+    const [{ restore, offer }, { handlers }, { pinnedWorkflow }] = await Promise.all([import('./host.js'), import('./effects/index.js'), import('./index.js')]);
+    const spec = workflow ?? pinnedWorkflow(root, run.item);
     const host = restore({ root, item: run.item, spec, session: run.session, release: run.release });
     host.session = host.owner ?? run.session;
     const results = await offer(host, resultsOf(host), handlers({ github, actors: actors({ host, repo, worktrees }) }));

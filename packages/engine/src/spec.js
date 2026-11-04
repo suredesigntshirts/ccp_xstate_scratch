@@ -1,5 +1,5 @@
 // Turns a machine spec (spec/*.machine.json) into an XState machine. The JSON is plain XState config plus
-// four small conventions, and this file is the whole interpreter for them:
+// five small conventions, and this file is the whole interpreter for them:
 //
 // - Paths. A string like "context.pr.headSha" or "event.output" reads from { context, event };
 //   { "value": x } is the literal x. Invoke input and the root output map names to paths.
@@ -10,6 +10,8 @@
 // - Needs. A state's meta.needs names the guards that must hold to enter it. Every transition into the
 //   state checks them, together with its own guard, against the context as the transition's actions
 //   leave it. So no state is ever entered without what it needs, and the JSON says what that is.
+// - Joins. A compound or parallel state's own onDone (taken when its final child, or every region, is done) is
+//   bound like an invoke's: ordered candidates, each with its guard and its target's needs.
 import { createHash } from 'node:crypto';
 import { setup, assign, fromPromise, initialTransition, transition } from 'xstate';
 import { check } from './schema.js';
@@ -99,6 +101,7 @@ const bindState = (spec, siblings, state) => {
     if (onDone) bound.invoke.onDone = bind(onDone);
     if (onError) bound.invoke.onError = bind(onError);
   }
+  if (state.onDone) bound.onDone = bind(state.onDone); // the join of a compound or parallel state, bound with needs
   if (state.states) {
     const children = Object.entries(state.states).map(([name, child]) => [name, bindState(spec, state.states, child)]);
     bound.states = Object.fromEntries(children);

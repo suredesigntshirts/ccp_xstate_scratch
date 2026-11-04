@@ -28,7 +28,9 @@
 // It is applied as the item's owner, like a tap the owner's hook reads, so the host runs what follows itself.
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { loadWorkflow } from '../src/index.js';
+import { pinWorkflow, pinnedWorkflow } from '../src/index.js';
+import { existsSync } from 'node:fs';
+import { itemFile } from '../src/host.js';
 import { restore, offer, pending } from '../src/host.js';
 import { inputsOfWake } from '../src/wake.js';
 import { github, handlers, recordCard, relay } from '../src/effects/index.js';
@@ -78,7 +80,8 @@ const fail = (message) => {
 
 if (!['start', 'wake', 'show', 'card', 'answer'].includes(command)) fail('the command is start, wake, show, card or answer');
 if (!opts.item || !opts.workflow) fail('--item and --workflow are required');
-const spec = loadWorkflow(opts.workflow);
+// Pinned by content (design C): an item restores from the workflow its first row names, never the file on disk.
+const spec = existsSync(itemFile(opts.root, opts.item)) ? pinnedWorkflow(opts.root, opts.item) : pinWorkflow(opts.root, opts.workflow);
 const release = opts.release ?? process.env.CCP_HARNESS_RELEASE ?? manifestRelease();
 
 let session = opts.session;
