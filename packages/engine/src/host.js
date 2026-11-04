@@ -115,11 +115,11 @@ export function applyEvent(host, { event, source, run = null, at = new Date().to
 
   const seq = host.seq;
   const from = host.snapshot?.value ?? null;
-  const { hash, effects } = step(host, event, run, at);
+  const { hash, effects, writes } = step(host, event, run, at);
   for (const effect of effects) host.effects.set(effect.id, { effect, phase: null, outcome: null });
   if (seq === 0) host.owner = host.session;
   host.seen.add(sourceKey(source));
-  const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, file: host.file });
+  const row = transitionRow(host, { outcome: 'applied', event, source, run, at, seq, from, hash, writes, file: host.file });
   return { outcome: 'applied', row, effects };
 }
 
@@ -239,7 +239,11 @@ export async function offer(host, inputs, handlers = {}) {
       persist(host, result.row);
     }
     results.push({ outcome: result.outcome, row: result.row });
-    if (result.outcome === 'applied') queue.push(...(await runEffects(host, handlers)).follow);
+    if (result.outcome !== 'applied') continue;
+    // A run's result (or error) just moved into the item: its handler may record where it went (stage.json).
+    const ended = input.run && host.effects.get(input.run)?.effect;
+    if (ended && handlers.run?.ended) await handlers.run.ended(ended, result.row);
+    queue.push(...(await runEffects(host, handlers)).follow);
   }
   return results;
 }
@@ -308,7 +312,17 @@ function step(host, event, run, at) {
   host.snapshot = snapshot;
   host.seq = seq + 1;
   const effects = actions.flatMap((action) => effectOf(host, action, seq, at));
-  return { hash: hashOf(snapshot), effects };
+  return { hash: hashOf(snapshot), effects, writes: writesOf(event, actions) };
+}
+
+// The context paths a step wrote, in order, each { path, from, set }: from is the source as the workflow wrote it (a
+// path such as "event.output.pr", or { value }), and set the JSON pointer of its set action. The start writes the
+// item's input, key by key. Read from the wrote markers spec.js puts after every set action.
+function writesOf(event, actions) {
+  if (event.type === START) return Object.keys(event.input ?? {}).map((k) => ({ path: k, from: `event.input.${k}`, set: null }));
+  return actions
+    .filter((a) => a.type === 'wrote')
+    .flatMap(({ params }) => Object.entries(params.writes).map(([path, from]) => ({ path, from, set: params.at })));
 }
 
 function effectOf(host, action, seq, at) {
@@ -345,7 +359,7 @@ function effectsOf(host, { type, params }, seq, at) {
   return [];
 }
 
-function transitionRow(host, { outcome, reason = null, event, source, run, at, seq, from = null, hash = null, file }) {
+function transitionRow(host, { outcome, reason = null, event, source, run, at, seq, from = null, hash = null, writes = null, file }) {
   const applied = outcome === 'applied';
   return {
     file,
@@ -366,7 +380,8 @@ function transitionRow(host, { outcome, reason = null, event, source, run, at, s
       event,
       run,
       from: from === null ? null : JSON.stringify(from),
-      hash
+      hash,
+      ...(applied ? { writes } : {})
     }
   };
 }

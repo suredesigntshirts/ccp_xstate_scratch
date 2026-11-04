@@ -1,7 +1,8 @@
 // Invoked actors (plan item engine-actors): the agents a workflow starts, and the one way their results come back.
 // When a state invokes a model stage (an actor whose meta.actors entry has stage parts), the host's run handler renders
-// the run's prompt from that entry (stages.js) into brief.md in its own run folder, makes it a git worktree named by item and run, and
-// journals the prompt's hash. The session then starts the agent with the Agent tool and the prompt `ccp-run <run>`;
+// the run's prompt from that entry (stages.js) into brief.md in its own run folder, makes it a git worktree named by item and run,
+// journals the prompt's hash, and writes the run's stage record, stage.json (trace.js): every prompt piece and input with
+// its source, and, once the item takes the result (the handler's ended), where the output went. The session then starts the agent with the Agent tool and the prompt `ccp-run <run>`;
 // the harness's PreToolUse hook swaps in that prompt, and its SubagentStart hook binds the agent's id to the run.
 // A result counts only through the return tool, whose PreToolUse hook calls accept(): the caller must be the run's
 // agent, the result must match the actor's schema, and a claimed PR must be on GitHub at the claimed head. Why it is
@@ -13,10 +14,11 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
-import { append } from '../../journal/src/index.js';
+import { append, readFile } from '../../journal/src/index.js';
 import { check } from './schema.js';
 import { prRef } from './effects/merge.js';
-import { isStage, render, runLine, returnLine, stagesOf, STAMPED, uncovered } from './stages.js';
+import { assemble, isStage, runLine, returnLine, sections, stagesOf, STAMPED, uncovered } from './stages.js';
+import { endRecord, stageRecord } from './trace.js';
 
 // The actors that are agents are the workflow's model stages (stages.js isStage). Others (merge, ask, post) are host
 // effects (effects/index.js), and a workflow's name starts a child item.
@@ -95,8 +97,8 @@ function journal(root, run, row) {
 
 // ---- The run handler: the host calls it when a state invokes an agent actor
 
-// A run's prompt is rendered from its stage contract alone (stages.js render): rules, inputs, task, output and
-// return. The brief agent's text, when the stage's task names it, fills only the Task part.
+// A run's prompt is rendered from its stage contract alone (stages.js sections): rules, inputs, task, output and
+// return. The run's input named task (a brief another stage wrote, or a literal in the workflow) fills only the Task part.
 
 /**
  * Run handlers for the agent actors, for effects/index.js handlers({ actors }). `host` is the item's host (its root,
@@ -111,6 +113,12 @@ export function actors({ host, repo = process.cwd(), worktrees = join(dirname(re
     find: (effect) => {
       const run = loadRun(host.root, effect.id);
       return run ? outcomeOf(run) : null;
+    },
+    // The item took the run's result or error: the stage record gains what came out and where it went.
+    ended: (effect, row) => {
+      const file = join(runDir(host.root, effect.id), 'stage.json');
+      const record = readJson(file);
+      if (record && !record.ended) writeJson(file, endRecord(record, host.spec, row));
     }
   };
   return Object.fromEntries(names.map((name) => [name, handler]));
@@ -161,7 +169,8 @@ export function prepare({ host, effect, repo, worktrees }) {
     worktree,
     branch
   };
-  const prompt = render(run);
+  const parts = sections(run);
+  const prompt = assemble(parts);
   run.briefHash = sha256(prompt);
   run.context = runLine(run);
   mkdirSync(dir, { recursive: true });
@@ -173,6 +182,14 @@ export function prepare({ host, effect, repo, worktrees }) {
     source: { system: 'journal', ref: `blobs/${hash}` },
     payload: { run: run.run, actor: run.actor, role: run.actor, hash, bytes, contextHash: sha256(run.context), worktree }
   });
+  let rows = [];
+  try {
+    rows = readFile(itemFile(root, item)).rows;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  const value = host.snapshot?.value ?? null;
+  writeJson(join(dir, 'stage.json'), stageRecord({ spec, run, parts, promptHash: run.briefHash, value, rows, transition: effect.transition }));
   writeJson(join(dir, 'run.json'), run);
   return outcomeOf(run);
 }

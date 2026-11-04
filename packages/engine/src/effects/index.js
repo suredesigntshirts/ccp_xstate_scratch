@@ -37,7 +37,9 @@ export function handlers({ github, hearth = null, clock = {}, actors = {}, host 
       handles: (effect) =>
         effect.actor in byActor && !(hearth?.ready && ['ask', 'post'].includes(effect.actor) && !hearth.ready(effect)),
       start: (effect) => byActor[effect.actor].start(effect),
-      find: (effect) => (byActor[effect.actor].find ? byActor[effect.actor].find(effect) : undefined)
+      find: (effect) => (byActor[effect.actor].find ? byActor[effect.actor].find(effect) : undefined),
+      // The run's done or error event was applied (host.js offer): a handler may record where its output went.
+      ended: (effect, row) => byActor[effect.actor]?.ended?.(effect, row)
     },
     timer: timer({ clock }),
     cancel: cancel({ clock })

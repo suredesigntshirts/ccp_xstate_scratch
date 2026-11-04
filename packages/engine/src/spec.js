@@ -11,9 +11,13 @@
 // - Needs. A state's meta.needs names the guards that must hold to enter it. Every transition into the
 //   state checks them, together with its own guard, against the context as the transition's actions
 //   leave it. So no state is ever entered without what it needs, and the JSON says what that is.
+// - Wrote marks. Every set action is followed by a `wrote` marker carrying its params and its JSON pointer in the
+//   workflow file. XState runs assign actions inside transition() and does not return them; the marker is how the
+//   host learns which context paths a step wrote and from where, and journals them (stage-contract cleanup, item F).
 import { createHash } from 'node:crypto';
 import { setup, assign, fromPromise, initialTransition, transition } from 'xstate';
 import { check } from './schema.js';
+import { esc } from './stages.js';
 
 // ---- Paths
 
@@ -72,39 +76,49 @@ const asList = (transitions) => [transitions].flat().map((t) => (typeof t === 's
 
 // A transition whose guard is its own guard plus the needs of the state it enters, checked against the
 // context as its actions will leave it. A transition without a target stays, and keeps its state's needs.
-const bindTransition = (spec, siblings, state, transition) => {
+const bindTransition = (spec, siblings, state, transition, at) => {
   const target = transition.target ? siblings[transition.target] : state;
   if (!target) throw new Error(`no state ${transition.target} beside the transition to it`);
   const names = [...(transition.guard ? [transition.guard] : []), ...(target.meta?.needs ?? [])];
-  if (!names.length) return transition;
-  const actions = transition.actions ?? [];
+  const actions = [transition.actions ?? []].flat();
+  const marked = actions.length ? { ...transition, actions: marks(actions, at) } : transition;
+  if (!names.length) return marked;
   const guard = ({ context, event }) => {
     const after = applyActions(context, event, actions);
     return failing(spec, names, { context: after, event }).length === 0;
   };
-  return { ...transition, guard };
+  return { ...marked, guard };
 };
 
+// Each set action followed by its wrote marker: { at: the set's JSON pointer, writes: its params }.
+const marks = (actions, at) =>
+  actions.flatMap((a, j) => (a.type === 'set' ? [a, { type: 'wrote', params: { at: `${at}/actions/${j}`, writes: a.params } }] : [a]));
+
 // A state, and its child states, with every transition bound. Targets are sibling state names.
-const bindState = (spec, siblings, state) => {
-  const bind = (transitions) => asList(transitions).map((t) => bindTransition(spec, siblings, state, t));
-  const bindAll = (byEvent) => Object.fromEntries(Object.entries(byEvent).map(([event, t]) => [event, bind(t)]));
+// `at` is the state's JSON pointer in the workflow file, so each wrote marker can name where its set action is.
+const bindState = (spec, siblings, state, at = '') => {
+  const bind = (transitions, where) => {
+    const many = Array.isArray(transitions);
+    return asList(transitions).map((t, i) => bindTransition(spec, siblings, state, t, many ? `${where}/${i}` : where));
+  };
+  const bindAll = (byEvent, where) =>
+    Object.fromEntries(Object.entries(byEvent).map(([event, t]) => [event, bind(t, `${where}/${esc(event)}`)]));
 
   const bound = { ...state };
-  if (state.on) bound.on = bindAll(state.on);
-  if (state.after) bound.after = bindAll(state.after);
+  if (state.on) bound.on = bindAll(state.on, `${at}/on`);
+  if (state.after) bound.after = bindAll(state.after, `${at}/after`);
   if (state.invoke) {
-    const one = (invoke) => {
+    const one = (invoke, where) => {
       const { input = {}, onDone, onError } = invoke;
       const b = { ...invoke, input: (scope) => mapPaths(input, scope) };
-      if (onDone) b.onDone = bind(onDone);
-      if (onError) b.onError = bind(onError);
+      if (onDone) b.onDone = bind(onDone, `${where}/onDone`);
+      if (onError) b.onError = bind(onError, `${where}/onError`);
       return b;
     };
-    bound.invoke = Array.isArray(state.invoke) ? state.invoke.map(one) : one(state.invoke);
+    bound.invoke = Array.isArray(state.invoke) ? state.invoke.map((inv, i) => one(inv, `${at}/invoke/${i}`)) : one(state.invoke, `${at}/invoke`);
   }
   if (state.states) {
-    const children = Object.entries(state.states).map(([name, child]) => [name, bindState(spec, state.states, child)]);
+    const children = Object.entries(state.states).map(([name, child]) => [name, bindState(spec, state.states, child, `${at}/states/${esc(name)}`)]);
     bound.states = Object.fromEntries(children);
   }
   return bound;
@@ -120,7 +134,8 @@ export const machineOf = (spec) => {
   return setup({
     actors,
     actions: {
-      set: assign(({ context, event }, params) => ops.set(context, event, params))
+      set: assign(({ context, event }, params) => ops.set(context, event, params)),
+      wrote: () => {} // a marker the host reads from transition()'s actions (see "Wrote marks" above); it does nothing
     },
     delays: spec.meta.delays ?? {}
   }).createMachine({

@@ -311,6 +311,7 @@ effect reported. A source already offered is a duplicate. `id` is the transition
 | run | The run effect id a completion answers, or null |
 | from | The state before (as JSON), on an applied row |
 | hash | `hashOf` the snapshot after, on an applied row; restore checks each one |
+| writes | On an applied row: the context paths the step wrote, in order, each `{ path, from, set }`. `from` is the source as the workflow wrote it (`event.output.pr`, `context.built`, `{ "value": x }`); `set` is the JSON pointer of the set action in the workflow file (null for the start, which writes the item's input as `event.input.<key>`). The stage record (below) traces every input's producer from these |
 
 A `not-owner` row, and a `refused` row for an item that hasn't started, go to the offering session's own file
 (`sessions/<session>.jsonl`), since only the owner writes the item's file.
@@ -329,9 +330,20 @@ timer's `{ ref, due }` (plan item engine-effects). An effect that has ended is n
 
 The engine's actor runs (plan item engine-actors, `packages/engine/src/actors.js`) write these to the item's own file,
 beside its engine rows, with `item` and the `state` the run was started in. A run's folder is
-`<journal root>/items/<item>/runs/<seq>.<invoke>/`: `brief.md`, `context.md`, `run.json`, `spawn.json` (the Agent call
-that started it), `agent.json` (the agent bound to it) and `result.json` (its accepted result). Brief and result texts
-are blobs, `<journal root>/blobs/<sha256>`, as capture stores them.
+`<journal root>/items/<item>/runs/<seq>.<invoke>/`: `brief.md`, `context.md`, `run.json`, `stage.json` (the stage
+record), `spawn.json` (the Agent call that started it), `agent.json` (the agent bound to it) and `result.json` (its
+accepted result). Brief and result texts are blobs, `<journal root>/blobs/<sha256>`, as capture stores them.
+
+`stage.json` (`packages/engine/src/trace.js`) is what the person reads to see one stage run end to end. Written when the
+run is prepared: `stage`, `workflow` (`id`, `name`, `hash`), the `invoke`, `state` and `invokeAt` (JSON pointer) that
+started it, `prompt` (`hash` and `parts`: rules, inputs, task, output and return, each a list of `{ text, source }`,
+where a source is a `frame` constant, a `workflow` JSON pointer, or an `input` with its `producer`) and `inputs` (each
+`name`, `meaning`, `meaningAt`, `value`, `from` (the context path or literal it was wired from), `wiredAt` and
+`producer`, plus `amended` when later writes changed parts of it). A producer is `{ kind: 'stage', run, actor, field }`
+(or `workflow`/`effect` for a child item or host effect), `initial` (the item's input), `literal` (with its pointer),
+`event`, `copy` or `default`, each with the transition and set action that wrote it. Added when the item takes the
+run's result or error: `ended`, `output` (or `error`) and `wrote`, each path written from it with `readBy`, the
+invokes in the chart that read that path.
 
 | When | Kind | `payload` |
 |---|---|---|

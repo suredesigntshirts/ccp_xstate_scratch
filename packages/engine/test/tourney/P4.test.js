@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import { readFile } from '../../../journal/src/index.js';
-import { DATA_RULE, returnLine } from '../../src/stages.js';
+import { DATA_RULE, WORKTREE_RULE, returnLine } from '../../src/stages.js';
 import { promptsOf, part, stageOf, taskInput, inputLine, schemaLine, outputLines, BRIEFS, PLAN } from './contract.js';
 
 const sha256 = (t) => createHash('sha256').update(t).digest('hex');
@@ -34,7 +34,7 @@ test('P4: each brief appears once, as the whole Task part, and the other parts a
     assert.ok(task < at && at < output, `${key}: ${mark} sits inside the Task part`);
     assert.equal(part(prompt, 'Task'), brief, `${key}: the Task part is the brief exactly`);
     assert.notEqual(prompt, brief, `${key}: the brief is not the whole prompt`);
-    assert.equal(part(prompt, 'Rules'), [DATA_RULE, ...stage.rules.map((r) => `- ${r}`)].join('\n'), `${key}: Rules are the data rule and the JSON's`);
+    assert.equal(part(prompt, 'Rules'), [DATA_RULE, WORKTREE_RULE, ...stage.rules.map((r) => `- ${r}`)].join('\n'), `${key}: Rules are the frame's two rules and the JSON's`);
     const inputs = Object.entries(stage.inputs).filter(([k]) => k !== from).map(([k, m]) => inputLine(k, m, run.input[k])).join('\n');
     assert.equal(part(prompt, 'Inputs'), inputs, `${key}: Inputs (without the brief) are the JSON's`);
     assert.equal(part(prompt, 'Output'), [...outputLines(workflow, run.actor), schemaLine(workflow, run.actor)].join('\n'), `${key}: Output is the JSON's`);

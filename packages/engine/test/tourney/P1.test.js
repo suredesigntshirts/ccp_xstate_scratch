@@ -1,5 +1,6 @@
 // P1 (stage-contract pack, lane S round 2): a workflow whose model stage lacks a required part, or breaks the
-// contract's field rules, refuses to load. A model stage is a meta.actors entry with the parts rules, task and inputs.
+// contract's field rules, refuses to load. A model stage is a meta.actors entry with the parts rules and inputs; its
+// input named task fills the Task part (stage-contract cleanup, item A: the task part is gone).
 // Each copy is written to a temp dir and loaded through the real loadWorkflow.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,7 +12,7 @@ import { loadWorkflow } from '../../src/index.js';
 import { stagesOf } from '../../src/stages.js';
 import { WORKFLOWS } from './contract.js';
 
-const PARTS = ['rules', 'task', 'inputs'];
+const PARTS = ['rules', 'inputs'];
 
 // Write a changed copy of workflow `name` and load it by name from that dir.
 function loadChanged(name, change) {
@@ -39,7 +40,7 @@ test('P1: every stage of every workflow, missing any one of its parts, refuses t
       }
     }
   }
-  assert.equal(n, 3 * (3 + 4 + 1), 'all 8 stages, 3 parts each');
+  assert.equal(n, 2 * (3 + 4 + 1), 'all 8 stages, 2 parts each');
 });
 
 test('P1: broken field rules refuse to load: no meaning, empty rules or task, no output schema, a covers path to nothing, invoke inputs that differ', () => {
@@ -48,7 +49,9 @@ test('P1: broken field rules refuse to load: no meaning, empty rules or task, no
     ['quick-fix', (s) => { s.meta.actors.verify.inputs.issue = { meaning: 'x' }; }, /stage verify input issue lacks meaning/],
     ['quick-fix', (s) => { s.meta.actors.verify.rules = []; }, /stage verify rules are empty/],
     ['quick-fix', (s) => { s.meta.actors.verify.rules = ['ok', ' ']; }, /stage verify rules are empty/],
-    ['quick-fix', (s) => { s.meta.actors.brief.task = ''; }, /stage brief task is empty/],
+    ['quick-fix', (s) => { s.states.briefing.invoke.input.task = { value: '' }; }, /stage brief task is empty/],
+    ['quick-fix', (s) => { delete s.meta.actors.build.inputs.task; delete s.states.building.invoke.input.task; }, /stage build lacks input task/],
+    ['research', (s) => { delete s.meta.actors.brief.inputs.task; delete s.states.planning.invoke.input.task; }, /stage brief lacks input task/],
     ['quick-fix', (s) => { s.meta.actors.build.inputs = ['brief']; }, /stage build inputs are invalid/],
     ['quick-fix', (s) => { delete s.meta.actors.build.properties; }, /stage build lacks output schema/],
     ['quick-fix', (s) => { s.meta.actors.verify.properties.lines.covers = 'nothing.expect'; }, /stage verify output lines covers nothing/],

@@ -1,7 +1,7 @@
 // Shared by the contract tests P2-P6 (tournament 2026-11-04-stage-contract, lane S, round 2): the prompt of every
 // model-stage run in quick-fix, research and feature, read from the run folder the real run handler wrote (brief.md is
 // the Agent prompt), and the three workflows parsed straight from workflows/*.json. A stage is a meta.actors entry
-// with the parts rules, task and inputs.
+// with the parts rules and inputs; its input named task fills the Task part (stage-contract cleanup, item A).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadRun, runDir } from '../../src/actors.js';
@@ -16,8 +16,8 @@ export const PLAN = { questions: ['a', 'b', 'c'], researcher: 'MARK-R research i
 
 /** A workflow's stage (its meta.actors entry), straight from the JSON. */
 export const stageOf = (workflow, actor) => WORKFLOWS[workflow].meta.actors[actor];
-/** The input that fills the Task part, or null when the task is text. */
-export const taskInput = (stage) => (Object.hasOwn(stage.inputs, stage.task) ? stage.task : null);
+/** The input that fills the Task part: always the one named task (cleanup item A: one form). */
+export const taskInput = (stage) => (Object.hasOwn(stage.inputs, 'task') ? 'task' : null);
 // The test's own formatting, not the renderer's: a value as shown (refs without the host's stamped fields), an
 // input line, and the output schema as printed ($refs inlined, no description or covers, no stage parts).
 const HIDDEN = ['key', 'gates', 'green', 'checkout'];
@@ -32,7 +32,7 @@ const node = (s, defs) => {
     k === 'properties' ? Object.fromEntries(Object.entries(v).map(([n, x]) => [n, node(x, defs)])) : k === 'items' ? node(v, defs) : v]));
 };
 export const schemaLine = (workflow, actor) => {
-  const { rules, task, inputs, ...schema } = stageOf(workflow, actor);
+  const { rules, inputs, ...schema } = stageOf(workflow, actor);
   return `Schema: ${JSON.stringify(node(schema, WORKFLOWS[workflow].meta.schemas ?? {}))}`;
 };
 export const outputLines = (workflow, actor) => Object.entries(stageOf(workflow, actor).properties)
