@@ -18,7 +18,7 @@ test('Q5: PASS naming the PR head from a worktree at another commit is refused; 
     let X = null;
     const lie = await w.agent('q5', 'verify', async ({ input, worktree }) => {
       X = execFileSync('git', ['-C', worktree, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, report: 'all good' };
+      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'all good' })) };
     }, 'ag-verify');
     assert.notEqual(X, A, 'the verifier\'s worktree is at another commit');
     assert.equal(lie.refused?.rule, 'ref');

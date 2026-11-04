@@ -48,8 +48,8 @@ test('R1: one researcher fails, the join completes, sources are host-checked, an
     const vin = w.openRun('r1', 'verify').input;
     assert.deepEqual(vin.issue, Q);
     // A verifier citing an unchecked source is refused too; the honest one, restating issue, is accepted.
-    assert.equal((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, report: 'ok', sources: [src('https://example.org/nowhere', 'x')] }), 'ag-v')).refused?.rule, 'ref');
-    assert.ok((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, report: 'every line holds', sources: input.draft.sources }), 'ag-v')).accepted);
+    assert.equal((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'ok' })), sources: [src('https://example.org/nowhere', 'x')] }), 'ag-v')).refused?.rule, 'ref');
+    assert.ok((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'every line holds' })), sources: input.draft.sources }), 'ag-v')).accepted);
     await w.drive('r1');
     assert.equal(w.host('r1').snapshot.value, 'awaitingPublish');
     assert.deepEqual(w.plat.posts, [], 'nothing published before the approval');
@@ -76,7 +76,7 @@ test('R1: a rejected report is not published', async () => {
     await w.drive('r1');
     assert.ok((await w.agent('r1', 'write', () => ({ text: 'G', sources: [src('https://example.org/ganymede', 'Ganymede')] }))).accepted);
     await w.drive('r1');
-    assert.ok((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, report: 'ok', sources: input.draft.sources }))).accepted);
+    assert.ok((await w.agent('r1', 'verify', ({ input }) => ({ result: 'PASS', issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'ok' })), sources: input.draft.sources }))).accepted);
     await w.drive('r1');
     await w.drive('r1', tapWake(w.cardOf('r1'), 1));
     assert.equal(w.host('r1').snapshot.value, 'replanning');
@@ -99,7 +99,7 @@ test('R1 (round 2, no inc): drafts are bounded at two; a second FAIL replans', a
       assert.equal(w.host('r1b').snapshot.value, 'writing');
       assert.ok((await w.agent('r1b', 'write', () => ({ text: 'G', sources: [src('https://example.org/ganymede', 'Ganymede')] }), `ag-w${i}`)).accepted);
       await w.drive('r1b');
-      assert.ok((await w.agent('r1b', 'verify', ({ input }) => ({ result: 'FAIL', issue: input.issue, report: 'misses a line', sources: [] }), `ag-v${i}`)).accepted);
+      assert.ok((await w.agent('r1b', 'verify', ({ input }) => ({ result: 'FAIL', issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'FAIL', evidence: 'misses a line' })), sources: [] }), `ag-v${i}`)).accepted);
       await w.drive('r1b');
     }
     const h = w.host('r1b');

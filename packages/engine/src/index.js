@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFile } from '../../journal/src/index.js';
+import { checkStages } from './stages.js';
 
 export { machineOf, failing, get, mapPaths, startRefusal, hashOf, replay } from './spec.js';
 export { check } from './schema.js';
@@ -26,7 +27,7 @@ export const loadWorkflow = (name, { root = null, dir = null } = {}) => {
     const bytes = readFileSync(join(root, 'blobs', pinned[2]));
     const hash = createHash('sha256').update(bytes).digest('hex');
     if (hash !== pinned[2]) throw new Error(`blob ${pinned[2]} hashes to ${hash}`);
-    return { ...JSON.parse(bytes.toString('utf8')), id: name };
+    return checkStages({ ...JSON.parse(bytes.toString('utf8')), id: name });
   }
   const bytes = readFileSync(join(dir ?? REPO_WORKFLOWS, `${name}.json`));
   const hash = createHash('sha256').update(bytes).digest('hex');
@@ -37,7 +38,7 @@ export const loadWorkflow = (name, { root = null, dir = null } = {}) => {
       writeFileSync(path, bytes);
     }
   }
-  return { ...JSON.parse(bytes.toString('utf8')), id: `${name}@${hash}` };
+  return checkStages({ ...JSON.parse(bytes.toString('utf8')), id: `${name}@${hash}` });
 };
 
 /** The pinned workflow an item started on (its seq-0 row's payload.workflow), or null when it has not started. */

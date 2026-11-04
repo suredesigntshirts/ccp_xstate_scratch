@@ -94,7 +94,7 @@ test('SubagentStart binds the agent its Agent call started, journals agent.spawn
   spawn({ root, prompt: `ccp-run ${BRIEF_RUN}`, toolUseId: 't1' });
   assert.equal(bind({ root, agentId: 'other', toolUseId: 'nope' }), null);
   const b = bind({ root, agentId: 'ag1', toolUseId: 't1' });
-  assert.match(b.context, /Your worktree is .*it-1--0\.brief/);
+  assert.match(b.context, /worktree .*it-1--0\.brief/);
   assert.equal(bind({ root, agentId: 'ag2', toolUseId: 't1' }), null, 'a run binds one agent');
   assert.equal(boundRun(root, 'ag1').run, BRIEF_RUN);
   const row = rows(root).find((r) => r.kind === 'agent.spawn');
@@ -121,7 +121,7 @@ test('an agent SubagentStart could not bind is bound from its meta.json at its f
   spawn({ root, prompt: `ccp-run ${BRIEF_RUN}`, toolUseId: 't1', session: 's1' });
   assert.equal(bindLate({ root, agentId: 'plain', metaToolUseId: 'not-a-run' }), null, 'an ordinary subagent is left alone');
   const late = bindLate({ root, agentId: 'ag1', metaToolUseId: 't1' });
-  assert.match(late.bound.context, /ccp-harness run it-1:0\.brief/);
+  assert.match(late.bound.context, /^Run it-1:0\.brief,/);
   assert.equal(rows(root).find((r) => r.kind === 'agent.spawn').payload.via, 'meta');
 });
 
@@ -160,8 +160,9 @@ test('an accepted brief fixes both briefs before any build, moves the item to bu
   assert.equal(d.state, 'building');
   assert.deepEqual(d.results.map((r) => r.outcome), ['applied']);
   const build = loadRun(root, 'it-1:1.build');
-  assert.equal(build.briefHash, sha256(briefs.builder), 'the builder\'s prompt is its brief exactly');
-  assert.equal(readFileSync(join(runDir(root, 'it-1:1.build'), 'brief.md'), 'utf8'), briefs.builder);
+  const prompt = readFileSync(join(runDir(root, 'it-1:1.build'), 'brief.md'), 'utf8');
+  assert.equal(build.briefHash, sha256(prompt), 'the run journals the hash of its whole rendered prompt');
+  assert.equal(prompt.split('\n## Task\n')[1].split('\n\n## Output\n')[0], briefs.builder, 'the builder\'s brief is its Task part exactly');
   const t = rows(root).find((r) => r.kind === 'engine.transition' && r.payload.event.type === 'xstate.done.actor.brief');
   assert.deepEqual(t.source, { system: 'harness', ref: 'return r1' });
   assert.equal((await deliver({ root, run: BRIEF_RUN })).results.length, 0, 'delivered once');

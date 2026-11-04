@@ -26,9 +26,11 @@ export function handlers({ github, hearth = null, clock = {}, actors = {}, host 
   const byActor = {
     ...(github && { merge: merge({ github }) }),
     ...(hearth && { ask: card({ hearth }), post: post({ hearth }) }),
-    ...actors,
     // Design A, 4.2: a workflow name as an actor starts a child item.
-    ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {})
+    ...(host && handlersFor ? Object.fromEntries(workflows.map((name) => [name, item({ host, load, handlersFor })])) : {}),
+    // Model stages last (stage contract, lane S round 2): a stage named like a workflow is still its own agent, never a
+    // child item.
+    ...actors
   };
   return {
     run: {
