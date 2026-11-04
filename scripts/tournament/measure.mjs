@@ -9,7 +9,7 @@
 // (# tests, # pass, # fail, # skipped, # todo) are read if it prints them. config.measure names a module in the
 // tournament folder whose measure({ checkout, config, lane }) returns the tournament's own measures.
 // --scores merges the result into <tournament>/scores.json; --summary appends a Markdown table to the file
-// (default $GITHUB_STEP_SUMMARY).
+// (default $GITHUB_STEP_SUMMARY) and prints it to stderr, so the job log carries it too.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -111,7 +111,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   if (argv.includes('--summary')) {
     const file = opt(argv, '--summary') || process.env.GITHUB_STEP_SUMMARY;
     if (file) fs.appendFileSync(file, summary(r) + '\n');
-    else process.stdout.write(summary(r) + '\n');
+    // Also to the log, which the REST API serves; a job summary is only shown on the run page.
+    console.error(summary(r));
   }
   if (r.suite && (r.suite.exit === null || r.suite.tests === null)) {
     console.error('measure: the suite did not run to a TAP summary');
