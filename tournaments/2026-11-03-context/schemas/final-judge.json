@@ -1,0 +1,84 @@
+{
+  "type": "object",
+  "properties": {
+    "scores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lane": {
+            "type": "string"
+          },
+          "verifiedPasses": {
+            "type": "number"
+          },
+          "claimedPasses": {
+            "type": "number"
+          },
+          "primitives": {
+            "type": "number"
+          },
+          "passesPerPrimitive": {
+            "type": "number"
+          },
+          "specLines": {
+            "type": "number"
+          },
+          "tapsQ1": {
+            "type": "number"
+          },
+          "tapsF1": {
+            "type": "number"
+          },
+          "oneVocabulary": {
+            "type": "boolean"
+          },
+          "rejectedPasses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lane",
+          "verifiedPasses",
+          "primitives",
+          "notes"
+        ]
+      }
+    },
+    "ranking": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bestIdeas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "lane": {
+            "type": "string"
+          },
+          "idea": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "lane",
+          "idea"
+        ]
+      }
+    }
+  },
+  "required": [
+    "scores",
+    "ranking",
+    "bestIdeas"
+  ]
+}

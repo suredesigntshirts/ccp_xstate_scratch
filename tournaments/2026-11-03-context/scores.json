@@ -1,0 +1,540 @@
+{
+  "tournament": "2026-11-03-context",
+  "lanes": {
+    "A-minimalist": {
+      "tournament": "2026-11-03-context",
+      "lane": "A-minimalist",
+      "sha": "0efc71fdc73680c72f0de8fe59f80aa9ec4845a7",
+      "runner": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "measuredAt": "2026-11-04T03:21:56.597Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 27,
+        "pass": 27,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 530,
+          "quick-fix": 1341,
+          "research": 774,
+          "total": 2645
+        },
+        "stateKinds": {
+          "normal": 20,
+          "final": 6
+        },
+        "transitionKinds": {
+          "invoke.onDone": 48,
+          "invoke.onError": 29,
+          "invoke[]": 2,
+          "on": 24
+        },
+        "ops": {
+          "set": 97
+        },
+        "guardForms": {
+          "present": 33,
+          "in": 18,
+          "same": 8
+        },
+        "effects": {
+          "run": 23,
+          "stop": 23
+        },
+        "actors": {
+          "brief": 3,
+          "quick-fix": 4,
+          "ask": 6,
+          "build": 5,
+          "verify": 3,
+          "merge": 1,
+          "post": 1
+        },
+        "events": {
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 6,
+          "github.pull_request.closed": 6
+        },
+        "metaKeys": {
+          "guards": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 20
+        },
+        "stateKeys": {
+          "meta": 20,
+          "invoke": 19,
+          "type": 6,
+          "on": 5
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 4,
+          "ops": 1,
+          "guardForms": 3,
+          "effects": 2,
+          "actors": 7,
+          "events": 3,
+          "metaKeys": 6,
+          "stateKeys": 4
+        },
+        "interpreterFilesChanged": [
+          "packages/engine/src/spec.js"
+        ],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/github.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/effects/item.js",
+          "packages/engine/src/index.js",
+          "packages/engine/src/spec.js"
+        ]
+      }
+    },
+    "B-event-sourcing": {
+      "tournament": "2026-11-03-context",
+      "lane": "B-event-sourcing",
+      "sha": "6991eaa47bf46c60aabafc6d4780b6489b80b5ed",
+      "runner": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "measuredAt": "2026-11-04T03:22:02.035Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 19,
+        "pass": 19,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 1351,
+          "quick-fix": 1163,
+          "research": 762,
+          "total": 3276
+        },
+        "stateKinds": {
+          "normal": 23,
+          "final": 6
+        },
+        "transitionKinds": {
+          "invoke.onDone": 49,
+          "invoke.onError": 26,
+          "after": 5,
+          "on": 29,
+          "reenter": 4,
+          "invoke[]": 1
+        },
+        "ops": {
+          "set": 107,
+          "inc": 5
+        },
+        "guardForms": {
+          "present": 31,
+          "in": 27,
+          "same": 14
+        },
+        "effects": {
+          "run": 23,
+          "stop": 23,
+          "timer": 5,
+          "cancel": 5
+        },
+        "actors": {
+          "brief": 3,
+          "build": 2,
+          "verify": 3,
+          "merge": 3,
+          "ask": 7,
+          "research": 3,
+          "synthesize": 1,
+          "post": 1
+        },
+        "events": {
+          "github.pull_request.synchronize": 10,
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 10
+        },
+        "metaKeys": {
+          "guards": 3,
+          "delays": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 24
+        },
+        "stateKeys": {
+          "meta": 24,
+          "invoke": 21,
+          "after": 5,
+          "on": 8,
+          "type": 6
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 6,
+          "ops": 2,
+          "guardForms": 3,
+          "effects": 4,
+          "actors": 8,
+          "events": 3,
+          "metaKeys": 7,
+          "stateKeys": 5
+        },
+        "interpreterFilesChanged": [
+          "packages/engine/src/host.js",
+          "packages/engine/src/spec.js"
+        ],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/github.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/host.js",
+          "packages/engine/src/spec.js"
+        ]
+      }
+    },
+    "C-provenance": {
+      "tournament": "2026-11-03-context",
+      "lane": "C-provenance",
+      "sha": "35833ac5af78ba6f7fc1aa489abef64daeed83e0",
+      "runner": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "measuredAt": "2026-11-04T03:22:03.361Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 1275,
+          "quick-fix": 1050,
+          "research": 856,
+          "total": 3181
+        },
+        "stateKinds": {
+          "normal": 33,
+          "final": 13,
+          "parallel": 1
+        },
+        "transitionKinds": {
+          "machine.on": 2,
+          "invoke.onDone": 50,
+          "invoke.onError": 26,
+          "after": 7,
+          "on": 14,
+          "state.onDone": 11,
+          "reenter": 3
+        },
+        "ops": {
+          "set": 95,
+          "inc": 9
+        },
+        "guardForms": {
+          "present": 33,
+          "below": 3,
+          "same": 26,
+          "is": 27,
+          "in": 2
+        },
+        "effects": {
+          "run": 26,
+          "stop": 26,
+          "timer": 7,
+          "cancel": 7
+        },
+        "actors": {
+          "brief": 3,
+          "build": 3,
+          "verify": 4,
+          "merge": 3,
+          "ask": 8,
+          "research": 3,
+          "synthesize": 1,
+          "post": 1
+        },
+        "events": {
+          "github.check_suite.completed": 6,
+          "github.check_run.completed": 4,
+          "github.pull_request.synchronize": 4,
+          "github.pull_request.closed": 4
+        },
+        "metaKeys": {
+          "guards": 3,
+          "delays": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 26
+        },
+        "stateKeys": {
+          "meta": 26,
+          "invoke": 26,
+          "after": 7,
+          "initial": 5,
+          "on": 4,
+          "states": 6,
+          "onDone": 3,
+          "type": 14
+        },
+        "distinct": {
+          "stateKinds": 3,
+          "transitionKinds": 7,
+          "ops": 2,
+          "guardForms": 5,
+          "effects": 4,
+          "actors": 8,
+          "events": 4,
+          "metaKeys": 7,
+          "stateKeys": 8
+        },
+        "interpreterFilesChanged": [
+          "packages/engine/src/spec.js"
+        ],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/attest.js",
+          "packages/engine/src/effects/github.js",
+          "packages/engine/src/effects/merge.js",
+          "packages/engine/src/index.js",
+          "packages/engine/src/spec.js"
+        ]
+      }
+    },
+    "D-wildcard": {
+      "tournament": "2026-11-03-context",
+      "lane": "D-wildcard",
+      "sha": "9b49f9f4936f201632b88e79c14b1092162075f3",
+      "runner": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "measuredAt": "2026-11-04T03:22:08.323Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 279,
+          "quick-fix": 674,
+          "research": 464,
+          "total": 1417
+        },
+        "stateKinds": {
+          "normal": 23,
+          "final": 7
+        },
+        "transitionKinds": {
+          "invoke.onDone": 41,
+          "invoke.onError": 16,
+          "reenter": 4,
+          "after": 2,
+          "on": 13,
+          "always": 5
+        },
+        "ops": {},
+        "guardForms": {
+          "present": 12,
+          "same": 11,
+          "is": 17,
+          "below": 3,
+          "in": 2
+        },
+        "effects": {
+          "run": 22,
+          "stop": 22,
+          "timer": 2,
+          "cancel": 2
+        },
+        "actors": {
+          "brief": 3,
+          "items": 6,
+          "ask": 6,
+          "build": 3,
+          "verify": 2,
+          "merge": 1,
+          "post": 1
+        },
+        "events": {
+          "pr": 4,
+          "github.check_suite.completed": 2,
+          "github.check_run.completed": 4,
+          "github.pull_request.closed": 4
+        },
+        "metaKeys": {
+          "guards": 3,
+          "input": 3,
+          "events": 3,
+          "actors": 3,
+          "schemas": 3,
+          "state.needs": 9,
+          "delays": 2
+        },
+        "stateKeys": {
+          "invoke": 22,
+          "meta": 9,
+          "type": 7,
+          "after": 2,
+          "on": 3,
+          "always": 2
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 6,
+          "ops": 0,
+          "guardForms": 5,
+          "effects": 4,
+          "actors": 7,
+          "events": 4,
+          "metaKeys": 7,
+          "stateKeys": 6
+        },
+        "interpreterFilesChanged": [
+          "packages/engine/src/host.js",
+          "packages/engine/src/spec.js"
+        ],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/github.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/effects/items.js",
+          "packages/engine/src/host.js",
+          "packages/engine/src/spec.js"
+        ]
+      }
+    },
+    "E-control": {
+      "tournament": "2026-11-03-context",
+      "lane": "E-control",
+      "sha": "cb54a703b09bdbf179af8b5198ccc0c3344ace1e",
+      "runner": "dbc40bfdbae08567101f16b418cfd96d8d72f60e",
+      "measuredAt": "2026-11-04T03:22:09.816Z",
+      "suite": {
+        "command": "node --test --test-reporter=tap packages/engine/test/tourney/*.test.js",
+        "exit": 0,
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "todo": 0,
+        "failing": []
+      },
+      "measures": {
+        "specLines": {
+          "feature": 482,
+          "quick-fix": 1832,
+          "research-question": 89,
+          "research": 983,
+          "total": 3386
+        },
+        "stateKinds": {
+          "normal": 21,
+          "final": 9
+        },
+        "transitionKinds": {
+          "invoke.onDone": 35,
+          "invoke.onError": 17,
+          "on": 58,
+          "reenter": 8,
+          "after": 1
+        },
+        "ops": {
+          "set": 112,
+          "inc": 19
+        },
+        "guardForms": {
+          "is": 28,
+          "present": 22,
+          "below": 4,
+          "same": 16
+        },
+        "effects": {
+          "run": 20,
+          "stop": 20,
+          "timer": 1,
+          "cancel": 1
+        },
+        "actors": {
+          "plan": 2,
+          "start": 3,
+          "ask": 6,
+          "brief": 1,
+          "build": 1,
+          "verify": 2,
+          "merge": 1,
+          "research": 1,
+          "synthesize": 1,
+          "checkSources": 1,
+          "publish": 1
+        },
+        "events": {
+          "child.ended": 5,
+          "tripwire": 6,
+          "pr.head.observed": 5,
+          "ci.observed": 5
+        },
+        "metaKeys": {
+          "guards": 4,
+          "input": 4,
+          "events": 3,
+          "actors": 4,
+          "state.needs": 21,
+          "delays": 1,
+          "ci": 1,
+          "schemas": 1
+        },
+        "stateKeys": {
+          "meta": 21,
+          "invoke": 20,
+          "on": 8,
+          "type": 9,
+          "after": 1
+        },
+        "distinct": {
+          "stateKinds": 2,
+          "transitionKinds": 5,
+          "ops": 2,
+          "guardForms": 4,
+          "effects": 4,
+          "actors": 11,
+          "events": 4,
+          "metaKeys": 8,
+          "stateKeys": 5
+        },
+        "interpreterFilesChanged": [
+          "packages/engine/src/host.js"
+        ],
+        "engineFilesChanged": [
+          "packages/engine/src/actors.js",
+          "packages/engine/src/effects/children.js",
+          "packages/engine/src/effects/github.js",
+          "packages/engine/src/effects/index.js",
+          "packages/engine/src/effects/publish.js",
+          "packages/engine/src/effects/sources.js",
+          "packages/engine/src/host.js",
+          "packages/engine/src/index.js",
+          "packages/engine/src/observe.js"
+        ]
+      }
+    }
+  }
+}
