@@ -3,8 +3,9 @@
 //
 // - Paths. A string like "context.pr.headSha" or "event.output" reads from { context, event };
 //   { "value": x } is the literal x. Invoke input and the root output map names to paths.
-// - Context ops. Actions are { type: "set", params: { "<context path>": <path or value> } } and
-//   { type: "inc", params: "<context path>" }. Nothing else writes context.
+// - Context op. Actions are { type: "set", params: { "<context path>": <path or value> } }. Every source in one
+//   set reads the context as it was before that set, so { b: "context.a", a: x } shifts a into b (design A,
+//   round 2: a bounded loop is a short shift register, and `inc` is gone). Nothing else writes context.
 // - Guards. meta.guards names lists of conditions that must all hold: a path that must be present,
 //   { path, is: literal }, { path, in: [literals] }, { path, same: otherPath } or { path, below: number }.
 // - Needs. A state's meta.needs names the guards that must hold to enter it. Every transition into the
@@ -39,8 +40,7 @@ const ops = {
     Object.entries(params).reduce(
       (next, [path, source]) => setIn(next, path.split('.'), resolve(source, { context, event })),
       context
-    ),
-  inc: (context, _event, path) => setIn(context, path.split('.'), (get(context, path) ?? 0) + 1)
+    )
 };
 
 // The context as a transition's actions leave it.
@@ -94,10 +94,14 @@ const bindState = (spec, siblings, state) => {
   if (state.on) bound.on = bindAll(state.on);
   if (state.after) bound.after = bindAll(state.after);
   if (state.invoke) {
-    const { input = {}, onDone, onError } = state.invoke;
-    bound.invoke = { ...state.invoke, input: (scope) => mapPaths(input, scope) };
-    if (onDone) bound.invoke.onDone = bind(onDone);
-    if (onError) bound.invoke.onError = bind(onError);
+    const one = (invoke) => {
+      const { input = {}, onDone, onError } = invoke;
+      const b = { ...invoke, input: (scope) => mapPaths(input, scope) };
+      if (onDone) b.onDone = bind(onDone);
+      if (onError) b.onError = bind(onError);
+      return b;
+    };
+    bound.invoke = Array.isArray(state.invoke) ? state.invoke.map(one) : one(state.invoke);
   }
   if (state.states) {
     const children = Object.entries(state.states).map(([name, child]) => [name, bindState(spec, state.states, child)]);
@@ -116,8 +120,7 @@ export const machineOf = (spec) => {
   return setup({
     actors,
     actions: {
-      set: assign(({ context, event }, params) => ops.set(context, event, params)),
-      inc: assign(({ context, event }, params) => ops.inc(context, event, params))
+      set: assign(({ context, event }, params) => ops.set(context, event, params))
     },
     delays: spec.meta.delays ?? {}
   }).createMachine({

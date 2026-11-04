@@ -82,6 +82,10 @@ export function github({ api = 'https://api.github.com', env = process.env } = {
   return {
     /** pull_request_read: the PR as GitHub has it now. */
     pull: (args) => call('GET', at(args)),
+    /** The PR's changed files (design A, 4.1: the gates a PR touches). */
+    files: (args) => call('GET', `${at(args)}/files?per_page=100`),
+    /** The check suites on a commit (design A, 4.1: green on the head). */
+    suites: ({ owner, repo, sha }) => call('GET', `/repos/${owner}/${repo}/commits/${sha}/check-suites`),
     /** merge_pull_request: expectedHeadSha is REST's sha, so GitHub refuses the merge when the head moved. */
     merge: ({ expectedHeadSha, merge_method = 'merge', commit_title, commit_message, ...args }) =>
       call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message })
