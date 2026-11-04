@@ -30,11 +30,11 @@ test('P2: every rendered prompt is the workflow\'s words, the run\'s data and th
     const literals = JSON.stringify(wf.states).match(/"task":\{"value":"((?:[^"\\]|\\.)*)"\}/g)?.map((m) => JSON.parse(m.slice(7)).value) ?? [];
     assert.ok(literals.includes(run.input.task) || Object.values(FIX).includes(run.input.task), `${key}: the task is from the workflow or a brief`);
     cut(`\n# Task\n${run.input.task}\n`, 'the task');
-    // The fixed frame.
-    cutRe(FRAME.run, 'the Run line');
+    // The fixed frame, and nothing more: the Run part (data only), the headings, the data rule, the return paragraph.
+    cut(`# Run\n${FRAME.run(run)}\n`, 'the Run part');
     cutRe(FRAME.ret, 'the Return paragraph');
-    for (const s of [FRAME.rules, `- ${FRAME.data}`, FRAME.output, ...FRAME.headings.filter((h) => h !== '# Task' && h !== '# Inputs')]) cut(s, `frame: ${s.slice(0, 30)}`);
-    if (Object.keys(stage).length > 1) { cut('# Inputs', 'frame: # Inputs'); cut(FRAME.inputs, 'frame: inputs sentence'); }
+    cut(`- ${FRAME.data}`, 'frame: the data rule');
+    for (const h of FRAME.headings.filter((h) => h !== '# Run' && h !== '# Task' && (h !== '# Inputs' || Object.keys(stage).length > 1))) cut(`${h}\n`, `frame: ${h}`);
     assert.equal(rest.trim(), '', `${key}: wording left that is neither workflow JSON nor frame: ${JSON.stringify(rest.trim()).slice(0, 200)}`);
   }
 });
@@ -48,4 +48,13 @@ test('P2: the engine source holds no workflow rule line and none of lane A\'s mo
       assert.ok(!text.includes(phrase), `${f} still holds "${phrase}"`);
     }
   }
+});
+
+test('P2: the renderer\'s only sentences are the data rule and the return mechanics', () => {
+  const text = readFileSync(join(SRC, 'stage.js'), 'utf8').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*\*)/.test(l)).join('\n');
+  const literals = [...text.matchAll(/'((?:[^'\\\n]|\\.)*)'|`((?:[^`\\]|\\.)*)`/g)].map((m) => m[1] ?? m[2]);
+  const sentences = literals.filter((l) => l.replace(/\$\{[^}]*\}/g, 'X').split(/\s+/).filter(Boolean).length >= 5);
+  const allowed = (l) => l.replace(/\\'/g, "'") === FRAME.data || l.startsWith('# Return\\nWhen you are done, call the harness return tool') || /refuses|has no|is not a stage|has words for/.test(l);
+  for (const l of sentences) assert.ok(allowed(l), `stage.js holds wording outside the frame: ${l.slice(0, 80)}`);
+  assert.ok(sentences.some((l) => l.replace(/\\'/g, "'") === FRAME.data), 'the data rule is the frame\'s');
 });

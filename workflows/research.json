@@ -68,7 +68,7 @@
       "meta": { "needs": ["hasDraft"] },
       "invoke": {
         "id": "verify", "src": "verify",
-        "input": { "task": "context.plan.verifier", "issue": "context.issue", "draft": "context.draft", "answers": "context.answers" },
+        "input": { "task": "context.plan.verifier", "issue": "context.issue", "lines": "context.issue.expect", "draft": "context.draft", "answers": "context.answers" },
         "onDone": [
           { "target": "awaitingPublish", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
           { "target": "writing", "guard": "failed", "actions": [{ "type": "set", "params": { "verdict": "event.output" } }] },
@@ -165,6 +165,7 @@
           "You write nothing outside your result: open no PR, push nothing, comment on nothing. Your lines are read by the person who approves publishing and, on FAIL, by the writer."
         ],
         "issue": "The lines you grade (expect), fixed for this item: grade them exactly as given here.",
+        "lines": "The expect lines you grade, in order: the same lines as issue.expect. Your result's lines has one entry per line, each starting with the line copied exactly.",
         "draft": "The report to grade: { text, sources }.",
         "answers": "The researchers' answers the draft was written from, for checking only."
       }
@@ -177,9 +178,9 @@
       "researcher": { "type": "object", "required": ["text", "sources"], "properties": { "text": { "type": "string", "minLength": 1 }, "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#ref" } } } },
       "write": { "type": "object", "required": ["text", "sources"], "properties": { "text": { "type": "string", "minLength": 1 }, "sources": { "type": "array", "minItems": 1, "items": { "$ref": "#ref" } } } },
       "verify": { "type": "object", "required": ["result", "issue", "lines", "sources"], "properties": {
-        "result": { "enum": ["PASS", "FAIL"], "description": "PASS only when every line is PASS; the host refuses any other." },
+        "result": { "enum": ["PASS", "FAIL"], "description": "PASS only when every entry of lines is PASS; FAIL otherwise." },
         "issue": { "$ref": "#issue", "description": "Your input's issue, copied exactly, with the same keys in the same order; the host refuses any difference." },
-        "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#grade" }, "description": "One entry per line of issue.expect, in the same order; the host refuses a result that leaves a line out." },
+        "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#grade" }, "description": "One entry per line of your input's lines, in the same order; the host refuses a result that leaves a line out, adds one or reorders them." },
         "sources": { "type": "array", "items": { "$ref": "#ref" } } } },
       "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
       "post": { "type": "object", "required": ["ref"], "properties": { "ref": { "type": "string", "minLength": 1 } } }
@@ -187,7 +188,7 @@
     "schemas": {
       "ref": { "type": "object", "required": ["url", "at"], "description": "A reference { url, at }. For a pull request, at is its head commit, and your worktree's HEAD must be exactly at when you return. For any other page, at is a short verbatim quote from that page. The host checks every reference before your result counts.", "properties": { "url": { "type": "string", "minLength": 1 }, "at": { "type": "string", "minLength": 1 } } },
       "grade": { "type": "object", "required": ["line", "result", "evidence"], "properties": {
-        "line": { "type": "string", "minLength": 1, "description": "One line of issue.expect, copied exactly." },
+        "line": { "type": "string", "minLength": 1, "description": "One line of your input's lines, copied exactly." },
         "result": { "enum": ["PASS", "FAIL"] },
         "evidence": { "type": "string", "minLength": 1, "description": "What you ran and what it showed, enough for the person to check it." } } },
       "issue": { "type": "object", "required": ["url", "expect"], "properties": { "url": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } }

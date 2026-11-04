@@ -17,7 +17,10 @@ export { render, returnPart, stageProblems } from './stage.js';
 const REPO_WORKFLOWS = new URL('../../../workflows/', import.meta.url).pathname;
 const PINNED = /^(.+)@([0-9a-f]{64})$/;
 
-// The stage contract (tournament 2026-11-04, lane M): a workflow whose model stages miss a part refuses to load.
+// The stage contract (tournament 2026-11-04, lane M): a workflow whose model stages miss a part refuses to load. The
+// folder is read only to know which invoke srcs start a child item, as the item handler does when it starts one; a
+// stage that shares a workflow's name is still the stage (effects/index.js handlers), so a new workflow file never
+// changes how a pinned workflow loads or runs.
 function checked(name, text, dir) {
   const spec = JSON.parse(text);
   let workflows = [];

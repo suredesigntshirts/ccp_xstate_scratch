@@ -18,7 +18,7 @@ test('P6: a first build shows previous, verdict and failure with their meanings,
 test('P6: every input key of every rendered stage appears with its JSON meaning, and no input appears without one', async () => {
   const p = await promptsOf();
   for (const [key, { text, run, stage }] of Object.entries(p)) {
-    const inputs = section(text, '# Inputs') ?? '';
+    const inputs = `\n${section(text, '# Inputs') ?? ''}`;
     const given = Object.keys(run.input).filter((k) => k !== 'task');
     assert.deepEqual(given.sort(), Object.keys(stage).filter((k) => k !== 'task').sort(), `${key}: the run's inputs are the stage's meanings`);
     for (const k of given) assert.ok(inputs.includes(`\n- ${k}: ${lines(stage[k]).join(' ')}\n`), `${key}: ${k} with its meaning`);

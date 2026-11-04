@@ -327,26 +327,19 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
   const problems = check(run.schema, result, run.defs);
   if (problems.length) return refuse('schema', `${run.actor} result: ${problems.join('; ').replaceAll('$', 'result')}`);
 
-  // Design A, 4.1: refs observed, restated inputs equal. The fields the host stamps are its own: whatever an agent set
-  // there is dropped before any check (lane M), then stamped from what the host sees. Only the stamped result is stored.
+  // Design A, 4.1: refs observed, restated inputs equal, stamped fields reserved. Only the stamped result is stored.
+  for (const { path, ref } of refsIn(result)) {
+    const taken = STAMPED.filter((k) => k in ref);
+    if (taken.length) return refuse('reserved', `${path} sets ${taken.join(', ')}: the host sets these from what it sees`);
+  }
+  // A field the input also has restates it: exactly, or, for a list of strings, one entry per string in the same
+  // order, each entry an object holding that string (lane M round 2: how a verdict covers its lines, by name only).
+  for (const k of Object.keys(result ?? {})) {
+    if (run.input && Object.hasOwn(run.input, k) && !restates(result[k], run.input[k])) {
+      return refuse('restated', `result.${k} does not restate the input's ${k}: a field your input has must repeat it exactly, a list of lines one entry per line in the same order`);
+    }
+  }
   const stamped = structuredClone(result);
-  for (const { ref } of refsIn(stamped)) for (const k of STAMPED) delete ref[k];
-  for (const k of Object.keys(stamped ?? {})) {
-    if (run.input && Object.hasOwn(run.input, k) && JSON.stringify(stamped[k]) !== JSON.stringify(run.input[k])) {
-      return refuse('restated', `result.${k} is not the input's ${k}: a field your input has must repeat it exactly`);
-    }
-  }
-  // The verdict restates the lines it graded (lane M, P5): each line of the input's issue.expect once, in order, and a
-  // result that is PASS only when every line is PASS.
-  if (Array.isArray(stamped?.lines)) {
-    const expect = Array.isArray(run.input?.issue?.expect) ? run.input.issue.expect : [];
-    const got = stamped.lines.map((l) => l?.line);
-    if (got.length !== expect.length || got.some((l, i) => l !== expect[i])) {
-      return refuse('restated', `result.lines must grade each line of issue.expect once, in order: expected ${JSON.stringify(expect)}, got ${JSON.stringify(got)}`);
-    }
-    const all = stamped.lines.every((l) => l.result === 'PASS') ? 'PASS' : 'FAIL';
-    if ('result' in stamped && stamped.result !== all) return refuse('restated', `result.result is ${stamped.result}, but its lines say ${all}`);
-  }
   for (const { path, ref } of refsIn(stamped)) {
     const pr = prRef(ref.url);
     if (pr) {
@@ -366,6 +359,7 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
       }
       if (head !== ref.at) return refuse('ref', `${path}: your worktree is at ${head}, not ${ref.at}`);
       ref.key = `${pr.owner}/${pr.repo}#${pr.pullNumber}`;
+      ref.fetch = `pull/${pr.pullNumber}/head`;
       // Fails closed (round 2, graft from lane B): when the files cannot all be listed, the gates are unknown, and an
       // unknown gate is a touched gate, so the person's CI-change card is asked.
       let files = null;
@@ -420,9 +414,15 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
 }
 
 // Every ref { url, at } in a value, depth-first, with its path (design A, 4.1). Fields the host stamps on a PR ref.
-const STAMPED = ['key', 'gates', 'green'];
+const STAMPED = ['key', 'fetch', 'gates', 'green'];
 const FILES_PAGE = 100; // github.files asks for one page of 100
 const GREEN = ['success', 'neutral', 'skipped'];
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+function restates(out, input) {
+  const lines = Array.isArray(input) && input.every((l) => typeof l === 'string');
+  if (!lines || !Array.isArray(out) || !out.some((o) => o && typeof o === 'object')) return same(out, input);
+  return out.length === input.length && out.every((o, i) => o && typeof o === 'object' && Object.values(o).includes(input[i]));
+}
 function refsIn(value, path = 'result') {
   if (!value || typeof value !== 'object') return [];
   const here = typeof value.url === 'string' && typeof value.at === 'string' ? [{ path, ref: value }] : [];

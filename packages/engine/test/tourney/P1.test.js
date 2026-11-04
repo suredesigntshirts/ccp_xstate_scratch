@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadWorkflow } from '../../src/index.js';
+import { handlers } from '../../src/effects/index.js';
 import { fresh } from './world.js';
 import { workflow } from './contract.js';
 
@@ -23,11 +24,11 @@ const CASES = [
   ['a stage with no rules', (wf) => { delete wf.meta.stages.verify.task; }, /stage verify has no rules: meta\.stages\.verify\.task is missing or empty/],
   ['empty rules', (wf) => { wf.meta.stages.brief.task = []; }, /stage brief has no rules/],
   ['an empty meaning', (wf) => { wf.meta.stages.build.base = ''; }, /stage build: base has no meaning/],
-  ['an invoke with no task', (wf) => { delete wf.states.building.invoke.input.task; }, /building: invoke build \(stage build\) has no task input/],
-  ['a meaning for an input the invoke does not give', (wf) => { wf.meta.stages.build.extra = 'not given'; }, /meta\.stages\.build\.extra explains an input this invoke does not give/],
+  ['an invoke with no task', (wf) => { delete wf.states.building.invoke.input.task; }, /building: meta\.stages\.build\.task has words for task, which this invoke does not give/],
+  ['a meaning for an input the invoke does not give', (wf) => { wf.meta.stages.build.extra = 'not given'; }, /meta\.stages\.build\.extra has words for extra, which this invoke does not give/],
   ['a stage with its whole entry deleted', (wf) => { delete wf.meta.stages.build; }, /building: build is not a stage, a host effect or a workflow/],
   ['a stage with no output', (wf) => { delete wf.meta.actors.verify; }, /stage verify has no output: meta\.actors\.verify is missing/],
-  ['a verifier that need not cover the expect lines', (wf) => { wf.meta.actors.verify.required = wf.meta.actors.verify.required.filter((k) => k !== 'lines'); }, /stage verify grades issue, so its output must require lines/]
+  ['a verify invoke that does not give the lines it grades', (wf) => { delete wf.states.verifying.invoke.input.lines; }, /verifying: meta\.stages\.verify\.lines has words for lines, which this invoke does not give/]
 ];
 
 for (const [name, change, message] of CASES) {
@@ -37,9 +38,24 @@ for (const [name, change, message] of CASES) {
   });
 }
 
-test('P1: a stage named like a workflow refuses to load (its invoke would start that workflow instead)', () => {
+test('P1 (round 2): a workflow file named like a stage changes nothing: the load reads no collision, and the stage runs', async () => {
   const dir = dirWith(workflow('quick-fix'), { build: '{}' });
-  assert.throws(() => loadWorkflow('quick-fix', { dir }), /stage build has the name of a workflow/);
+  assert.ok(loadWorkflow('quick-fix', { dir }).meta.stages.build, 'quick-fix still loads beside a build.json');
+  const started = [];
+  const h = handlers({ actors: { build: { start: (e) => { started.push(e.actor); return { ref: 'stage' }; } } }, host: {}, handlersFor: () => ({}), workflows: ['build'] });
+  assert.deepEqual(await h.run.start({ actor: 'build', id: 'x:1.build' }), { ref: 'stage' });
+  assert.deepEqual(started, ['build'], 'the stage handler runs, not a child item of the build workflow');
+});
+
+test('P1 (round 2): a pinned workflow loads from its blob alone: a new workflow file named like one of its stages does not refuse it', () => {
+  const root = fresh('p1pin');
+  const dir = fresh('p1pindir');
+  mkdirSync(dir, { recursive: true });
+  for (const n of ['research', 'quick-fix', 'feature']) writeFileSync(join(dir, `${n}.json`), JSON.stringify(workflow(n), null, 2));
+  const pinned = loadWorkflow('research', { root, dir }).id;
+  writeFileSync(join(dir, 'write.json'), '{}');
+  writeFileSync(join(dir, 'researcher.json'), '{}');
+  assert.equal(loadWorkflow(pinned, { root, dir }).id, pinned);
 });
 
 test('P1: a pinned blob of a broken copy refuses to load too, and refuses before it is stored', () => {
