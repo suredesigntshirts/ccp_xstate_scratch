@@ -37,7 +37,7 @@ test('Q2: a push after PASS sends the item back to verify the new head; the old 
     // A verifier that reports A (the old head) is refused: GitHub shows B.
     const stale = await w.agent('q2', 'verify', async ({ input, worktree }) => {
       w.checkout(worktree, A);
-      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, report: 'r' };
+      return { result: 'PASS', pr: { url: input.target.url, at: A }, issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'r' })) };
     }, 'ag-stale');
     assert.equal(stale.refused?.rule, 'ref');
     assert.match(stale.refused.reason, new RegExp(`GitHub shows .* at ${B}, not ${A}`));

@@ -140,6 +140,6 @@ export const builds = (w, n, { green = true, files = [], base = 'main' } = {}) =
 /** A verifier that checks out target.at and returns `result`, restating its input's issue. */
 export const verifies = (w, result = 'PASS') => async ({ input, worktree }) => {
   w.checkout(worktree, input.target.at);
-  return { result, pr: { url: input.target.url, at: input.target.at }, issue: input.issue, report: `${result} on every line` };
+  return { result, pr: { url: input.target.url, at: input.target.at }, issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result, evidence: `${result} on this line` })) };
 };
 export const BRIEFS = { builder: 'build it', verifier: 'verify it independently' };

@@ -26,7 +26,7 @@ test('Q9: an issue edit mid-build is refused; the verifier grades the original l
     // A verifier that grades against the edited issue (as GitHub now shows it) is refused.
     const drift = await w.agent('q9', 'verify', async ({ input, worktree }) => {
       w.checkout(worktree, input.target.at);
-      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: { ...ISSUE, expect: EDITED }, report: 'r' };
+      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: { ...ISSUE, expect: EDITED }, lines: EDITED.map((line) => ({ line, result: 'PASS', evidence: 'r' })) };
     }, 'ag-v');
     assert.equal(drift.refused?.rule, 'restated');
     await w.drive('q9');
@@ -34,7 +34,7 @@ test('Q9: an issue edit mid-build is refused; the verifier grades the original l
     assert.equal(w.host('q9').snapshot.context.verdict, null, 'the drifted verdict does not count');
     const honest = await w.agent('q9', 'verify', async ({ input, worktree }) => {
       w.checkout(worktree, input.target.at);
-      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: input.issue, report: 'r' };
+      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: input.issue, lines: input.issue.expect.map((line) => ({ line, result: 'PASS', evidence: 'r' })) };
     }, 'ag-v');
     assert.ok(honest.accepted);
     await w.drive('q9');
