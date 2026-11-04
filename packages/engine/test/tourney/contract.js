@@ -1,6 +1,7 @@
-// Shared by the contract tests P2-P6 (tournament 2026-11-04-stage-contract, lane S): the prompt of every model-stage
-// run in quick-fix, research and feature, read from the run folder the real run handler wrote (brief.md is the
-// Agent prompt), and the three workflows parsed straight from workflows/*.json.
+// Shared by the contract tests P2-P6 (tournament 2026-11-04-stage-contract, lane S, round 2): the prompt of every
+// model-stage run in quick-fix, research and feature, read from the run folder the real run handler wrote (brief.md is
+// the Agent prompt), and the three workflows parsed straight from workflows/*.json. A stage is a meta.actors entry
+// with the parts rules, task and inputs.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadRun, runDir } from '../../src/actors.js';
@@ -12,6 +13,30 @@ export const WORKFLOWS = Object.fromEntries(['quick-fix', 'research', 'feature']
 export const PAGE = 'https://example.org/p';
 export const BRIEFS = { builder: 'MARK-B do x', verifier: 'MARK-V check y' };
 export const PLAN = { questions: ['a', 'b', 'c'], researcher: 'MARK-R research it', writer: 'MARK-W write it', verifier: 'MARK-RV verify it' };
+
+/** A workflow's stage (its meta.actors entry), straight from the JSON. */
+export const stageOf = (workflow, actor) => WORKFLOWS[workflow].meta.actors[actor];
+/** The input that fills the Task part, or null when the task is text. */
+export const taskInput = (stage) => (Object.hasOwn(stage.inputs, stage.task) ? stage.task : null);
+// The test's own formatting, not the renderer's: a value as shown (refs without the host's stamped fields), an
+// input line, and the output schema as printed ($refs inlined, no description or covers, no stage parts).
+const HIDDEN = ['key', 'gates', 'green', 'checkout'];
+export const shownJson = (v) => JSON.stringify(v ?? null, function (k, x) {
+  return HIDDEN.includes(k) && typeof this.url === 'string' && typeof this.at === 'string' ? undefined : x;
+});
+export const inputLine = (k, meaning, value) => `- ${k}: ${meaning}\n  = ${shownJson(value)}`;
+const node = (s, defs) => {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return s;
+  if (s.$ref) return node(defs[s.$ref.replace(/^#/, '')], defs);
+  return Object.fromEntries(Object.entries(s).filter(([k]) => k !== 'description' && k !== 'covers').map(([k, v]) => [k,
+    k === 'properties' ? Object.fromEntries(Object.entries(v).map(([n, x]) => [n, node(x, defs)])) : k === 'items' ? node(v, defs) : v]));
+};
+export const schemaLine = (workflow, actor) => {
+  const { rules, task, inputs, ...schema } = stageOf(workflow, actor);
+  return `Schema: ${JSON.stringify(node(schema, WORKFLOWS[workflow].meta.schemas ?? {}))}`;
+};
+export const outputLines = (workflow, actor) => Object.entries(stageOf(workflow, actor).properties)
+  .filter(([, s]) => s.description).map(([k, s]) => `- ${k}: ${s.description}`);
 
 /** The part of a prompt under heading `## name`, up to the next heading. */
 export const part = (prompt, name) => {

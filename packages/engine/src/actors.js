@@ -1,6 +1,6 @@
 // Invoked actors (plan item engine-actors): the agents a workflow starts, and the one way their results come back.
-// When a state invokes a model stage (meta.stages), the host's run handler renders the run's prompt from its stage
-// contract (stages.js) into brief.md in its own run folder, makes it a git worktree named by item and run, and
+// When a state invokes a model stage (an actor whose meta.actors entry has stage parts), the host's run handler renders
+// the run's prompt from that entry (stages.js) into brief.md in its own run folder, makes it a git worktree named by item and run, and
 // journals the prompt's hash. The session then starts the agent with the Agent tool and the prompt `ccp-run <run>`;
 // the harness's PreToolUse hook swaps in that prompt, and its SubagentStart hook binds the agent's id to the run.
 // A result counts only through the return tool, whose PreToolUse hook calls accept(): the caller must be the run's
@@ -16,10 +16,10 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { append } from '../../journal/src/index.js';
 import { check } from './schema.js';
 import { prRef } from './effects/merge.js';
-import { render, runLine, returnLine, uncovered } from './stages.js';
+import { isStage, render, runLine, returnLine, stagesOf, STAMPED, uncovered } from './stages.js';
 
-// The actors that are agents are the workflow's model stages, meta.stages (stages.js). Others (merge, ask, post) are
-// host effects (effects/index.js).
+// The actors that are agents are the workflow's model stages (stages.js isStage). Others (merge, ask, post) are host
+// effects (effects/index.js), and a workflow's name starts a child item.
 
 /** The prompt the session gives the Agent tool to start a run; the hook replaces it with the run's brief. */
 export const MARKER = /^\s*ccp-run\s+(\S+)\s*$/;
@@ -95,7 +95,7 @@ function journal(root, run, row) {
 
 // ---- The run handler: the host calls it when a state invokes an agent actor
 
-// A run's prompt is rendered from its stage contract alone (stages.js render): role, limits, inputs, task, output and
+// A run's prompt is rendered from its stage contract alone (stages.js render): rules, inputs, task, output and
 // return. The brief agent's text, when the stage's task names it, fills only the Task part.
 
 /**
@@ -104,7 +104,7 @@ function journal(root, run, row) {
  * `worktrees` the folder they go in. start() prepares the run and returns its outcome: { ref: the run, briefHash,
  * folder, worktree, branch, spawn: { tool, prompt } }. The run stays open until accept() hands back its result.
  */
-export function actors({ host, repo = process.cwd(), worktrees = join(dirname(resolve(repo)), 'ccp-actors'), names = Object.keys(host.spec.meta.stages ?? {}) }) {
+export function actors({ host, repo = process.cwd(), worktrees = join(dirname(resolve(repo)), 'ccp-actors'), names = stagesOf(host.spec) }) {
   const handler = {
     start: (effect) => prepare({ host, effect, repo, worktrees }),
     // A host that stopped after the start row asks the run folder: prepared means it happened.
@@ -134,8 +134,8 @@ export function prepare({ host, effect, repo, worktrees }) {
   const existing = readJson(join(dir, 'run.json'));
   if (existing) return outcomeOf(existing);
 
-  const stage = spec.meta.stages?.[effect.actor];
-  if (!stage) throw new Error(`${effect.actor} is no stage`);
+  const stage = spec.meta.actors?.[effect.actor];
+  if (!isStage(stage)) throw new Error(`${effect.actor} is no stage`);
   const branch = `run/${safe(item)}/${safe(r.name)}`;
   const worktree = join(resolve(worktrees), `${safe(item)}--${safe(r.name)}`);
   if (!existsSync(worktree)) {
@@ -154,8 +154,7 @@ export function prepare({ host, effect, repo, worktrees }) {
     release: host.release,
     state: host.snapshot ? JSON.stringify(host.snapshot.value) : null,
     input: effect.input ?? null,
-    stage,
-    schema: spec.meta.actors?.[effect.actor] ?? {},
+    schema: stage,
     defs: spec.meta.schemas ?? {},
     repo: resolve(repo),
     worktrees: resolve(worktrees),
@@ -338,7 +337,7 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
       return refuse('restated', `result.${k} is not the input's ${k}: a field your input has must repeat it exactly`);
     }
   }
-  const gap = uncovered(run.stage, run.input, result);
+  const gap = uncovered(run.schema, run.input, result);
   if (gap) return refuse('covers', gap);
   const stamped = structuredClone(result);
   for (const { path, ref } of refsIn(stamped)) {
@@ -360,6 +359,8 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
       }
       if (head !== ref.at) return refuse('ref', `${path}: your worktree is at ${head}, not ${ref.at}`);
       ref.key = `${pr.owner}/${pr.repo}#${pr.pullNumber}`;
+      // The exact commands that put this head in a worktree (judge's round-1 graft from lane A): host-filled data.
+      ref.checkout = `git fetch origin pull/${pr.pullNumber}/head && git checkout --detach ${ref.at}`;
       // Fails closed (round 2, graft from lane B): when the files cannot all be listed, the gates are unknown, and an
       // unknown gate is a touched gate, so the person's CI-change card is asked.
       let files = null;
@@ -413,8 +414,8 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
   return { accepted: { run: run.run, hash } };
 }
 
-// Every ref { url, at } in a value, depth-first, with its path (design A, 4.1). Fields the host stamps on a PR ref.
-const STAMPED = ['key', 'gates', 'green'];
+// Every ref { url, at } in a value, depth-first, with its path (design A, 4.1). STAMPED (stages.js): the fields the
+// host stamps on a PR ref.
 const FILES_PAGE = 100; // github.files asks for one page of 100
 const GREEN = ['success', 'neutral', 'skipped'];
 function refsIn(value, path = 'result') {
@@ -445,6 +446,17 @@ function sentBackBefore(dir, agentId, how) {
   return !writeOnce(sentBackFile(dir), { agentId, how, at: new Date().toISOString() });
 }
 
+// The send-back message is journalled word for word with its hash (critique fix 12, grafted from lane M).
+function sentBack(root, run, agentId, tool, text, session) {
+  journal(root, run, {
+    kind: 'refusal',
+    source: { system: 'hook', ref: `stop ${agentId}` },
+    agent: agentId,
+    payload: { source: 'hook', rule: 'sent-back', reason: text, run: run.run, actor: run.actor, caller: agentId, tool, textHash: sha256(text), outcome: 'sent-back', hookSession: session }
+  });
+  return text;
+}
+
 function fail(root, { run, dir }, agentId, how, session) {
   const why = `the actor ended (${how}) without returning its result${how === 'SubagentStop, after a handback' ? '' : ', after being sent back once'}`;
   if (!writeOnce(join(dir, 'failed.json'), { agentId, why, at: new Date().toISOString() })) return null;
@@ -464,7 +476,9 @@ function fail(root, { run, dir }, agentId, how, session) {
 export function handback({ root, agentId, session = null }) {
   const open = openRunOf(root, agentId);
   if (!open) return null;
-  if (!sentBackBefore(open.dir, agentId, 'SubagentHandback')) return { deny: `no-return: ${returnLine(open.run.run)} Hand back after the return tool accepts it.` };
+  if (!sentBackBefore(open.dir, agentId, 'SubagentHandback')) {
+    return { deny: sentBack(root, open.run, agentId, 'SubagentHandback', `no-return: ${returnLine(open.run.run)} Hand back after the return tool accepts it.`, session) };
+  }
   return fail(root, open, agentId, 'SubagentHandback', session);
 }
 
@@ -477,7 +491,7 @@ export function stopped({ root, agentId, again = false, handedBack = false, sess
   const open = openRunOf(root, agentId);
   if (!open) return null;
   if (handedBack) return fail(root, open, agentId, 'SubagentStop, after a handback', session);
-  if (!again && !sentBackBefore(open.dir, agentId, 'SubagentStop')) return { block: returnLine(open.run.run) };
+  if (!again && !sentBackBefore(open.dir, agentId, 'SubagentStop')) return { block: sentBack(root, open.run, agentId, 'SubagentStop', returnLine(open.run.run), session) };
   return fail(root, open, agentId, 'SubagentStop', session);
 }
 
@@ -490,7 +504,7 @@ export function stopped({ root, agentId, again = false, handedBack = false, sess
 export function resultsOf(host) {
   const inputs = [];
   for (const run of host.runs.values()) {
-    if (!(run.actor in (host.spec.meta.stages ?? {}))) continue;
+    if (!isStage(host.spec.meta.actors?.[run.actor])) continue;
     const got = readJson(join(runDir(host.root, run.id), 'result.json'));
     const failed = !got && readJson(join(runDir(host.root, run.id), 'failed.json'));
     if (failed) {

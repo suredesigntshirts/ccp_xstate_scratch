@@ -1,36 +1,28 @@
-// P2 (stage-contract pack): no prompt wording in engine code. Every line of every rendered prompt traces to the
-// workflow JSON (the stage's parts, the run's input values, the actor's schema) or to the renderer's fixed frame,
-// a short allowlist. And none of the control's engine-held agent wording is left in packages/engine/src.
+// P2 (stage-contract pack, lane S round 2): no prompt wording in engine code. Every line of every rendered prompt
+// traces to the workflow JSON (the stage's rules, task and inputs, the actor's schema and its descriptions), to the
+// run's input values, or to the renderer's fixed frame: the part headings, the data rule and the return mechanics.
+// The frame allowlist holds exactly those, and stages.js holds no other literal of five or more words. None of the
+// control's engine-held agent wording is left in packages/engine/src.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DATA_RULE, HEADINGS, returnLine, runLine } from '../../src/stages.js';
-import { promptsOf, WORKFLOWS } from './contract.js';
-
-// The test's own $ref inliner, so the Schema line is checked against the JSON, not against the renderer's helper.
-const inlined = (s, defs) => (s && typeof s === 'object'
-  ? (s.$ref ? inlined(defs[s.$ref.replace(/^#/, '')], defs) : Array.isArray(s) ? s.map((x) => inlined(x, defs)) : Object.fromEntries(Object.entries(s).map(([k, v]) => [k, inlined(v, defs)])))
-  : s);
+import { promptsOf, stageOf, taskInput, inputLine, schemaLine, outputLines } from './contract.js';
 
 const lines = (s) => String(s).split('\n');
+const words = (s) => s.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
 
-/** Every line a prompt may have, from the JSON and the frame. */
+/** Every line a prompt may have: from the JSON, the run's input, and the frame. */
 function allowed({ run, workflow }) {
-  const wf = WORKFLOWS[workflow];
-  const stage = wf.meta.stages[run.actor];
+  const stage = stageOf(workflow, run.actor);
   const ok = new Set(['', '(none)', ...Object.values(HEADINGS), DATA_RULE, ...lines(returnLine(run.run)), runLine(run)]);
-  for (const l of lines(stage.role)) ok.add(l);
-  for (const l of lines(stage.return)) ok.add(l);
-  for (const l of stage.limits) ok.add(`- ${l}`);
-  for (const [k, f] of Object.entries(stage.inputs)) {
-    ok.add(`- ${k} (${f.trust}): ${f.meaning}`);
-    ok.add(`  = ${JSON.stringify(run.input?.[k] ?? null)}`);
-  }
-  for (const [k, f] of Object.entries(stage.output)) ok.add(`- ${k}: ${f.meaning}`);
-  ok.add(`Schema: ${JSON.stringify(inlined(wf.meta.actors[run.actor], wf.meta.schemas ?? {}))}`);
-  const task = typeof stage.task === 'string' ? stage.task : run.input[stage.task.input];
-  for (const l of lines(task)) ok.add(l);
+  for (const r of stage.rules) ok.add(`- ${r}`);
+  for (const [k, meaning] of Object.entries(stage.inputs)) for (const l of lines(inputLine(k, meaning, run.input?.[k]))) ok.add(l);
+  for (const l of outputLines(workflow, run.actor)) ok.add(l);
+  ok.add(schemaLine(workflow, run.actor));
+  const from = taskInput(stage);
+  for (const l of lines(from ? run.input[from] : stage.task)) ok.add(l);
   return ok;
 }
 
@@ -44,17 +36,32 @@ test('P2: every line of every rendered prompt traces to the workflow JSON, the r
   }
 });
 
-test('P2: the frame\'s five-plus-word wording is only the data rule and the return line; the role printed is the JSON\'s', async () => {
-  // The fixed frame's five-plus-word wording is two strings: the data rule and the return line.
-  const words = (s) => s.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length;
-  const frame = [...Object.values(HEADINGS), '(none)', runLine({ run: 'r', worktree: 'w', branch: 'b' })];
+// The string and template literals of a source file, comments dropped and ${...} left out, as measure.mjs reads them.
+function literals(src) {
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const out = [];
+  for (const m of code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
+    out.push((m[1] ?? m[2] ?? m[3]).replace(/\$\{[^}]*\}/g, ''));
+  }
+  return out;
+}
+
+test('P2: the frame is only headings, the data rule and the return mechanics; stages.js has no other wording', () => {
+  const frame = [...Object.values(HEADINGS), '(none)', runLine({ run: 'r', worktree: 'w', repo: 'x', branch: 'b' })];
   for (const f of frame) assert.ok(words(f) < 5, `${f} is under five words`);
   assert.ok(words(DATA_RULE) >= 5 && words(returnLine('r')) >= 5);
-  // Wording is read from the JSON: the role printed is the JSON role, not engine text.
+  const src = readFileSync(new URL('../../src/stages.js', import.meta.url), 'utf8');
+  const prose = literals(src).filter((s) => words(s) >= 5);
+  assert.equal(prose.length, 2, `five-plus-word literals in stages.js: ${JSON.stringify(prose)}`);
+  assert.equal(prose[0], DATA_RULE);
+  assert.equal(prose[1], returnLine(''), 'the other is the return line');
+});
+
+test('P2: the rules printed are the JSON\'s', async () => {
   const p = await promptsOf();
   for (const [key, { prompt, run, workflow }] of Object.entries(p)) {
-    const stage = WORKFLOWS[workflow].meta.stages[run.actor];
-    assert.ok(prompt.startsWith(`## Role\n${stage.role}\n`), `${key} role comes from the JSON`);
+    const stage = stageOf(workflow, run.actor);
+    assert.ok(prompt.startsWith(`## Rules\n${DATA_RULE}\n${stage.rules.map((r) => `- ${r}`).join('\n')}\n\n## Inputs\n`), `${key}: rules from the JSON`);
   }
 });
 
