@@ -1,8 +1,8 @@
 // Invoked actors (plan item engine-actors): the agents a workflow starts, and the one way their results come back.
-// When a state invokes brief, build or verify, the host's run handler writes the actor's brief into its own run
-// folder, makes it a git worktree named by item and run, and journals the brief's hash. The session then starts the
-// agent with the Agent tool and the prompt `ccp-run <run>`; the harness's PreToolUse hook swaps in the brief, so
-// the prompt the agent receives is the brief exactly, and its SubagentStart hook binds the agent's id to the run.
+// When a state invokes a model stage (meta.stages), the host's run handler renders the run's prompt from its stage
+// contract (stages.js) into brief.md in its own run folder, makes it a git worktree named by item and run, and
+// journals the prompt's hash. The session then starts the agent with the Agent tool and the prompt `ccp-run <run>`;
+// the harness's PreToolUse hook swaps in that prompt, and its SubagentStart hook binds the agent's id to the run.
 // A result counts only through the return tool, whose PreToolUse hook calls accept(): the caller must be the run's
 // agent, the result must match the actor's schema, and a claimed PR must be on GitHub at the claimed head. Why it is
 // built this way: plan/decisions/2026-10-30-engine-actors.md.
