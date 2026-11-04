@@ -11,3 +11,5 @@ export { tripwiresOf } from './tripwire.js';
 /** A workflow file from the repo's workflows/ folder, by name, such as 'quick-fix'. */
 export const loadWorkflow = (name) =>
   JSON.parse(readFileSync(new URL(`../../../workflows/${name}.json`, import.meta.url), 'utf8'));
+export { observe, aggregate } from './observe.js';
+export { observedOf } from './actors.js';

@@ -84,6 +84,11 @@ export function github({ api = 'https://api.github.com', env = process.env } = {
     pull: (args) => call('GET', at(args)),
     /** merge_pull_request: expectedHeadSha is REST's sha, so GitHub refuses the merge when the head moved. */
     merge: ({ expectedHeadSha, merge_method = 'merge', commit_title, commit_message, ...args }) =>
-      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message })
+      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message }),
+    // Tourney lane E (option A): the reads the host observes CI and heads through.
+    /** The check runs GitHub has for a commit. */
+    checks: ({ owner, repo, sha }) => call('GET', `/repos/${owner}/${repo}/commits/${sha}/check-runs`),
+    /** The files a PR changes. */
+    files: (args) => call('GET', `${at(args)}/files`)
   };
 }
