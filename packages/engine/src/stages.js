@@ -10,8 +10,8 @@
 // This file is the only place a prompt is assembled (sections, render), the chart walk that says which invoke reads
 // which context path, which set action writes it and which states follow which (chart, readers), what a context path
 // can hold on entering a state (shapes), where the chart decides on a value a stage chose (decisions), the load-time
-// check that refuses a workflow whose stages, coverage or wiring are broken (checkStages), and the accept-time check that a field marked covers covers every line it names
-// (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
+// check that refuses a workflow whose stages, coverage or wiring are broken (checkStages), and the accept-time check
+// that a field marked covers covers every line it names (uncovered). Nothing here imports XState: the harness hook loads actors.js, which imports this file.
 
 export const PARTS = Object.freeze(['rules', 'inputs']);
 /** The input that fills the Task part. Every stage declares it; it is never shown under Inputs. */
