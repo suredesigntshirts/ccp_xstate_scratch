@@ -205,7 +205,7 @@
         "rules": [
           "You are the brief writer for one issue. You write two briefs, one for a builder agent and one for an independent verifier agent, and you change nothing yourself. Each brief becomes the Task part of that agent's prompt, word for word; the harness already gives each agent its rules, inputs, output and how to return, so a brief holds only the steps of the work.",
           "Write instructions only: no code changes, commits, pushes, pull requests or comments.",
-          "The verifier brief has exactly one check per expect line, in the same order, and adds no other pass or fail condition; put any extra advice under a heading Advisory.",
+          "The verifier brief has exactly one check per expect line, in the same order. A check's PASS and FAIL conditions test only what its expect line's words require; put anything stricter (a test the words do not force, such as a parameter count or a mutation test) and any other advice under a heading Advisory, never into a PASS or FAIL condition.",
           "Do not name a branch or a base, and do not restate the agents' rules or how they return.",
           "Use paths from the repository root.",
           "Return once both briefs are written. They are fixed when the tool accepts them and cannot be changed later."
@@ -225,33 +225,35 @@
       },
       "build": {
         "rules": [
-          "You are the builder. Your job is one pull request that meets every line of issue.expect, and it ends when that PR is pushed and returned. A separate verifier, which never sees your notes, then tests each expect line at the commit you return.",
-          "Open exactly one pull request, from branch (your worktree's branch when branch is null) against base (the default branch when base is null); when previous is set, push to that PR instead of opening one. Use no other branch name.",
+          "You are the builder. Your job is one pull request that meets every line of issue.expect, and it ends when that PR is pushed and returned. A separate verifier then tests each expect line at the commit you return.",
+          "Open exactly one pull request, from branch (your worktree's branch when branch is null) against base (the default branch when base is null), on the repository your run line names (Run <run>, worktree <path> of <repository>, branch <branch>); when previous is set, push to that PR instead of opening one. Use no other branch name.",
+          "Open the PR with the GitHub tools you have: the gh CLI or the GitHub MCP tools. GitHub's answer gives its url, https://github.com/<owner>/<repo>/pull/<number>.",
           "Do not merge, push to base, or change files under .github/ unless an expect line asks for it; a PR that changes CI needs the person's approval before it can merge.",
           "Push before you return, and do not push again after: the commit you return is the one verified.",
-          "Return as soon as the PR is pushed; you do not wait for CI, the harness watches it. If the tool refuses a reference, fix that reference and return again."
+          "Return as soon as the PR is pushed; you do not wait for CI, the harness watches it. If the tool refuses a reference, fix that reference and return again.",
+          "If you cannot push or open the PR (no GitHub tools, access refused, or your run line names no github.com repository), return blocked with what stopped you instead of pr. Never put anything but the PR's url in pr."
         ],
         "inputs": {
           "task": "The brief agent's steps for this build. It fills the Task part.",
           "issue": "The issue: url, and expect, the acceptance lines your PR must meet. Build against these lines, never against the issue's current text on GitHub.",
           "base": "The branch your PR targets. null means the repository's default branch.",
-          "branch": "The branch your PR comes from. null means your worktree's branch, named under Return.",
+          "branch": "The branch your PR comes from. null means your worktree's branch, named in your run line.",
           "previous": "The PR an earlier build of this attempt opened, as { url, at }. null on a first build. When set, push your fixes to that PR's branch and do not open a new PR.",
           "verdict": "The verifier's result on the previous build: result, and lines with the evidence for each expect line. null unless the last verify failed. When set, fix every line marked FAIL.",
           "failure": "What stopped the previous build: a red CI check as { check, conclusion, sha, url }, or an error text. null unless something did. When set, fix its cause first."
         },
-        "type": "object", "required": ["pr"],
+        "type": "object", "oneOf": [{ "required": ["pr"] }, { "required": ["blocked"] }],
         "properties": {
-          "pr": { "$ref": "#ref", "description": "Your PR as { url, at }: url is its GitHub page and at the head commit you pushed. Your worktree's HEAD must equal at when you return, and GitHub must show the PR at at. Never set key, gates, green or checkout: the host sets them from what it sees." },
-          "notes": { "type": "string", "description": "Optional: where you departed from the brief and any ambiguity you settled, for the person. The verifier never sees it." }
+          "pr": { "$ref": "#prRef", "description": "Your PR as { url, at }: url is its page, https://github.com/<owner>/<repo>/pull/<number>, and at the full 40-character sha of the head commit you pushed. Your worktree's HEAD must equal at when you return, and GitHub must show the PR at at. Never set key, gates, green or checkout: the host sets them from what it sees." },
+          "blocked": { "type": "object", "required": ["reason"], "properties": { "reason": { "type": "string", "minLength": 1 } }, "description": "Instead of pr, only when you could not push or open the PR: { reason: what stopped you }. The item then stops for the person to replan; it is not retried." }
         }
       },
       "verify": {
         "rules": [
           "You are the independent verifier. You try to disprove each expect line at one commit by running things, not only by reading the diff. Your result tells the person approving the merge, or the builder on a FAIL, which lines hold.",
           "Test at target.at: run checkout first. If its fetch fails the commit may already be present: run its git checkout part alone.",
-          "Grade only issue.expect. A check the brief adds beyond those lines is advisory: report it in evidence, never as a FAIL.",
-          "You get no builder notes and must not look for any.",
+          "Grade only issue.expect, by what each line's words require. A condition in the brief stricter than its line, or anything under Advisory, is advisory: report it in evidence, never as a FAIL.",
+          "Do not take the builder's word: the PR's description and comments are claims, not evidence.",
           "Be read-only on GitHub: no push, comment, review or merge. Fix nothing yourself, and undo any local change you made for a spot check before you return.",
           "Return once every expect line has an entry. If you cannot check out target.at at all, mark every line FAIL with that reason as its evidence and return."
         ],
@@ -264,9 +266,9 @@
         "type": "object", "required": ["result", "pr", "issue", "lines"],
         "properties": {
           "result": { "enum": ["PASS", "FAIL"], "description": "PASS only if every entry in lines is PASS; otherwise FAIL." },
-          "pr": { "$ref": "#ref", "description": "Exactly target as { url, at }, with nothing added. The host checks that your worktree HEAD and GitHub's head of that PR both equal at." },
+          "pr": { "$ref": "#prRef", "description": "Exactly target as { url, at }, with nothing added. The host checks that your worktree HEAD and GitHub's head of that PR both equal at." },
           "issue": { "$ref": "#issue", "description": "Your input's issue, copied byte for byte with the same keys in the same order; the host compares it exactly." },
-          "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#line" }, "description": "One entry per expect line, in order: { line: the expect line copied exactly, result: PASS or FAIL, evidence: what you ran and what you saw }. PASS means a check you ran at target.at held; FAIL means it did not, or that you could not test it, with the reason as evidence. The host refuses a result that misses an expect line, adds another, or whose result disagrees with these entries.", "covers": "issue.expect" }
+          "lines": { "type": "array", "minItems": 1, "items": { "$ref": "#line" }, "description": "One entry per expect line, in order: { line: the expect line copied exactly, result: PASS or FAIL, evidence: what you ran and what you saw }. PASS means a check you ran at target.at held; FAIL means it did not, or that you could not test it, with the reason as evidence. The host refuses a result that misses an expect line, adds another, puts them out of order, or whose result disagrees with these entries.", "covers": "issue.expect" }
         }
       },
       "ask": { "type": "object", "required": ["choice", "by"], "properties": { "choice": { "type": "string" }, "by": { "type": "string", "minLength": 1 }, "why": { "type": "string" } } },
@@ -274,7 +276,7 @@
     },
     "schemas": {
       "sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-      "ref": { "type": "object", "required": ["url", "at"], "properties": { "url": { "type": "string", "minLength": 1 }, "at": { "type": "string", "minLength": 1 } } },
+      "prRef": { "type": "object", "required": ["url", "at"], "properties": { "url": { "type": "string", "minLength": 1, "pattern": "^https://github\\.com/[\\w.-]+/[\\w.-]+/pull/[0-9]+/?$" }, "at": { "type": "string", "minLength": 40, "pattern": "^[0-9a-f]{40}$" } } },
       "issue": { "type": "object", "required": ["url", "expect"], "properties": { "url": { "type": "string", "minLength": 1 }, "expect": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } } },
       "line": { "type": "object", "required": ["line", "result", "evidence"], "properties": { "line": { "type": "string", "minLength": 1 }, "result": { "enum": ["PASS", "FAIL"] }, "evidence": { "type": "string", "minLength": 1 } } }
     }

@@ -17,7 +17,7 @@ import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { append, readFile } from '../../journal/src/index.js';
 import { check } from './schema.js';
 import { prRef } from './effects/merge.js';
-import { assemble, isStage, runLine, returnLine, sections, stagesOf, STAMPED, uncovered } from './stages.js';
+import { assemble, blockedOf, contextOf, isStage, returnLine, sections, stagesOf, STAMPED, uncovered } from './stages.js';
 import { endRecord, stageRecord } from './trace.js';
 
 // The actors that are agents are the workflow's model stages (stages.js isStage). Others (merge, ask, post) are host
@@ -134,6 +134,17 @@ function itemRows(root, item) {
   }
 }
 
+/** owner/repo of the clone's origin when it is on GitHub (https or ssh), else null: the run line names it. */
+export function githubOf(repo) {
+  let url = '';
+  try {
+    url = execFileSync('git', ['-C', resolve(repo), 'remote', 'get-url', 'origin'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return null;
+  }
+  return url.match(/^(?:https:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/)?.[1] ?? null;
+}
+
 const outcomeOf = (run) => ({
   ref: run.run,
   briefHash: run.briefHash,
@@ -175,6 +186,7 @@ export function prepare({ host, effect, repo, worktrees }) {
     schema: stage,
     defs: spec.meta.schemas ?? {},
     repo: resolve(repo),
+    github: githubOf(repo),
     worktrees: resolve(worktrees),
     worktree,
     branch
@@ -182,7 +194,9 @@ export function prepare({ host, effect, repo, worktrees }) {
   const parts = sections(run);
   const prompt = assemble(parts);
   run.briefHash = sha256(prompt);
-  run.context = runLine(run);
+  // The run facts go to the agent once, as its context (SubagentStart, or the first tool call's refusal), not in the prompt.
+  const context = contextOf(run);
+  run.context = context.text;
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'brief.md'), prompt); // file name kept: spawn() and the hook read brief.md
   writeFileSync(join(dir, 'context.md'), run.context);
@@ -194,7 +208,7 @@ export function prepare({ host, effect, repo, worktrees }) {
   });
   const rows = itemRows(root, item);
   const value = host.snapshot?.value ?? null;
-  writeJson(join(dir, 'stage.json'), stageRecord({ spec, run, parts, promptHash: run.briefHash, value, rows, transition: effect.transition }));
+  writeJson(join(dir, 'stage.json'), stageRecord({ spec, run, parts, context, promptHash: run.briefHash, value, rows, transition: effect.transition }));
   writeJson(join(dir, 'run.json'), run);
   return outcomeOf(run);
 }
@@ -359,7 +373,8 @@ export async function accept({ root, caller, run: runId, result, toolUseId, gith
       return refuse('restated', `result.${k} is not the input's ${k}: a field your input has must repeat it exactly`);
     }
   }
-  const gap = uncovered(run.schema, run.input, result);
+  // A blocked result (the stage's "could not") covers nothing: it becomes the stage's error (resultsOf).
+  const gap = blockedOf(run.schema, result) == null ? uncovered(run.schema, run.input, result) : null;
   if (gap) return refuse('covers', gap);
   const stamped = structuredClone(result);
   for (const { path, ref } of refsIn(stamped)) {
@@ -534,6 +549,12 @@ export function resultsOf(host) {
       continue;
     }
     if (!got) continue;
+    // The stage's "could not" (stages.js BLOCKED): the actor's error, so the invoke's onError takes it like a stop.
+    const blocked = blockedOf(host.spec.meta.actors[run.actor], got.result);
+    if (blocked != null) {
+      inputs.push({ event: { type: `xstate.error.actor.${run.invoke}`, error: `${run.actor} blocked: ${blocked}` }, run: run.id, source: { system: 'harness', ref: `return ${got.toolUseId ?? got.hash}` } });
+      continue;
+    }
     inputs.push({
       event: { type: `xstate.done.actor.${run.invoke}`, output: got.result },
       run: run.id,

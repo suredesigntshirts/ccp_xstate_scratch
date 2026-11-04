@@ -17,7 +17,7 @@ const words = (s) => s.split(/\s+/).filter((w) => /[A-Za-z]{2,}/.test(w)).length
 /** Every line a prompt may have: from the JSON, the run's input, and the frame. */
 function allowed({ run, workflow }) {
   const stage = stageOf(workflow, run.actor);
-  const ok = new Set(['', '(none)', ...Object.values(HEADINGS), DATA_RULE, WORKTREE_RULE, ...lines(returnLine(run.run)), runLine(run)]);
+  const ok = new Set(['', '(none)', ...Object.values(HEADINGS), DATA_RULE, WORKTREE_RULE, ...lines(returnLine(run.run))]); // the run line is the run's context, never a prompt line (S5 (8))
   for (const r of stage.rules) ok.add(`- ${r}`);
   for (const [k, meaning] of Object.entries(stage.inputs)) for (const l of lines(inputLine(k, meaning, run.input?.[k]))) ok.add(l);
   for (const l of outputLines(workflow, run.actor)) ok.add(l);

@@ -1,5 +1,7 @@
 // The JSON Schema subset the specs use: type, enum, required, properties, items, minItems, minLength,
-// pattern, and $ref "#name" into the spec's meta.schemas. Returns the problems found; none means valid.
+// pattern, oneOf, and $ref "#name" into the spec's meta.schemas. Returns the problems found; none means valid.
+// oneOf (trial fixes, 2026-11-04: a stage's `blocked` is an alternative to its other output) holds when exactly one
+// of its schemas does; an alternative is named by its required fields in the problem.
 const typeOf = (v) => (v === null ? 'null' : Array.isArray(v) ? 'array' : Number.isInteger(v) ? 'integer' : typeof v);
 const is = (v, type) => typeOf(v) === type || (type === 'number' && typeOf(v) === 'integer');
 
@@ -10,6 +12,11 @@ export const check = (schema, value, defs = {}, at = '$') => {
   if (schema.minLength != null && value.length < schema.minLength) return [`${at} is shorter than ${schema.minLength}`];
   if (schema.pattern && !new RegExp(schema.pattern).test(value)) return [`${at} does not match ${schema.pattern}`];
   if (schema.minItems != null && value.length < schema.minItems) return [`${at} has fewer than ${schema.minItems} items`];
+  if (Array.isArray(schema.oneOf)) {
+    const held = schema.oneOf.filter((alt) => !check(alt, value, defs, at).length).length;
+    const names = schema.oneOf.map((alt) => (alt.required ?? []).join(' and ') || JSON.stringify(alt)).join('; or ');
+    if (held !== 1) return [`${at} must have exactly one of: ${names}${held ? ', not several' : ''}`];
+  }
   return [
     ...(schema.required ?? []).filter((k) => value?.[k] === undefined).map((k) => `${at}.${k} is missing`),
     ...Object.entries(schema.properties ?? {}).flatMap(([k, s]) => (value?.[k] === undefined ? [] : check(s, value[k], defs, `${at}.${k}`))),

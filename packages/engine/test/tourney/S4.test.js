@@ -73,10 +73,6 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
           if (source.frame === 'returnLine') {
             assert.deepEqual(source.filled, { run });
             assert.equal(p.text, returnLine(source.filled.run));
-          } else if (source.frame === 'runLine') {
-            assert.deepEqual(source.filled, { run, worktree: runJson.worktree, repo: runJson.repo, branch: runJson.branch });
-            assert.equal(p.text, runLine(source.filled));
-            assert.equal(p.text, runLine(runJson));
           } else if (source.frame) assert.equal(p.text, FRAME[source.frame], `${actor} ${part}: frame ${source.frame}`);
           else if (source.workflow && part === 'rules') assert.equal(p.text, `- ${at(source.workflow)}`, `${actor}: rule at ${source.workflow}`);
           else if (source.workflow && part === 'output' && p.text.startsWith('- ')) assert.ok(p.text.endsWith(`: ${at(source.workflow)}`), `${actor}: description at ${source.workflow}`);
@@ -93,6 +89,14 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
         }
       }
       assert.equal(rec.prompt.parts.rules.filter((p) => p.source.workflow).length, WF.meta.actors[actor].rules.length);
+      // The run facts are the run's context, told once beside the prompt (trial fixes item 8): context.md, recorded
+      // with the same kind of source as a prompt piece, and in no prompt part.
+      assert.equal(readFileSync(join(dir, 'context.md'), 'utf8'), rec.context.text, `${actor}: context.md is the recorded context`);
+      assert.deepEqual(rec.context.source, { frame: 'runLine', filled: { run, worktree: runJson.worktree, repo: runJson.repo, github: runJson.github, branch: runJson.branch } });
+      assert.equal(rec.context.text, runLine(rec.context.source.filled));
+      assert.equal(rec.context.text, runLine(runJson));
+      assert.ok(!prompt.includes(rec.context.text), `${actor}: the prompt does not repeat the run line`);
+      assert.deepEqual(rec.prompt.parts.return.map((p) => p.source.frame), ['returnLine'], `${actor}: Return holds the return line alone`);
 
       // (3) The inputs: every declared input, with its meaning, value and the wiring it was read through.
       assert.deepEqual(rec.inputs.map((i) => i.name).sort(), Object.keys(WF.meta.actors[actor].inputs).sort());

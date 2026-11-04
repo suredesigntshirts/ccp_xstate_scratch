@@ -116,7 +116,7 @@ const active = (value, path) => {
  * The started half of a run's stage record. `run` is the run (actors.js prepare: actor, invoke, input, ...), `parts`
  * its prompt sections, `value` the item's state value when the run started, and `rows` the item's journal.
  */
-export function stageRecord({ spec, run, parts, promptHash, value, rows, transition }) {
+export function stageRecord({ spec, run, parts, context = null, promptHash, value, rows, transition }) {
   const seq = Number(String(transition ?? '').split('#').pop());
   const log = contextLog(rows, spec, Number.isFinite(seq) ? seq : Infinity);
   const candidates = chart(spec).invokes.filter((inv) => inv.id === run.invoke && inv.src === run.actor);
@@ -143,6 +143,8 @@ export function stageRecord({ spec, run, parts, promptHash, value, rows, transit
     workflow: { id: spec.id, name, hash: hash ?? null },
     started: transition ?? null,
     prompt: { hash: promptHash, parts: tagged },
+    // The run facts, told the agent once beside the prompt (context.md): the same { text, source } as a part piece.
+    ...(context ? { context } : {}),
     inputs
   };
 }

@@ -338,8 +338,10 @@ accepted result). Brief and result texts are blobs, `<journal root>/blobs/<sha25
 run is prepared: `stage`, `workflow` (`id`, `name`, `hash`), the `invoke`, `state` and `invokeAt` (JSON pointer) that
 started it, `prompt` (`hash` and `parts`: rules, inputs, task, output and return, each a list of `{ text, source }`,
 where a source is a `frame` constant (with `fixed: true` when its text is the same for every run, as the data rule,
-or `filled`, the run facts it was filled from: `{ run }` for the return line, `{ run, worktree, repo, branch }` for the
-run line), a `workflow` JSON pointer, or an `input` with its `meaningAt` and `producer`) and `inputs` (each `name`,
+or `filled`, the run facts it was filled from: `{ run }` for the return line), a `workflow` JSON pointer, or an `input`
+with its `meaningAt` and `producer`), `context` (the run line, `context.md`, which the harness tells the agent once at
+SubagentStart or before its first tool call runs, and which no prompt part repeats: `{ text, source }` with
+`filled: { run, worktree, repo, github, branch }`, github being the clone's origin on GitHub or null) and `inputs` (each `name`,
 `meaning`, `meaningAt`, `value`, `from` (the context path or literal it was wired from), `wiredAt` and `producer`,
 plus `amended` when later writes changed parts of it). A producer is `{ kind: 'stage', run, actor, field }`
 (or `workflow`/`effect` for a child item or host effect), `initial` (the item's input), `literal` (with its pointer),
