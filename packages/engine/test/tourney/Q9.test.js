@@ -2,7 +2,7 @@
 // change without the person.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWorld, ISSUE, BRIEFS, builds } from './world.js';
+import { makeWorld, ISSUE, BRIEFS, builds, graded } from './world.js';
 
 const edited = (expect) => `<wake reason="external-event" current-time="2026-10-30T18:00:00Z">\n  <event source="github" kind="issues.edited" from="system" trust="relay">\n    ${JSON.stringify({ issue: 'o/r#7', expect })}\n  </event>\n</wake>`;
 
@@ -26,7 +26,7 @@ test('Q9: an issue edit mid-build is refused; the verifier grades the original l
     // A verifier that grades against the edited issue (as GitHub now shows it) is refused.
     const drift = await w.agent('q9', 'verify', async ({ input, worktree }) => {
       w.checkout(worktree, input.target.at);
-      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: { ...ISSUE, expect: EDITED }, report: 'r' };
+      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: { ...ISSUE, expect: EDITED }, lines: graded(input) };
     }, 'ag-v');
     assert.equal(drift.refused?.rule, 'restated');
     await w.drive('q9');
@@ -34,7 +34,7 @@ test('Q9: an issue edit mid-build is refused; the verifier grades the original l
     assert.equal(w.host('q9').snapshot.context.verdict, null, 'the drifted verdict does not count');
     const honest = await w.agent('q9', 'verify', async ({ input, worktree }) => {
       w.checkout(worktree, input.target.at);
-      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: input.issue, report: 'r' };
+      return { result: 'PASS', pr: { url: input.target.url, at: input.target.at }, issue: input.issue, lines: graded(input) };
     }, 'ag-v');
     assert.ok(honest.accepted);
     await w.drive('q9');
