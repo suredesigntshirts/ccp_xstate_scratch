@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { runDir } from '../../src/actors.js';
 import { assemble, DATA_RULE, WORKTREE_RULE, returnLine, runLine } from '../../src/stages.js';
-import { makeWorld, ISSUE, BRIEFS, builds, verifies, tapWake, suiteWake, offer, pending } from './world.js';
+import { makeWorld, ISSUE, BRIEFS, prUrl, builds, verifies, tapWake, suiteWake, offer, pending } from './world.js';
 
 const sha256 = (t) => createHash('sha256').update(t).digest('hex');
 const FILE = new URL('../../../../workflows/quick-fix.json', import.meta.url);
@@ -34,6 +34,7 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.ok((await w.agent('q1', 'build', builds(w, 1, { green: false }))).accepted);
     await w.drive('q1');
     const head = w.gh.state[1].head;
+    results.build = { pr: { url: prUrl(1), at: head } };
     w.gh.green(head);
     await w.drive('q1', suiteWake(head, 1));
     runs.verify = w.openRun('q1', 'verify').id;
@@ -67,9 +68,16 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
       for (const [part, pieces] of Object.entries(rec.prompt.parts)) {
         for (const p of pieces) {
           const { source } = p;
-          if (source.frame === 'returnLine') assert.equal(p.text, returnLine(run));
-          else if (source.frame === 'runLine') assert.equal(p.text, runLine(runJson));
-          else if (source.frame) assert.equal(p.text, FRAME[source.frame], `${actor} ${part}: frame ${source.frame}`);
+          // A frame piece says whether its text is fixed or filled per run, and from which run facts.
+          if (source.frame) assert.ok((source.fixed === true) !== ('filled' in source), `${actor} ${part}: frame ${source.frame} is fixed or filled`);
+          if (source.frame === 'returnLine') {
+            assert.deepEqual(source.filled, { run });
+            assert.equal(p.text, returnLine(source.filled.run));
+          } else if (source.frame === 'runLine') {
+            assert.deepEqual(source.filled, { run, worktree: runJson.worktree, repo: runJson.repo, branch: runJson.branch });
+            assert.equal(p.text, runLine(source.filled));
+            assert.equal(p.text, runLine(runJson));
+          } else if (source.frame) assert.equal(p.text, FRAME[source.frame], `${actor} ${part}: frame ${source.frame}`);
           else if (source.workflow && part === 'rules') assert.equal(p.text, `- ${at(source.workflow)}`, `${actor}: rule at ${source.workflow}`);
           else if (source.workflow && part === 'output' && p.text.startsWith('- ')) assert.ok(p.text.endsWith(`: ${at(source.workflow)}`), `${actor}: description at ${source.workflow}`);
           else if (source.workflow) assert.ok(p.text.startsWith('Schema: ') && at(source.workflow).type === 'object', `${actor}: schema at ${source.workflow}`);
@@ -77,8 +85,10 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
             assert.ok(source.input, `${actor} ${part}: a piece without a source`);
             const input = rec.inputs.find((i) => i.name === source.input);
             assert.deepEqual(source.producer, input.producer, `${actor}: ${part} piece carries its input's producer`);
+            assert.ok(!('meaning' in source), `${actor} ${part}: a piece names its meaning as meaningAt, as inputs do`);
+            assert.equal(source.meaningAt, input.meaningAt, `${actor} ${part}: meaningAt as the input's`);
+            assert.equal(at(source.meaningAt), input.meaning);
             if (part === 'task') assert.equal(p.text, input.value);
-            else assert.equal(at(source.meaning), input.meaning);
           }
         }
       }
@@ -94,10 +104,28 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
       }
 
       // (4) Where the output went: the output, the paths written from it, and who reads them.
-      assert.ok(rec.ended, `${actor}: ended`);
+      assert.ok(rec.finished, `${actor}: finished`);
+      assert.ok(!('ended' in rec), `${actor}: the half is named finished, not ended (a state name elsewhere)`);
+      assert.ok(Array.isArray(rec.finished.state) && rec.finished.state.every((x) => typeof x === 'string'), `${actor}: finished.state is a list of dotted paths`);
       assert.deepEqual(rec.output, stamped(run), `${actor}: the output is the accepted (stamped) result`);
+      // stamped names every field in the output the host wrote: the agent's own return is the output without them.
+      assert.ok(Array.isArray(rec.stamped), `${actor}: stamped is listed`);
+      const own = structuredClone(rec.output);
+      for (const s of rec.stamped) {
+        const segs = s.split('.');
+        const holder = segs.slice(0, -1).reduce((v, k) => v[k], own);
+        assert.ok(Object.hasOwn(holder, segs.at(-1)), `${actor}: stamped ${s} is in the output`);
+        delete holder[segs.at(-1)];
+      }
+      assert.deepEqual(own, results[actor] ?? own, `${actor}: the output less stamped is what the agent returned`);
+      assert.ok(!JSON.stringify(own).match(/"(key|checkout|gates|green)":/), `${actor}: no stamped field left unmarked`);
       assert.ok(rec.wrote.length > 0, `${actor}: wrote something`);
-      for (const wr of rec.wrote) assert.deepEqual(at(wr.at), wr.from, `${actor}: write at ${wr.at}`);
+      for (const wr of rec.wrote) {
+        assert.deepEqual(at(wr.at), wr.from, `${actor}: write at ${wr.at}`);
+        assert.equal(typeof wr.into, 'string', `${actor}: into is a dotted path`);
+        assert.ok(wr.into === rec.finished.state[0] || rec.finished.state[0].startsWith(`${wr.into}.`), `${actor}: into ${wr.into} holds finished.state`);
+        assert.equal(wr.replaced, null, `${actor}: a first run replaces only the context default`);
+      }
     }
 
     const rec = (actor) => JSON.parse(readFileSync(join(runDir(w.root, runs[actor]), 'stage.json'), 'utf8'));
@@ -140,10 +168,16 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.deepEqual(build.wrote.map((x) => [x.path, x.from]), [['pr', 'event.output.pr']]);
     const readsPr = build.wrote[0].readBy.filter((r) => r.kind === 'stage').map((r) => `${r.state}:${r.actor}.${r.input}`).sort();
     assert.deepEqual(readsPr, ['building:build.previous', 'reverifying:verify.checkout', 'reverifying:verify.target', 'verifying:verify.checkout', 'verifying:verify.target']);
+    const selfReads = build.wrote[0].readBy.filter((r) => r.self).map((r) => `${r.state}:${r.actor}.${r.input}`);
+    assert.deepEqual(selfReads, ['building:build.previous'], 'the build reading its own pr as previous is marked self, and only it');
+    assert.ok(brief.wrote[0].readBy.every((r) => !r.self) && verify.wrote[0].readBy.every((r) => !r.self), 'brief and verify read none of their own writes');
+    assert.deepEqual(build.stamped, ['pr.key', 'pr.checkout'], 'build: the host stamped key and checkout on its pr (not green: the suite came later)');
+    assert.deepEqual(brief.stamped, [], 'brief: nothing stamped');
     assert.ok(build.wrote[0].readBy.some((r) => r.kind === 'effect' && r.actor === 'merge' && r.input === 'pr'));
     assert.deepEqual(verify.wrote.map((x) => [x.path, x.from]), [['verdict', 'event.output']]);
     assert.ok(verify.wrote[0].readBy.some((r) => r.actor === 'build' && r.input === 'verdict'), 'a FAIL verdict would reach the next build');
-    assert.equal(verify.ended.state, 'awaitingMerge');
+    assert.deepEqual(verify.finished.state, ['awaitingMerge']);
+    assert.ok(verify.stamped.includes('pr.key') && verify.stamped.includes('pr.checkout') && verify.stamped.includes('pr.green'), 'verify: the host stamped its pr, green included');
   } finally {
     await w.close();
   }
@@ -207,9 +241,19 @@ test('S4: a FAIL loop, a head move and a replan: every producer is the run that 
     }
     // The verify run the head move stopped: ended, marked stopped, with no output and nothing written.
     const gone = rec(R.stopped);
-    assert.equal(gone.ended?.stopped, true, 'a stopped run says so');
-    assert.equal(gone.ended.state, 'reverifying');
-    assert.ok(!('output' in gone) && gone.wrote.length === 0);
+    assert.equal(gone.finished?.stopped, true, 'a stopped run says so');
+    assert.deepEqual(gone.finished.state, ['reverifying']);
+    assert.ok(!('output' in gone) && !('stamped' in gone) && gone.wrote.length === 0);
+    // Each write says what it replaced: build2's pr replaced build1's; verify2's verdict replaced nothing, since
+    // build2's transition reset verdict to a literal null.
+    const b2 = rec(R.build2).wrote[0];
+    assert.deepEqual([b2.path, b2.replaced?.kind, b2.replaced?.run, b2.replaced?.field], ['pr', 'stage', R.build1, 'pr']);
+    const v2 = rec(R.verify2).wrote[0];
+    assert.deepEqual([v2.path, v2.replaced], ['verdict', null]);
+    assert.equal(rec(R.build1).wrote[0].replaced, null, 'the first build replaced only the default');
+    // After the replan reset them, brief2's briefs replaced brief1's.
+    const br2 = rec(R.brief2).wrote[0];
+    assert.deepEqual([br2.path, br2.replaced?.kind, br2.replaced?.run], ['briefs', 'stage', R.brief1]);
     // verify1's FAIL went into building, and only invokes reachable from there are listed as its readers.
     const v1 = rec(R.verify1);
     assert.equal(v1.wrote[0].into, 'building');
@@ -226,7 +270,7 @@ test('S4: a null default built wholly from part-writes names the part-writers as
   const log = [{ path: 'answers.q1', by: q(1) }, { path: 'answers.q2', by: q(2) }];
   const { producer, amended } = producerOf(log, 'answers', spec);
   assert.deepEqual(producer, { kind: 'parts', default: '/context/answers', parts: [{ path: 'answers.q1', ...q(1) }, { path: 'answers.q2', ...q(2) }] });
-  assert.equal(amended.length, 2, 'the parts stay listed as amended too');
+  assert.equal(amended, undefined, 'the parts are listed once, under parts, not again as amended');
   // A part read on its own keeps its own writer, and a whole a stage wrote keeps that stage.
   assert.deepEqual(producerOf(log, 'answers.q2', spec).producer, q(2));
   assert.equal(producerOf([{ path: 'answers', by: q(3) }, ...log], 'answers', spec).producer.run, 'r:1.q3');

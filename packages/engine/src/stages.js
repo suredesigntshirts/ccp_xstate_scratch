@@ -59,9 +59,10 @@ const printed = (s, defs) => {
 
 /**
  * The prompt of a model-stage run as its five parts, each a list of { text, source }. A source is where the text came
- * from: { frame } (a constant of this file), { workflow: <JSON pointer in the workflow file> }, or { input: <name> }
- * (the run's input value; its producer is in the run's stage record). From the run's meta.actors entry (schema), its
- * input and its run facts, and nothing else.
+ * from: { frame } (a constant of this file: `fixed: true` when its text is the same for every run, or `filled` with
+ * the run facts it was filled from), { workflow: <JSON pointer in the workflow file> }, or { input: <name> } (the run's
+ * input value, with `meaningAt` for the meaning printed beside it; its producer is in the run's stage record). From
+ * the run's meta.actors entry (schema), its input and its run facts, and nothing else.
  */
 export function sections({ actor, schema: stage, input, defs, run, worktree, repo, branch }) {
   input ??= {};
@@ -72,21 +73,21 @@ export function sections({ actor, schema: stage, input, defs, run, worktree, rep
   const described = Object.entries(schema.properties ?? {}).filter(([, s]) => text(s?.description));
   return {
     rules: [
-      { text: DATA_RULE, source: { frame: 'DATA_RULE' } },
-      { text: WORKTREE_RULE, source: { frame: 'WORKTREE_RULE' } },
+      { text: DATA_RULE, source: { frame: 'DATA_RULE', fixed: true } },
+      { text: WORKTREE_RULE, source: { frame: 'WORKTREE_RULE', fixed: true } },
       ...rules.map((r, i) => ({ text: `- ${r}`, source: { workflow: `${base}/rules/${i}` } }))
     ],
     inputs: given.length
-      ? given.map((k) => ({ text: `- ${k}: ${inputs[k]}\n  = ${shown(input[k])}`, source: { input: k, meaning: `${base}/inputs/${esc(k)}` } }))
-      : [{ text: '(none)', source: { frame: 'none' } }],
-    task: [{ text: input[TASK], source: { input: TASK } }],
+      ? given.map((k) => ({ text: `- ${k}: ${inputs[k]}\n  = ${shown(input[k])}`, source: { input: k, meaningAt: `${base}/inputs/${esc(k)}` } }))
+      : [{ text: '(none)', source: { frame: 'none', fixed: true } }],
+    task: [{ text: input[TASK], source: { input: TASK, meaningAt: `${base}/inputs/${TASK}` } }],
     output: [
       ...described.map(([k, s]) => ({ text: `- ${k}: ${s.description}`, source: { workflow: `${base}/properties/${esc(k)}/description` } })),
       { text: `Schema: ${JSON.stringify(printed(schema, defs ?? {}))}`, source: { workflow: base, inlined: '/meta/schemas' } }
     ],
     return: [
-      { text: returnLine(run), source: { frame: 'returnLine' } },
-      { text: runLine({ run, worktree, repo, branch }), source: { frame: 'runLine' } }
+      { text: returnLine(run), source: { frame: 'returnLine', filled: { run } } },
+      { text: runLine({ run, worktree, repo, branch }), source: { frame: 'runLine', filled: { run, worktree, repo, branch } } }
     ]
   };
 }

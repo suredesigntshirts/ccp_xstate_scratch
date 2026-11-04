@@ -337,19 +337,31 @@ accepted result). Brief and result texts are blobs, `<journal root>/blobs/<sha25
 `stage.json` (`packages/engine/src/trace.js`) is what the person reads to see one stage run end to end. Written when the
 run is prepared: `stage`, `workflow` (`id`, `name`, `hash`), the `invoke`, `state` and `invokeAt` (JSON pointer) that
 started it, `prompt` (`hash` and `parts`: rules, inputs, task, output and return, each a list of `{ text, source }`,
-where a source is a `frame` constant, a `workflow` JSON pointer, or an `input` with its `producer`) and `inputs` (each
-`name`, `meaning`, `meaningAt`, `value`, `from` (the context path or literal it was wired from), `wiredAt` and
-`producer`, plus `amended` when later writes changed parts of it). A producer is `{ kind: 'stage', run, actor, field }`
+where a source is a `frame` constant (with `fixed: true` when its text is the same for every run, as the data rule,
+or `filled`, the run facts it was filled from: `{ run }` for the return line, `{ run, worktree, repo, branch }` for the
+run line), a `workflow` JSON pointer, or an `input` with its `meaningAt` and `producer`) and `inputs` (each `name`,
+`meaning`, `meaningAt`, `value`, `from` (the context path or literal it was wired from), `wiredAt` and `producer`,
+plus `amended` when later writes changed parts of it). A producer is `{ kind: 'stage', run, actor, field }`
 (or `workflow`/`effect` for a child item or host effect), `initial` (the item's input), `literal` (with its pointer),
 `event`, `copy`, `host` (a field the host stamped on a ref the run returned, such as `pr.checkout`), `default`, or
-`parts` (a null default built wholly from part-writes, such as research's `answers`: `parts` lists each part-writer),
-each with the transition and set action that wrote it. Every write is a set action on a transition (the load check
-refuses actions on entry, exit, always or the root, `packages/engine/src/form.js`), so the journal's `writes` hold
-every write and the producers are exact. Added when the item takes the run's result or error: `ended`,
-`output` (or `error`) and `wrote`, each path written from it with `into` (the state the transition entered) and
-`readBy`, the invokes in the chart that read that path and that the item can reach from `into`: the ones that could
-read it next, not the one that will (a later write may replace the value first, as replanning nulls `verdict`). A run whose state was
-left before it returned (the transition stopped it) gets `ended` with `stopped: true`, no output and an empty `wrote`.
+`parts` (a null default built wholly from part-writes, such as research's `answers`: `parts` lists each part-writer,
+and they are not listed again as `amended`), each with the transition and set action that wrote it. Every write is a
+set action on a transition (the load check refuses actions on entry, exit, always or the root,
+`packages/engine/src/form.js`), so the journal's `writes` hold every write and the producers are exact.
+
+Added when the item takes the run's result or error: `finished` (`transition`, `event` and `state`, the active states
+after it as a list of dotted paths, such as `["awaitingMerge"]`; named `finished`, not `ended`, so no record field
+shares a state's name), `output` (the result as accepted) with `stamped` (the dotted paths in it the host wrote, such
+as `pr.key` and `pr.checkout`; an agent may not set them, so the output less these is what the agent returned), or
+`error`, and `wrote`: each path written from it with `at` (the set action's pointer), `into` (the state the
+transition entered, a dotted path), `replaced` (the producer of the value the write replaced, or null when there was
+none: the context default, or a literal null the workflow reset it to) and `readBy`, the invokes in the chart that
+read that path and that the item can reach from `into`: the ones that could read it next, not the one that will (a
+later write may replace the value first, as replanning nulls `verdict`). Reachability is the chart's, by any path,
+whether or not the item took it; `readBy` does not say which path reaches a reader. A reader that is the writing
+invoke itself, reached by entering its state again (the next build reads this build's `pr` as `previous`), is kept
+and marked `self: true`. A run whose state was left before it returned (the transition stopped it) gets `finished`
+with `stopped: true`, no output and an empty `wrote`.
 
 | When | Kind | `payload` |
 |---|---|---|

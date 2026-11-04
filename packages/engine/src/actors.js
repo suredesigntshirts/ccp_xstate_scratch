@@ -118,10 +118,20 @@ export function actors({ host, repo = process.cwd(), worktrees = join(dirname(re
     ended: (effect, row) => {
       const file = join(runDir(host.root, effect.id), 'stage.json');
       const record = readJson(file);
-      if (record && !record.ended) writeJson(file, endRecord(record, host.spec, row));
+      if (record && !record.finished) writeJson(file, endRecord(record, host.spec, row, itemRows(host.root, host.item)));
     }
   };
   return Object.fromEntries(names.map((name) => [name, handler]));
+}
+
+// The item's journal rows, none before its file exists.
+function itemRows(root, item) {
+  try {
+    return readFile(itemFile(root, item)).rows;
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
 }
 
 const outcomeOf = (run) => ({
@@ -182,12 +192,7 @@ export function prepare({ host, effect, repo, worktrees }) {
     source: { system: 'journal', ref: `blobs/${hash}` },
     payload: { run: run.run, actor: run.actor, role: run.actor, hash, bytes, contextHash: sha256(run.context), worktree }
   });
-  let rows = [];
-  try {
-    rows = readFile(itemFile(root, item)).rows;
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-  }
+  const rows = itemRows(root, item);
   const value = host.snapshot?.value ?? null;
   writeJson(join(dir, 'stage.json'), stageRecord({ spec, run, parts, promptHash: run.briefHash, value, rows, transition: effect.transition }));
   writeJson(join(dir, 'run.json'), run);
