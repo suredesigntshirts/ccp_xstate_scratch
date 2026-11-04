@@ -137,7 +137,8 @@ export function stageRecord({ spec, run, parts, promptHash, value, rows, transit
  */
 export function endRecord(record, spec, row) {
   const { event, transition, writes = [], run } = row.payload;
-  const ended = { transition, event: event.type, state: row.state };
+  const state = typeof row.state === 'string' ? JSON.parse(row.state) : row.state; // the journal keeps the state value as JSON
+  const ended = { transition, event: event.type, state };
   if (run !== record.run) return { ...record, ended: { ...ended, stopped: true }, wrote: [] };
   const out = (w) => typeof w.from === 'string' && (w.from === 'event.output' || w.from.startsWith('event.output.') || w.from === 'event.error');
   const sets = chart(spec).writes;

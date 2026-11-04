@@ -268,29 +268,27 @@ export function shapes(spec, path, state, wiring = chart(spec), seen = new Set()
 // ---- The load check
 
 const PASS = /^pass$/i;
+/** Whether a shape may hold text: a text literal, an open value, or a schema that is not only some other type. */
+const mayBeText = (s) => (s.value !== undefined ? typeof s.value === 'string' : s.open || !(s.type ? [s.type].flat().every((t) => t !== 'string') : isObject(s.properties) || isObject(s.items)));
 const listsPass = (s) => isObject(s) && [...(Array.isArray(s.enum) ? s.enum : []), ...('const' in s ? [s.const] : [])].some((v) => typeof v === 'string' && PASS.test(v));
-const fromOutput = (from) => typeof from === 'string' && /^event\.output(\.|$)/.test(from);
 
 /**
- * Why a stage can say PASS ({ field } or { guard, path }), or null. It can when an output field's schema ($refs resolved) lists PASS, in any case,
- * or when the chart branches on PASS from its output: a guard with an `in` condition holding PASS that reads a context
- * path the stage's result is written to, or event.output on a transition that takes the stage's result.
+ * Why a stage's output must declare covers ({ field, perLine }), or null. covers is the host's promise that a per-line
+ * verdict names every line it was given, once; so the rule keys on structure, not on how the overall verdict is
+ * spelled, copied or routed: an output field that is a list of entries with a line (the shape of #line) holds
+ * results line by line and must say which lines. A field whose schema lists the word PASS ($refs resolved, any case)
+ * is an overall verdict, and needs a field that covers the lines too.
  */
-function saysPass(spec, src, wiring) {
+function needsCovers(spec, src) {
   const st = spec.meta.actors[src];
   const defs = spec.meta?.schemas ?? {};
-  for (const name of Object.keys(st.properties)) if (listsPass(nodeAt(st, defs, [name]))) return { field: name };
-  for (const [guard, conds] of Object.entries(spec.meta?.guards ?? {})) {
-    for (const c of [conds].flat()) {
-      if (!isObject(c) || !Array.isArray(c.in) || !c.in.some((v) => typeof v === 'string' && PASS.test(v))) continue;
-      const p = String(c.path);
-      const used = (t) => t.src === src && (t.guard === guard || (wiring.nodes.get(t.after)?.meta?.needs ?? []).includes(guard));
-      const hit = p.startsWith('context.')
-        ? wiring.writes.some((w) => w.src === src && fromOutput(w.from) && overlap(w.path, p.slice(8)))
-        : fromOutput(p) && wiring.transitions.some(used);
-      if (hit) return { guard, path: p };
-    }
+  const covered = Object.values(st.properties).some((p) => p?.covers != null);
+  for (const [name, p] of Object.entries(st.properties)) {
+    const item = deref(nodeAt(st, defs, [name, '0']), defs);
+    if (p?.covers == null && isObject(item?.properties?.line)) return { field: name, perLine: true };
   }
+  if (covered) return null;
+  for (const name of Object.keys(st.properties)) if (listsPass(nodeAt(st, defs, [name]))) return { field: name, perLine: false };
   return null;
 }
 
@@ -300,11 +298,12 @@ function saysPass(spec, src, wiring) {
  * - every stage has its parts: rules (non-empty text), inputs (each with a meaning, `task` among them) and an output
  *   schema;
  * - covers: a field marked covers is a list of { line, result } entries, and its covers path names a list in the
- *   input the stage is given (through its wiring); a stage that can say PASS (saysPass) declares covers;
+ *   input the stage is given (through its wiring); a stage whose output holds results line by line, or can say
+ *   PASS, declares covers (needsCovers);
  * - every invoke names a stage, a host effect or a workflow (a workflow pinned before the contract is refused here);
  * - every stage invoke gives exactly its declared inputs, and every invoke input (stage, effect or workflow) is a
  *   literal or a context path that something feeds when the invoke's state is entered (shapes); a literal task is
- *   non-empty text.
+ *   non-empty text, and a wired task may hold text there (mayBeText).
  */
 export function checkStages(spec, { workflows = null } = {}) {
   const actors = spec.meta?.actors ?? {};
@@ -348,9 +347,8 @@ export function checkStages(spec, { workflows = null } = {}) {
       }
     }
     // A verdict the host cannot check line by line is a verdict nobody checks: coverage cannot be left out.
-    const says = Object.values(st.properties).some((p) => p?.covers != null) ? null : saysPass(spec, src, wiring);
-    if (says?.field) bad(src, `output ${says.field} can say PASS, but no output field declares covers`);
-    if (says) bad(src, `output reaches guard ${says.guard}, which tests ${says.path} for PASS, but no output field declares covers`);
+    const needs = needsCovers(spec, src);
+    if (needs) bad(src, needs.perLine ? `output ${needs.field} holds results line by line, but declares no covers` : `output ${needs.field} can say PASS, but no output field declares covers`);
   }
   for (const inv of wiring.invokes) {
     const st = actors[inv.src];
@@ -364,9 +362,11 @@ export function checkStages(spec, { workflows = null } = {}) {
         continue;
       }
       if (typeof from !== 'string' || !from.startsWith('context.')) fail(`input ${name} reads ${JSON.stringify(from)}: an input is a context path or a literal`);
-      if (!shapes(spec, from.slice(8), state, wiring).length) {
+      const got = shapes(spec, from.slice(8), state, wiring);
+      if (!got.length) {
         fail(`input ${name} reads ${from}, which nothing writes before ${state}: no item input, context default or set action on a way into ${state} gives it`);
       }
+      if (stage && name === TASK && !got.some(mayBeText)) fail(`task reads ${from}, which holds no text before ${state}`);
     }
   }
   return spec;

@@ -143,7 +143,7 @@ test('S4: the quick-fix happy path leaves a complete stage record per run, each 
     assert.ok(build.wrote[0].readBy.some((r) => r.kind === 'effect' && r.actor === 'merge' && r.input === 'pr'));
     assert.deepEqual(verify.wrote.map((x) => [x.path, x.from]), [['verdict', 'event.output']]);
     assert.ok(verify.wrote[0].readBy.some((r) => r.actor === 'build' && r.input === 'verdict'), 'a FAIL verdict would reach the next build');
-    assert.equal(verify.ended.state, '"awaitingMerge"');
+    assert.equal(verify.ended.state, 'awaitingMerge');
   } finally {
     await w.close();
   }
@@ -208,7 +208,7 @@ test('S4: a FAIL loop, a head move and a replan: every producer is the run that 
     // The verify run the head move stopped: ended, marked stopped, with no output and nothing written.
     const gone = rec(R.stopped);
     assert.equal(gone.ended?.stopped, true, 'a stopped run says so');
-    assert.equal(gone.ended.state, '"reverifying"');
+    assert.equal(gone.ended.state, 'reverifying');
     assert.ok(!('output' in gone) && gone.wrote.length === 0);
     // verify1's FAIL went into building, and only invokes reachable from there are listed as its readers.
     const v1 = rec(R.verify1);
