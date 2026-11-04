@@ -435,7 +435,7 @@ function refsIn(value, path = 'result') {
 // stopped()). A block at SubagentStop does not re-prompt an agent that already handed back (seen in the verifier's
 // scratch run ar2, 2026-10-31), so such a stop fails the run at once.
 const sentBackFile = (dir) => join(dir, 'sent-back.json');
-const returnInstruction = (run) => `You are the invoked ${run.actor} actor for run ${run.run}, and you are ending without returning your result, so the item can't move. Call the harness return tool now (its name ends in harness__return; load it with ToolSearch if it is deferred) with { "run": "${run.run}", "result": <your result> }. Don't redo your work unless the tool refuses the result.`;
+const returnInstruction = (run) => `This is run ${run.run} (stage ${run.actor}), and you are ending without returning your result, so the item can't move. Call the harness return tool now (its name ends in harness__return; load it with ToolSearch if it is deferred) with { "run": "${run.run}", "result": <your result> }. Don't redo your work unless the tool refuses the result.`;
 
 // The bound agent's open run and its folder, or null when the agent is no actor or its run returned or failed.
 function openRunOf(root, agentId) {
