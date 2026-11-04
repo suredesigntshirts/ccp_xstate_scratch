@@ -10,6 +10,9 @@ export const prRef = (url) => {
 };
 
 const SHA = /^[0-9a-f]{40}$/;
+import { intoBranch } from '../attest.js';
+// The item a run effect belongs to: its id is `<item>:<seq>.<invoke>`.
+const itemOf = (effect) => String(effect.id ?? '').match(/^(.+):\d+\.[\w-]+$/)?.[1] ?? null;
 
 // What the effect ended with: the merge's sha is the actor's output ({ sha }, quick-fix's meta.actors.merge).
 const merged = (ref, head, sha) => ({
@@ -18,7 +21,7 @@ const merged = (ref, head, sha) => ({
   number: ref.pullNumber,
   head,
   sha,
-  output: { sha }
+  output: { sha, head }
 });
 
 // The effect's input as GitHub needs it, or an error naming what is missing.
@@ -34,6 +37,10 @@ function target(effect) {
 export const merge = ({ github }) => ({
   async start(effect) {
     const { ref, sha } = target(effect);
+    // The PR must be into the base this merge may write: the item's lane named by input.into, or the default branch.
+    const base = intoBranch(itemOf(effect), effect.input?.into);
+    const before = await github.pull(ref);
+    if (before?.base?.ref !== base) throw new Error(`${ref.owner}/${ref.repo}#${ref.pullNumber} is into ${before?.base?.ref}, not ${base}`);
     try {
       const done = await github.merge({ ...ref, expectedHeadSha: sha, merge_method: 'merge' });
       return merged(ref, sha, done.sha);

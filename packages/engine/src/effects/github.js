@@ -84,6 +84,20 @@ export function github({ api = 'https://api.github.com', env = process.env } = {
     pull: (args) => call('GET', at(args)),
     /** merge_pull_request: expectedHeadSha is REST's sha, so GitHub refuses the merge when the head moved. */
     merge: ({ expectedHeadSha, merge_method = 'merge', commit_title, commit_message, ...args }) =>
-      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message })
+      call('PUT', `${at(args)}/merge`, { sha: expectedHeadSha, merge_method, commit_title, commit_message }),
+    /** The PR's changed files, every page: [{ filename, ... }]. */
+    files: async (args) => {
+      const all = [];
+      for (let page = 1; ; page++) {
+        const got = await call('GET', `${at(args)}/files?per_page=100&page=${page}`);
+        all.push(...(got ?? []));
+        if (!Array.isArray(got) || got.length < 100) return all;
+      }
+    },
+    /** A page as the host itself reads it, over the same proxy tunnel: { status, body }. */
+    fetch: async (url) => {
+      const res = await send(new URL(url), { method: 'GET', headers: { 'user-agent': 'ccp-engine-attest' }, body: null }, env);
+      return { status: res.status, body: res.body };
+    }
   };
 }
